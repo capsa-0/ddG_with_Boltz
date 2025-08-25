@@ -1,0 +1,6 @@
+sequences:
+  - ENTITY_TYPE:
+      id: A
+      sequence: "MVLSPADKTNVKAAWGKVGAHAGEYGAEALERMFLSFPTTKTYFPHFDLSHGSAQVKGHG"
+      msa: MSA_PATH       
+      cyclic: false
