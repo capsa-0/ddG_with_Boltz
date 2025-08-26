@@ -9,44 +9,53 @@ def fetch_uniprot_sequence(uniprot_id):
     url = f"https://rest.uniprot.org/uniprotkb/{uniprot_id}.fasta"
     r = requests.get(url)
     if r.status_code != 200:
-        raise ValueError(f"Could not retrieve sequence for {uniprot_id}")
+        raise ValueError(f"Couldn't get sequence for {uniprot_id}")
     fasta = r.text.splitlines()
-    seq = "".join(fasta[1:])
+    seq = "".join(fasta[1:])  
     return seq
+
+
+# === MAIN ===
 
 parser = argparse.ArgumentParser(description="Extract sequences from UniProt")
 parser.add_argument("input_file", help="Excel file")
-parser.add_argument("output_dir", help="Base output directory")
+parser.add_argument("output_file", help="Output FASTA file")
 args = parser.parse_args()
+
 
 df = pd.read_excel(args.input_file)
 
-mutations_by_protein = defaultdict(list)
+mutaciones_por_proteina = defaultdict(list)
 
 
 for _, row in tqdm(df.iterrows(), total=len(df), desc="Processing mutations"):
     uniprot_id = row["uniprot"]
     mutation = row["mut"]
-    ddg = float(str(row["ddg"]).replace(",", "."))
+    ddg = float(str(row["ddg"]).replace(",", ".")) 
 
     seq = fetch_uniprot_sequence(uniprot_id)
 
-    mutations_by_protein[uniprot_id].append({
+    mutaciones_por_proteina[uniprot_id].append({
         "mutation": mutation,
         "ddg": ddg,
         "seq": seq
     })
 
 
-output_dir = os.path.join(args.output_dir, "fasta_files")
-os.makedirs(output_dir, exist_ok=True)
+output_file = args.output_file
 
-for uniprot_id, mut_list in mutations_by_protein.items():
-    filename = os.path.join(output_dir, f"{uniprot_id}.fasta")
-    mutations_str = "_".join(m["mutation"] for m in mut_list)
-    header = f">{uniprot_id}_{mutations_str}"
-    seq = mut_list[0]["seq"]
+os.makedirs(os.path.dirname(output_file), exist_ok=True)
 
-    with open(filename, "w") as f:
-        f.write(header + "\n")
-        f.write(seq + "\n")
+with open(output_file, "w") as f_out:
+    for uniprot_id, mut_list in mutaciones_por_proteina.items():
+
+        mutaciones_str = "_".join(m["mutation"] for m in mut_list)
+        header = f">{uniprot_id}_{mutaciones_str}"
+
+
+        seq = mut_list[0]["seq"]
+
+
+        f_out.write(header + "\n")
+        f_out.write(seq + "\n")
+
