@@ -19,6 +19,25 @@ echo ">>> Generating MSAs for each sequence..."
 mkdir -p msas
 scripts/multifasta_to_msas.sh intermediate/wt_sequences.fa intermediate/uniref50_lite_db/uniref_db msas
 
+# Remove unnecessary MMseqs2 database files
+echo ">>> Cleaning up unnecessary database files..."
+rm -rf msas/*.index msas/*.dbtype intermediate
+
+# 5 Generating mutated MSAs
+echo ">>> Generating mutated MSAs..."
+mkdir -p all_msas
+scripts/mut_msa_directory.sh msas all_msas
+
+# 6 Cleanup: renaming files and moving to final folder
+echo ">>> Renaming and moving final MSAs to 'msas' folder..."
+scripts/rename_files.sh msas
+mv msas/* all_msas/
+rm -rf msas
+
+# 7 Generating YAML files for each MSA
+echo ">>> Generating yaml files for each MSA"
+mkdir -p yaml_files
+python scripts/get_yaml.py all_msas yaml_files raw_data/boltz_minimum_query.yaml
 
 # -------------------------------------------------------------
-echo "Done - All MSAs are in the 'msas' folder"
+echo "Done - All YAML files are in 'yaml_files'"

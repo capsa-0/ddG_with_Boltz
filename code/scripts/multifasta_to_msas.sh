@@ -33,7 +33,6 @@ awk -v tmp="$TMP_DIR" '
 ' "$QUERY_FASTA"
 
 
-
 for query_file in "$TMP_DIR"/*.fasta; do
     uniprot_id=$(basename "$query_file" .fasta)
     echo ">>> Processing $uniprot_id"
