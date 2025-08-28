@@ -1,6 +1,0 @@
-sequences:
-  - ENTITY_TYPE:
-      id: A
-      sequence: "AAA"
-      msa: MSA_PATH       
-      cyclic: false
