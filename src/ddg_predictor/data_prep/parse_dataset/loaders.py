@@ -91,7 +91,6 @@ class BaseLoader(ABC):
         fasta_out = os.path.join(self.output_dir, fasta_filename)
         self.write_fasta(self.sequences, fasta_out)
 
-        print(f"Dataset loaded correctly: {df_out}, {fasta_out}")
 
 
 class Loader1(BaseLoader):
@@ -142,7 +141,7 @@ class Loader1(BaseLoader):
         resolver = SequenceResolver(db_name='uniprot')
         sequence_ids = self.df_standard["sequence_id"].unique().tolist()
 
-        print('Fetching sequences. Might take a while...')
+        print('Fetching sequences (might take a while)...')
         sequences = {seq_id: resolver.fetch_sequence(seq_id) for seq_id in sequence_ids}
 
         return sequences

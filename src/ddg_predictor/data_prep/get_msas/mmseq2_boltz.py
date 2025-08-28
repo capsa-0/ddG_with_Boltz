@@ -1,3 +1,5 @@
+# Modified MMseqs2 wrapper to delete temporary files after use
+
 # From https://github.com/sokrypton/ColabFold/blob/main/colabfold/colabfold.py
 
 import logging
@@ -6,6 +8,7 @@ import random
 import tarfile
 import time
 from typing import Optional, Union, Dict
+import shutil
 
 import requests
 from requests.auth import HTTPBasicAuth
@@ -283,4 +286,14 @@ def run_mmseqs2(  # noqa: PLR0912, D103, C901, PLR0915
                 a3m_lines[M].append(line)
 
     a3m_lines = ["".join(a3m_lines[n]) for n in Ms]
+
+
+
+
+    if os.path.exists(path):
+        shutil.rmtree(path)  
+
+
+
     return a3m_lines
+
