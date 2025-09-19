@@ -7,3 +7,10 @@ __pycache__/
 
 venv/
 env/
+# Model weights / checkpoints
+*.pt
+*.pth
+*.ckpt
+*.bin
+*.h5
+*.onnx
