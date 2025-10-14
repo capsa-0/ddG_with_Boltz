@@ -1,10 +1,16 @@
-**/*obsidian*/
-
-**/__init__.py
+# Python
 __pycache__/
 *.py[cod]
 *$py.class
 
-boltz_cache/
+# Build artifacts & packaging
+*.egg-info/
+
+# Virtual Environment
 venv_ddg/
 
+# Application Caches & Logs
+boltz_cache/
+
+# Local Editor/Tool Config
+.obsidian/
