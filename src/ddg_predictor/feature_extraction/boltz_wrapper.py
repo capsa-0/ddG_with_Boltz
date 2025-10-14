@@ -15,7 +15,7 @@ def run_boltz_prediction(queries_dir: str, config: SimpleNamespace) -> None:
     logging.info(f"Starting Boltz prediction for queries in: {queries_dir}")
     
     # Use sys.executable to ensure the script runs with the same Python interpreter
-    cmd = [sys.executable, "-m", "boltz.main", "predict", queries_dir]
+    cmd = [sys.executable, "-m", "boltz_mod.main", "predict", queries_dir]
 
     # Build the command with flags from the config
     boltz_flags = getattr(config, "boltz_flags", {})
