@@ -3,7 +3,7 @@
 #==============================================================================
 # SLURM JOB CONFIGURATION
 #==============================================================================
-#SBATCH --job-name=full_pipeline   # Job name
+#SBATCH --job-name=pipeline_ddg_boltz_1   # Job name
 #SBATCH --partition=gpu            # Partition (queue) to submit the job to
 #SBATCH --gres=gpu:1               # Request 1 GPU
 #SBATCH --cpus-per-task=8          # Request 8 CPUs
@@ -51,23 +51,17 @@ echo
 #==============================================================================
 echo "Starting pipeline execution..."
 
-python3 scripts/01_prepare_dataset.py
-echo "Step 1/6 completed: prepare_dataset.py"
+srun python scripts/01_prepare_dataset.py
 
-python3 scripts/02_generate_boltz_queries.py
-echo "Step 2/6 completed: generate_boltz_queries.py"
+srun python scripts/02_generate_boltz_queries.py
 
-python3 scripts/03_extract_features.py
-echo "Step 3/6 completed: extract_features.py"
+srun python scripts/03_extract_features.py
 
-python3 scripts/04_clean_outputs.py
-echo "Step 4/6 completed: clean_outputs.py"
+srun python scripts/04_clean_outputs.py
 
-python3 scripts/05_process_features.py
-echo "Step 5/6 completed: process_features.py"
+srun python scripts/05_process_features.py
 
-python3 scripts/06_analyze_features.py
-echo "Step 6/6 completed: analyze_features.py"
+srun python scripts/06_analyze_features.py
 
 echo
 echo ">>> Pipeline completed successfully. <<<"

@@ -50,7 +50,7 @@ cuda = [
 ]
 
 [project.scripts]
-boltz_mod = "boltz.main:cli"
+boltz = "boltz.main:cli"
 
 [tool.setuptools.packages.find]
 where = ["src"]

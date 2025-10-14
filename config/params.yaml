@@ -1,26 +1,26 @@
 # config/params.yaml
 
 data_processing:
-  raw_data_path: "data/raw/S11304_subset.xlsx"
-  output_dir: "data/processed/S11304_subset"
-  msa_output_dir: "data/processed/S11304_subset/msas"
+  raw_data_path: "data/raw/S11304_tiny.xlsx"
+  output_dir: "data/processed/S11304_tiny"
+  msa_output_dir: "data/processed/S11304_tiny/msas"
   max_msa_sequences: 1
   wt_fasta_filename: "wt_sequences.fasta"
   mutations_csv_filename: "mutations.csv"
-  queries_dir: "data/processed/S11304_subset/boltz_queries"
+  queries_dir: "data/processed/S11304_tiny/boltz_queries"
 
 feature_extraction:
 
   process_one_by_one: false
 
   boltz_flags:
-    out_dir: S11304_subset_results
+    out_dir: S11304_tiny_results
 
 
-    accelerator: "gpu"      
-    #max_parallel_samples: 1 
-    #num_workers: 1          
-    #preprocessing-threads: 2
+    accelerator: "cpu"      
+    max_parallel_samples: 1 
+    num_workers: 1          
+    preprocessing-threads: 2
 
     model: "boltz2"             
     recycling_steps: 0          
