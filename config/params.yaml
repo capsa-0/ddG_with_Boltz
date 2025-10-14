@@ -11,17 +11,16 @@ data_processing:
 
 feature_extraction:
 
-  process_one_by_one: true
+  process_one_by_one: false
 
   boltz_flags:
-    out_dir: S11304_subset
+    out_dir: S11304_subset_results
 
 
     accelerator: "gpu"      
-    max_parallel_samples: 1 
-    num_workers: 1          
-    preprocessing-threads: 2
-
+    #max_parallel_samples: 1 
+    #num_workers: 1          
+    #preprocessing-threads: 2
 
     model: "boltz2"             
     recycling_steps: 0          
