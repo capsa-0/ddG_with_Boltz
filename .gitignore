@@ -5,12 +5,6 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-venv/
-env/
-# Model weights / checkpoints
-*.pt
-*.pth
-*.ckpt
-*.bin
-*.h5
-*.onnx
+boltz_cache/
+venv_ddg/
+
