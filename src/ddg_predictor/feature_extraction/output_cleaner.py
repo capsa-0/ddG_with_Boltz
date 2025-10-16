@@ -70,7 +70,7 @@ def cleanup_boltz_output(config: dict):
         logging.info(f"Archiving run files to: {base_out_dir}")
         os.makedirs(base_out_dir, exist_ok=True)
 
-        config_source_path = os.path.join(dp_config.get['output_dir'], "params.yaml")
+        config_source_path = os.path.join(dp_config['output_dir'], "params.yaml")
         
         mutations_csv_source_path = os.path.join(dp_config['output_dir'], dp_config['mutations_csv_filename'])
         
