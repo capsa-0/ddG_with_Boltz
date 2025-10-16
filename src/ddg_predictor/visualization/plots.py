@@ -1,16 +1,16 @@
-# src/ddg_predictor/visualization/plots.py
-
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 import math
 import os
 import logging
+from scipy.stats import pearsonr # <--- 1. Importar la función necesaria
 
 def plot_feature_correlations(summary_csv_path: str, output_dir: str):
     """
     Generates a multi-panel scatter plot showing the correlation between each calculated
-    feature and the experimental ddG values.
+    feature and the experimental ddG values, displaying the Pearson correlation coefficient
+    on each subplot.
     """
     if not os.path.exists(summary_csv_path):
         logging.error(f"Summary file not found at: {summary_csv_path}")
@@ -34,6 +34,17 @@ def plot_feature_correlations(summary_csv_path: str, output_dir: str):
     for i, feature in enumerate(feature_columns):
         ax = axes[i]
         
+        # --- SECCIÓN AÑADIDA PARA CALCULAR LA CORRELACIÓN ---
+        # 2. Eliminar filas con valores NaN para un cálculo correcto
+        temp_df = df[['ddg', feature]].dropna()
+        
+        # 3. Calcular el coeficiente de correlación de Pearson (R)
+        if len(temp_df) > 1:
+            corr, _ = pearsonr(temp_df['ddg'], temp_df[feature])
+        else:
+            corr = float('nan') # Asignar NaN si no hay suficientes datos
+        # ----------------------------------------------------
+
         sns.regplot(
             data=df,
             x='ddg',
@@ -45,12 +56,16 @@ def plot_feature_correlations(summary_csv_path: str, output_dir: str):
         
         ax.set_title(feature, fontsize=10, weight='bold')
         ax.set_xlabel("Experimental ddG", fontsize=8)
-        
-        # --- CAMBIO REALIZADO AQUÍ ---
-        # Ahora el eje Y tiene el nombre de la característica específica.
         ax.set_ylabel(feature, fontsize=8)
-        
         ax.grid(True, linestyle='--', alpha=0.6)
+
+        # --- SECCIÓN AÑADIDA PARA MOSTRAR EL TEXTO ---
+        # 4. Añadir el valor de R al gráfico
+        ax.text(0.05, 0.95, f'$R = {corr:.2f}$',
+                transform=ax.transAxes, fontsize=10,
+                verticalalignment='top',
+                bbox=dict(boxstyle='round,pad=0.3', fc='aliceblue', alpha=0.7))
+        # ----------------------------------------------
 
     # Oculta los subplots no utilizados
     for j in range(num_features, len(axes)):

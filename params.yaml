@@ -1,0 +1,24 @@
+# config/params.yaml
+
+data_processing:
+  raw_data_path: "data/raw/P03050.csv"
+  dataset_type: "fireprot"
+  max_msa_sequences: 1
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"      
+    model: "boltz2"             
+    recycling_steps: 0          
+    write_full_pae: false
+    write_full_pde: false
+    cache: /grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache
+    write_embeddings: true
+    skip_run_structure: true
+    recycling_steps: 0
+    #num_workers: 2
+    #preprocessing-threads: 1
+
+
+training:

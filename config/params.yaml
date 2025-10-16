@@ -1,35 +1,24 @@
-# config/params.yaml
-
 data_processing:
-  raw_data_path: "data/raw/S11304_tiny.xlsx"
-  output_dir: "data/processed/S11304_tiny"
-  msa_output_dir: "data/processed/S11304_tiny/msas"
+  raw_data_path: data/raw/P03050.csv
+  dataset_type: fireprot
   max_msa_sequences: 1
-  wt_fasta_filename: "wt_sequences.fasta"
-  mutations_csv_filename: "mutations.csv"
-  queries_dir: "data/processed/S11304_tiny/boltz_queries"
-
+  output_dir: data/processed/P03050
+  msa_output_dir: data/processed/P03050/msas
+  queries_dir: data/processed/P03050/boltz_queries
+  wt_fasta_filename: wt_sequences.fasta
+  mutations_csv_filename: mutations.csv
 feature_extraction:
-
-  process_one_by_one: false
-
+  process_one_by_one: true
   boltz_flags:
-    out_dir: S11304_tiny_results
-
-
-    accelerator: "cpu"      
-    max_parallel_samples: 1 
-    num_workers: 1          
-    preprocessing-threads: 2
-
-    model: "boltz2"             
-    recycling_steps: 0          
-
+    accelerator: cpu
+    model: boltz2
+    recycling_steps: 0
     write_full_pae: false
-
     cache: boltz_cache
     write_embeddings: true
     skip_run_structure: true
-    recycling_steps: 0
-
-training:
+    write_full_pde: false
+    num_workers: 2
+    preprocessing-threads: 1
+    out_dir: P03050_results
+training: null

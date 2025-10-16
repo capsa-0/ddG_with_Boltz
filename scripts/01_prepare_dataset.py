@@ -12,6 +12,8 @@ def main():
     Runs the data preparation pipeline: loading, processing, and saving the dataset.
     """
     logging.info("--- STEP 1: Preparing Dataset ---")
+
+    config = loaders.load_config("params.yaml")
     
     with open("config/params.yaml", "r") as f:
         config = yaml.safe_load(f)['data_processing']

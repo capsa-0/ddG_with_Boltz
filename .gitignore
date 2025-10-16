@@ -7,10 +7,11 @@ __pycache__/
 *.egg-info/
 
 # Virtual Environment
-venv_ddg/
+venv/
 
 # Application Caches & Logs
 boltz_cache/
+data/processed/
 
 # Local Editor/Tool Config
 .obsidian/
