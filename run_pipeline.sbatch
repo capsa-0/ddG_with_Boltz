@@ -40,7 +40,7 @@ echo
 cd "$PROJECT_ROOT"
 
 # Activate the Conda environment
-echo "Activating Conda environment: boltz_ddg"
+echo "Activating Conda environment: venv_ddg_boltz"
 eval "$(conda shell.bash hook)"
 source activate boltz_ddg
 echo "Environment activated."
