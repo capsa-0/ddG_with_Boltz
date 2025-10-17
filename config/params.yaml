@@ -1,24 +1,22 @@
 data_processing:
-  raw_data_path: data/raw/P03050.csv
-  dataset_type: fireprot
-  max_msa_sequences: 1
-  output_dir: data/processed/P03050
-  msa_output_dir: data/processed/P03050/msas
-  queries_dir: data/processed/P03050/boltz_queries
+  raw_data_path: data/raw/S11304.xlsx
+  dataset_type: standard
+  max_msa_sequences: 1000
+  output_dir: data/processed/S11304
+  msa_output_dir: data/processed/S11304/msas
+  queries_dir: data/processed/S11304/boltz_queries
   wt_fasta_filename: wt_sequences.fasta
   mutations_csv_filename: mutations.csv
 feature_extraction:
-  process_one_by_one: true
+  process_one_by_one: false
   boltz_flags:
-    accelerator: cpu
+    accelerator: gpu
     model: boltz2
     recycling_steps: 0
     write_full_pae: false
-    cache: boltz_cache
+    write_full_pde: false
+    cache: /grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache
     write_embeddings: true
     skip_run_structure: true
-    write_full_pde: false
-    num_workers: 2
-    preprocessing-threads: 1
-    out_dir: P03050_results
+    out_dir: S11304_results
 training: null

@@ -149,9 +149,11 @@ def load_config(config_path: str) -> None:
     """
     Loads configuration parameters from a YAML file.
     """
+    print("Loading configuration...")
     # Cargar archivo YAML
     with open(config_path, "r") as f:
         config = yaml.safe_load(f)
+
 
     # Extraer el nombre base del dataset desde raw_data_path
     raw_data_file = Path(config["data_processing"]["raw_data_path"])

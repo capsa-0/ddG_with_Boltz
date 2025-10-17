@@ -5,6 +5,9 @@ import os
 import logging
 from ddg_predictor.data_processing import msa_handler
 
+from ddg_predictor.data_processing.loaders import load_config
+load_config('params.yaml')
+
 # Setup basic logging for the script
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

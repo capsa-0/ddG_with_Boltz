@@ -4,6 +4,9 @@ import yaml
 import logging
 from ddg_predictor.feature_processing.feature_diff import FeatureDiffer
 
+from ddg_predictor.data_processing.loaders import load_config
+load_config('params.yaml')
+
 # Setup basic logging for the script
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 

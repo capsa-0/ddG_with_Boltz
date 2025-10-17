@@ -7,6 +7,9 @@ import logging
 import glob
 from tqdm import tqdm
 
+from ddg_predictor.data_processing.loaders import load_config
+load_config('params.yaml')
+
 from ddg_predictor.feature_extraction.boltz_wrapper import run_boltz_prediction
 
 # Setup basic logging
