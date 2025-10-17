@@ -47,7 +47,7 @@ def cleanup_boltz_output(config: dict):
         else:
             # --- Logic for batch mode (the original logic) ---
             logging.info("Cleaning up in 'batch' mode.")
-            queries_dir_basename = os.path.basename(dp_config['yaml_queries_dir'])
+            queries_dir_basename = os.path.basename(dp_config['queries_dir'])
             boltz_results_dir = os.path.join(base_out_dir, f"boltz_results_{queries_dir_basename}")
             source_predictions_dir = os.path.join(boltz_results_dir, "predictions")
 
@@ -70,7 +70,7 @@ def cleanup_boltz_output(config: dict):
         logging.info(f"Archiving run files to: {base_out_dir}")
         os.makedirs(base_out_dir, exist_ok=True)
 
-        config_source_path = os.path.join(dp_config.get['output_dir'], "params.yaml")
+        config_source_path = os.path.join(dp_config['output_dir'], "params.yaml")
         
         mutations_csv_source_path = os.path.join(dp_config['output_dir'], dp_config['mutations_csv_filename'])
         

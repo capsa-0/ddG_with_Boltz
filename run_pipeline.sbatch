@@ -17,7 +17,7 @@
 #==============================================================================
 # --- Modify this path ---
 # Set the absolute path to your project's root directory.
-PROJECT_ROOT="/grupos/Marce/estructural/ddG_with_Boltz"
+PROJECT_ROOT="/grupos/Marce/estructural/ddG_with_Boltz/ddG_with_Boltz"
 # ------------------------
 
 # Exit the script immediately if any command fails (good practice)
@@ -40,9 +40,9 @@ echo
 cd "$PROJECT_ROOT"
 
 # Activate the Conda environment
-echo "Activating Conda environment: boltz_ddg"
+echo "Activating Conda environment: venv_ddg_boltz"
 eval "$(conda shell.bash hook)"
-source activate boltz_ddg
+source activate venv_ddg_boltz
 echo "Environment activated."
 echo
 
