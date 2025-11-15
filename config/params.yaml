@@ -1,22 +1,22 @@
 data_processing:
-  raw_data_path: data/raw/S11304.xlsx
+  raw_data_path: data/raw/S11304_30_p.csv
   dataset_type: standard
-  max_msa_sequences: 1000
-  output_dir: data/processed/S11304
-  msa_output_dir: data/processed/S11304/msas
-  queries_dir: data/processed/S11304/boltz_queries
+  max_msa_sequences: 1
+  output_dir: data/processed/S11304_30_p
+  msa_output_dir: data/processed/S11304_30_p/msas
+  queries_dir: data/processed/S11304_30_p/boltz_queries
   wt_fasta_filename: wt_sequences.fasta
   mutations_csv_filename: mutations.csv
 feature_extraction:
   process_one_by_one: false
   boltz_flags:
-    accelerator: gpu
+    accelerator: cpu
     model: boltz2
-    recycling_steps: 0
+    recycling_steps: 3
     write_full_pae: false
     write_full_pde: false
-    cache: /grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache
+    cache: boltz_cache
     write_embeddings: true
     skip_run_structure: true
-    out_dir: S11304_results
+    out_dir: S11304_30_p_results
 training: null

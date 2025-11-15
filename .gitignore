@@ -12,6 +12,6 @@ venv/
 # Application Caches & Logs
 boltz_cache/
 data/processed/
-
+*_results
 # Local Editor/Tool Config
 .obsidian/

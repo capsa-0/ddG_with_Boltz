@@ -2,7 +2,8 @@
 
 import yaml
 import logging
-from ddg_predictor.feature_processing.feature_diff import FeatureDiffer
+from ddg_predictor.feature_processing.feature_differ import EmbeddingDiffer
+from ddg_predictor.feature_processing.feature_analyzer import FeatureAnalyzer
 
 from ddg_predictor.data_processing.loaders import load_config
 load_config('params.yaml')
@@ -16,14 +17,12 @@ def main():
     with open("config/params.yaml", "r") as f:
         config = yaml.safe_load(f)
 
-    differ = FeatureDiffer(config)
+    differ = EmbeddingDiffer(config)
     differ.generate_diffs()
     
-    # Choose the features you want to calculate
-    # You can try different combinations in each run
-    desired_features = ["entropy", "gini", "sum", "mean", "max", "std"]
-    
-    differ.calculate_deltas_summary(aggregations=desired_features)
+    analyzer = FeatureAnalyzer(config)
+    df_summary = analyzer.summarize_features()
+    analyzer.plot_feature_correlations(df_summary)
     
     logging.info("--- STEP 5: Finished ---")
 
