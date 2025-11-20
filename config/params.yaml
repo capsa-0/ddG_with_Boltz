@@ -1,10 +1,10 @@
 data_processing:
-  raw_data_path: data/raw/S11304_30_p.csv
+  raw_data_path: data/raw/S11304_30.csv
   dataset_type: standard
   max_msa_sequences: 1
-  output_dir: data/processed/S11304_30_p
-  msa_output_dir: data/processed/S11304_30_p/msas
-  queries_dir: data/processed/S11304_30_p/boltz_queries
+  output_dir: data/processed/S11304_30
+  msa_output_dir: data/processed/S11304_30/msas
+  queries_dir: data/processed/S11304_30/boltz_queries
   wt_fasta_filename: wt_sequences.fasta
   mutations_csv_filename: mutations.csv
 feature_extraction:
@@ -18,5 +18,5 @@ feature_extraction:
     cache: boltz_cache
     write_embeddings: true
     skip_run_structure: true
-    out_dir: S11304_30_p_results
+    out_dir: S11304_30_results
 training: null

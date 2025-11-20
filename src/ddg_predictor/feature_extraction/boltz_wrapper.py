@@ -1,16 +1,12 @@
-# src/ddg_predictor/feature_extraction/boltz_wrapper.py
-
 import subprocess
 import logging
 import sys
 from types import SimpleNamespace
 
-# A library module should not configure the root logger.
-# The executable script (03_extract_features.py) handles this.
-
 def run_boltz_prediction(queries_dir: str, config: SimpleNamespace) -> None:
     """
-    Builds and runs the Boltz prediction command, capturing output for error reporting.
+    Builds and runs the Boltz prediction command.
+    MODIFIED FOR DEBUGGING: capture_output is False to see real-time logs.
     """
     logging.info(f"Starting Boltz prediction for queries in: {queries_dir}")
     
@@ -30,27 +26,26 @@ def run_boltz_prediction(queries_dir: str, config: SimpleNamespace) -> None:
     command_str = " ".join(cmd)
     logging.info(f"Executing command: {command_str}")
     
-    # Using subprocess.run is simpler if real-time streaming is not needed.
-    # We capture output to show it only in case of an error, reducing console clutter.
     try:
-        process = subprocess.run(
+        # CAMBIO IMPORTANTE: capture_output=False
+        # Esto permite que veas el output de Boltz directamente en la consola
+        # mientras se ejecuta. Si falta un flag o hay un warning, lo verás ahí.
+        subprocess.run(
             cmd,
-            capture_output=True,
+            capture_output=False, 
             text=True,
-            check=True  # This will raise CalledProcessError automatically on non-zero exit codes
+            check=True
         )
-        # Log the full stdout only if needed for debugging, or keep it clean
-        # logging.debug(f"Boltz STDOUT:\n{process.stdout}")
 
     except FileNotFoundError:
         logging.error(f"Command not found. Is '{sys.executable}' correct and is Boltz installed in the environment?")
         raise
+
     except subprocess.CalledProcessError as e:
         logging.error("Boltz execution failed.")
         logging.error(f"Return Code: {e.returncode}")
-        # Provide the detailed output from Boltz since it failed
-        logging.error(f"STDOUT:\n{e.stdout}")
-        logging.error(f"STDERR:\n{e.stderr}")
+        # Como capture_output=False, el error ya se imprimió en la consola arriba.
+        logging.error("Check the console output above for detailed error messages from Boltz.")
         raise e
     
     logging.info("Boltz execution finished successfully.")

@@ -109,7 +109,7 @@ python scripts/03_extract_features.py
 ```
 
 **Configuration options**:
-- `process_one_by_one`: Process queries individually (safer for large datasets)
+- `process_one_by_one`: Process queries individually (used for debugging)
 - `accelerator`: "cpu" or "gpu"
 - `recycling_steps`: Number of recycling iterations (0-3+)
 - `write_embeddings`: Must be `true` to extract features
@@ -168,10 +168,20 @@ Applies statistical aggregations to difference tensors:
 - Mean, Max, Std, Sum
 - Entropy (Shannon entropy)
 - Gini coefficient
+- **Mean absolute value**
 
 **Local features**: Computed only at the mutation site
 - Same aggregations applied to residue-specific slices
 - For pair representations: diagonal element `diff[pos, pos, :]`
+
+**Normalized features**: All aggregations normalized by protein length
+- `mean_norm`: Mean (already normalized)
+- `sum_norm`: Sum divided by protein length
+- `entropy_norm`: Entropy divided by log(protein length)
+- `gini_norm`: Gini coefficient (already normalized)
+- `mean_abs_norm`: Mean absolute value (already normalized)
+
+Protein length is automatically determined from the WT single representation embedding (`s.npz`).
 
 ## Data Format
 
@@ -188,13 +198,14 @@ P12345,G25D,-1.2
 
 ### Output Features CSV
 ```csv
-sequence_id,mutation,ddg,global_s_mean,global_s_max,...,local_z_entropy,...
-P12345,A10V,0.5,0.023,0.187,...,1.45,...
+sequence_id,mutation,ddg,global_s_mean,global_s_max,...,local_z_entropy,...,global_s_mean_norm,global_s_sum_norm,...
+P12345,A10V,0.5,0.023,0.187,...,1.45,...,0.023,0.187,...
 ```
 
 Each row contains:
 - Metadata (protein ID, mutation, experimental ΔΔG)
 - Global and local aggregations for each embedding type (s, z, pdistogram)
+- **Normalized versions** of applicable aggregations (mean_norm, sum_norm, entropy_norm, gini_norm, mean_abs_norm)
 
 ## Development
 
@@ -214,39 +225,3 @@ self.AGGREGATORS = {
 
 The Boltz wrapper accepts all standard Boltz CLI arguments through `boltz_flags` in the config.
 
-## Citation
-
-If you use this pipeline, please cite:
-
-- **Boltz-2**: [Paper/GitHub link]
-- **Your work**: [If applicable]
-
-## License
-
-[Specify license]
-
-## Troubleshooting
-
-### Out of Memory (OOM) Errors
-- Set `process_one_by_one: true` in config
-- Reduce `max_msa_sequences`
-- Use CPU instead of GPU (slower but more memory)
-
-### Missing Embeddings
-- Ensure `write_embeddings: true` in Boltz flags
-- Check that Boltz completed successfully (look for `.npz` files in output)
-
-### Shape Mismatches
-- Verify that WT and mutant sequences have the same length
-- Check that mutations are within valid residue range
-
-## Contributing
-
-Contributions are welcome! Please:
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
-
-## Contact
-
-[Your contact information]

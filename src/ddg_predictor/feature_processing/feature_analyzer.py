@@ -43,6 +43,15 @@ class FeatureAnalyzer:
             "mean_abs": lambda arr: np.mean(np.abs(arr)),
         }
 
+        # Agregadores normalizados por longitud de proteína
+        self.NORMALIZED_AGGREGATORS = {
+            "mean_norm": lambda arr, L: np.mean(arr),
+            "sum_norm": lambda arr, L: np.sum(arr) / L,
+            "entropy_norm": lambda arr, L: self._calculate_entropy(arr) / np.log(L) if L > 1 else 0.0,
+            "gini_norm": lambda arr, L: self._calculate_gini(arr),
+            "mean_abs_norm": lambda arr, L: np.mean(np.abs(arr)),
+        }
+
     @staticmethod
     def _load_embedding(file_path: str) -> np.ndarray | None:
         if not os.path.exists(file_path):
@@ -103,6 +112,25 @@ class FeatureAnalyzer:
         index = np.arange(1, n + 1)
         return ((np.sum((2 * index - n - 1) * arr)) / (n * np.sum(arr)))
 
+    def _get_protein_length(self, wt_id: str) -> int | None:
+        """
+        Gets the protein length from the WT 's' embedding.
+        Returns the length L from shape (L, D).
+        """
+        wt_s_path = os.path.join(self.embeddings_dir, wt_id, "s.npz")
+        wt_emb = self._load_embedding(wt_s_path)
+        if wt_emb is None:
+            logging.warning(f"Could not load WT embedding for {wt_id} to get protein length")
+            return None
+        
+        # Handle recycling steps: get the final step
+        if wt_emb.ndim == 3:  # (steps, L, D)
+            final_emb = wt_emb[-1]
+        else:  # (L, D)
+            final_emb = wt_emb
+            
+        return final_emb.shape[0]  # L is the first dimension
+
     def summarize_features(self, 
                            embedding_types=("s", "z", "pdistogram"), 
                            aggregations=("mean", "max", "entropy")) -> pd.DataFrame:
@@ -118,6 +146,12 @@ class FeatureAnalyzer:
         for _, row in tqdm(mutations_df.iterrows(), total=len(mutations_df), desc="Aggregating features"):
             wt_id, mutation = row["sequence_id"], row["mutation"]
             mut_id = f"{wt_id}_{mutation}"
+            
+            # Get protein length for normalization
+            protein_length = self._get_protein_length(wt_id)
+            if protein_length is None:
+                logging.warning(f"Could not determine protein length for {wt_id}, skipping normalization")
+                protein_length = 1  # fallback to avoid division by zero
             
             # Intentamos obtener la posición
             try:
@@ -136,6 +170,9 @@ class FeatureAnalyzer:
                 if diff_emb is None:
                     for region in ["global", "local"]:
                         for agg in aggregations:
+                            result_row[f"{region}_{emb_type}_{agg}"] = np.nan
+                        # Also add normalized versions
+                        for agg in ["mean_norm", "sum_norm", "entropy_norm", "gini_norm", "mean_abs_norm"]:
                             result_row[f"{region}_{emb_type}_{agg}"] = np.nan
                     continue
 
@@ -170,12 +207,21 @@ class FeatureAnalyzer:
                     if data_slice.size == 0:
                         continue
 
+                    # Regular aggregators
                     for agg_name in aggregations:
                         col_name = f"{prefix}_{emb_type}_{agg_name}"
                         
                         func = self.AGGREGATORS.get(agg_name)
                         if func:
                             result_row[col_name] = func(data_slice)
+                    
+                    # Normalized aggregators
+                    for agg_name in ["mean_norm", "sum_norm", "entropy_norm", "gini_norm", "mean_abs_norm"]:
+                        col_name = f"{prefix}_{emb_type}_{agg_name}"
+                        
+                        func = self.NORMALIZED_AGGREGATORS.get(agg_name)
+                        if func:
+                            result_row[col_name] = func(data_slice, protein_length)
             
             results.append(result_row)
         

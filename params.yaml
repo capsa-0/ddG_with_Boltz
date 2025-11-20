@@ -1,7 +1,7 @@
 # params.yaml
 
 data_processing:
-  raw_data_path: "data/raw/S11304_30_p.csv"
+  raw_data_path: "data/raw/S11304_30.csv"
   dataset_type: "standard"
   max_msa_sequences: 1
 
