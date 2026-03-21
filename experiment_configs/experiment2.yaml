@@ -6,7 +6,7 @@ head:
 
 data_processing:
   overwrite: true
-  raw_data_path: "data/raw/fireprot_filtered.csv"
+  raw_data_path: "data/raw/fireprot_filtered_500.csv"
   dataset_type: "fireprot"
   msa_strategy: "mutate_wt_msa" #"mmseqs_per_sequence"
   msa_mutation_strategy: "mutate_across_msa" # "mutate_first_row"
