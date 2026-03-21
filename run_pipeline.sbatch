@@ -51,17 +51,7 @@ echo
 #==============================================================================
 echo "Starting pipeline execution..."
 
-srun python scripts/01_prepare_dataset.py
-
-srun python scripts/02_generate_boltz_queries.py
-
-srun python scripts/03_extract_features.py
-
-srun python scripts/04_clean_outputs.py
-
-srun python scripts/05_process_features.py
-
-srun python scripts/06_analyze_features.py
+srun python src.main --config experiment_configs/experiment1.yml
 
 echo
 echo ">>> Pipeline completed successfully. <<<"

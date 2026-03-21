@@ -1,17 +1,61 @@
-# Python
+# =========================
+# Proyect
+# =========================
+boltz_cache/
+data/processed/
+notebooks/
+
+# =========================
+# Python Cache
+# =========================
 __pycache__/
 *.py[cod]
 *$py.class
 
-# Build artifacts & packaging
+# =========================
+# Jupyter Notebooks
+# =========================
+.ipynb_checkpoints/
+*.ipynb_checkpoints/
+
+# =========================
+# Virtual environments
+# =========================
+venv_ddg/
+.venv/
+env/
+.env
+pip-log.txt
+pip-delete-this-directory.txt
+
+# =========================
+# IDEs and Editors
+# =========================
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# =========================
+# OS
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Logs and Dbs
+# =========================
+*.log
+*.sqlite3
+
+# =========================
+# Distribution and Builds 
+# =========================
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
 *.egg-info/
-
-# Virtual Environment
-venv/
-
-# Application Caches & Logs
-boltz_cache/
-data/processed/
-*_results
-# Local Editor/Tool Config
-.obsidian/
+*.egg

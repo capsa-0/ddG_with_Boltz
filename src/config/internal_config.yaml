@@ -1,0 +1,15 @@
+
+directories:
+  raw_data_dir: "data/raw"
+  processed_dir: "data/processed"
+
+# Paths for intermediate files
+  msa_output_dir: "msas"
+  queries_dir: "queries"
+  raw_features_dir: "boltz_raw_output"
+
+filenames:
+### Preprocessing
+  multifasta: "wt_sequences.fasta"
+  mutations_df: "mutations.csv"
+  metadata_df: "metadata.csv"

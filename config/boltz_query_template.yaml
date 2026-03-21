@@ -1,5 +1,0 @@
-sequences:
-  - protein:
-      id: A
-      sequence: QLEDSEVEAV
-      msa: ./examples/msa/seq2.a3m
