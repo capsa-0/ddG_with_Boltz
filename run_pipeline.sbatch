@@ -8,7 +8,7 @@
 #SBATCH --gres=gpu:1               # Request 1 GPU
 #SBATCH --cpus-per-task=8          # Request 8 CPUs
 #SBATCH --mem=32G                  # Request 32 GB of RAM
-#SBATCH --nodelist=nodo9           # Execute on a specific node (optional)
+#SBATCH --nodelist=nodo8           # Execute on a specific node (optional)
 #SBATCH -e slurm-%j.err            # File for standard error output
 #SBATCH -o slurm-%j.out            # File for standard output
 
@@ -40,9 +40,9 @@ echo
 cd "$PROJECT_ROOT"
 
 # Activate the Conda environment
-echo "Activating Conda environment: venv_ddg_boltz"
+echo "Activating Conda environment: ddG_with_Boltz"
 eval "$(conda shell.bash hook)"
-source activate venv_ddg_boltz
+source activate ddG_with_Boltz
 echo "Environment activated."
 echo
 
@@ -51,7 +51,7 @@ echo
 #==============================================================================
 echo "Starting pipeline execution..."
 
-srun python -m src.main --config experiment_configs/experiment1.yaml
+srun python -m src.main --config experiment_configs/experiment2.yaml
 
 echo
 echo ">>> Pipeline completed successfully. <<<"
