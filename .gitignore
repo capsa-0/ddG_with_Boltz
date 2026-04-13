@@ -3,7 +3,6 @@
 # =========================
 boltz_cache/
 data/processed/
-notebooks/
 
 # =========================
 # Python Cache
