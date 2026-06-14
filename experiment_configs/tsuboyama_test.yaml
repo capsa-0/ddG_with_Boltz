@@ -1,0 +1,33 @@
+# params.yaml
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_test"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_single_small.csv"
+  dataset_type: "dms"
+  msa_strategy: "mutate_wt_msa" #"mmseqs_per_sequence"
+  msa_mutation_strategy: "mutate_across_msa" # "mutate_first_row"
+  max_msa_sequences: 1000 # Opcional
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2" 
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    #cache: "/grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache"
+    cache: "boltz_cache"
+    write_embeddings: true
+    skip_run_structure: true
+    # num_workers: 2
+    # preprocessing-threads: 1
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42

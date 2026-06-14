@@ -4,6 +4,7 @@ Description: Dataset loader factory for different dataset types.
 """
 
 from .dataset_fireprot import FireProtDataset
+from .DMS_dataset import DMSDataset
 from .dataset_minimal import MinimalDataset
 
 
@@ -25,6 +26,7 @@ def load_dataset(dataset_type, csv_file, mode="train"):
     dataset_classes = {
         'fireprot': FireProtDataset,
         'minimal': MinimalDataset,
+        'dms': DMSDataset,
     }
     if dataset_type not in dataset_classes:
         raise ValueError(
