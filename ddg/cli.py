@@ -60,7 +60,26 @@ def _run_step(step: str, exp_cfg: str, names_cfg: str) -> None:
     logger.info("=== step '%s' done ===", step)
 
 
+def _parse_shard(text):
+    """Parse 'i/N' -> (i, N)."""
+    try:
+        i, n = text.split("/")
+        return int(i), int(n)
+    except Exception:
+        raise SystemExit(f"--shard must look like 'i/N' (got {text!r})")
+
+
 def cmd_run(args) -> int:
+    shard = _parse_shard(args.shard) if getattr(args, "shard", None) else None
+    if shard is not None:
+        if args.step != "predict":
+            raise SystemExit("--shard is only valid with --step predict")
+        # Array tasks must not all write the shared manifest (race). Progress is
+        # still visible via `ddg status` (counted from prediction files on disk).
+        logger.info("=== predict shard %d/%d (no manifest write) ===", *shard)
+        pipeline.RUN_FUNCS["predict"](args.config, args.names_config, shard=shard)
+        return 0
+
     steps = [args.step] if args.step else pipeline.RUNNABLE
     for step in steps:
         _run_step(step, args.config, args.names_config)
@@ -102,6 +121,7 @@ def build_parser() -> argparse.ArgumentParser:
     pr = sub.add_parser("run", help="run pipeline step(s)")
     pr.add_argument("config", help="experiment config YAML")
     pr.add_argument("--step", choices=pipeline.RUNNABLE, help="single step (default: all in order)")
+    pr.add_argument("--shard", help="predict only: process shard i/N, e.g. 0/8 (for SLURM arrays)")
     pr.add_argument("--names-config", default=DEFAULT_NAMES_CONFIG)
     pr.set_defaults(func=cmd_run)
 

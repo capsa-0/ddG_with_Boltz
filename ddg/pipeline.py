@@ -31,9 +31,9 @@ def _run_prepare(exp_cfg, names_cfg):
     generate_queries(exp_cfg, names_cfg)
 
 
-def _run_predict(exp_cfg, names_cfg):
+def _run_predict(exp_cfg, names_cfg, shard=None):
     from ddg.feature_extraction.extract_features import main as extract_features
-    extract_features(exp_cfg, names_cfg)
+    extract_features(exp_cfg, names_cfg, shard=shard)
 
 
 def _run_slim(exp_cfg, names_cfg):

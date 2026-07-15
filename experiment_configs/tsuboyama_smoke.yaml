@@ -1,0 +1,40 @@
+# Smoke test: 10 structures (2 proteins x 4 mutants + 2 WT).
+# Purpose: verify the sharded predict path end-to-end on the cluster before
+# committing to a large run. Keeps raw NPZs (delete_raw: false) so you can
+# inspect them if something looks off.
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_smoke"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_smoke.csv"
+  dataset_type: "dms"
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    cache: "/grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache"
+    write_embeddings: true
+    skip_run_structure: true
+
+slim:
+  keep_s: true
+  delete_raw: false   # keep raw on the smoke test so you can inspect it
+
+feature:
+  source: "auto"
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
