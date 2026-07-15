@@ -2,8 +2,9 @@
 #==============================================================================
 # Run the ddg pipeline for one experiment via the `ddg` CLI.
 #
-# Usage:  sbatch slurm/run_ddg.sbatch experiment_configs/tsuboyama_test.yaml
-# Then :  ddg status experiment_configs/tsuboyama_test.yaml   (from the login node)
+# Usage:  sbatch slurm/run_ddg.sbatch experiment_configs/tsuboyama_e1_first_row.yaml
+# Then :  python -m ddg status experiment_configs/tsuboyama_e1_first_row.yaml
+#         (run from the project root on the login node, any time)
 #==============================================================================
 #SBATCH --job-name=ddg
 #SBATCH --partition=gpu
@@ -34,8 +35,9 @@ eval "$(conda shell.bash hook)"
 source activate ddG_with_Boltz
 
 # Runs all steps in order: prepare -> predict -> slim -> features.
-# (You can also run a single step:  ddg run "$CONFIG" --step predict)
-srun ddg run "$CONFIG"
+# (python -m ddg works without `pip install -e .`; the `ddg` command works after.)
+# Single step also possible:  python -m ddg run "$CONFIG" --step predict
+srun python -m ddg run "$CONFIG"
 
 echo "================================================================"
 date +"End: %F - %T"
