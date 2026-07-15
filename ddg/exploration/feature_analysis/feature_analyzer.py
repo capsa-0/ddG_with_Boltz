@@ -16,6 +16,23 @@ from ddg.datasets.boltz_dataset import BoltzDataset
 logger = logging.getLogger(__name__)
 
 
+def make_feature_dataset(config):
+    """
+    Choose the embedding source for feature extraction.
+
+    config feature.source: 'raw' | 'slim' | 'auto' (default 'auto').
+    'auto' uses the slim store when it exists, else the raw Boltz output.
+    """
+    source = config.exp_config.get("feature", {}).get("source", "auto")
+    slim_exists = (config.exp_processed_dir / "slim").exists()
+    if source == "slim" or (source == "auto" and slim_exists):
+        from ddg.storage.slim_store import SlimBoltzDataset
+        logger.info("Feature source: slim store")
+        return SlimBoltzDataset(config)
+    logger.info("Feature source: raw Boltz output")
+    return BoltzDataset(config)
+
+
 class FeatureAnalyzer:
     """Analyzes Boltz embeddings and extracts mutation-related features."""
 
@@ -28,7 +45,7 @@ class FeatureAnalyzer:
         """
         logger.debug("Initializing FeatureAnalyzer")
         self.config = config
-        self.dataset = BoltzDataset(config)
+        self.dataset = make_feature_dataset(config)
         
         # ----- Output configuration -----
         self.output_dir = config.exp_processed_dir

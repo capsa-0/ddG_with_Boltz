@@ -15,6 +15,7 @@ import logging
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import torch
 
 logger = logging.getLogger(__name__)
@@ -84,3 +85,41 @@ def build_sample(store: SlimStore, wt_key: str, mut_key: str, mut_pos: int) -> d
         sample["mut_pdistogram"] = _reconstruct_pair(mut, "pdrow", mut_pos)
 
     return sample
+
+
+class SlimBoltzDataset:
+    """
+    Drop-in replacement for BoltzDataset that reads slimmed embeddings.
+
+    Yields the same sample dict shape (wt_id, mut_id, mutation, wt_s/wt_z/...,
+    ddg) that ddg.exploration.feature_analysis consumes, so features can be
+    computed after the raw NPZs have been deleted.
+    """
+
+    def __init__(self, config):
+        self.df = pd.read_csv(config.mutations_df_path)
+        for col in ("wt_key", "sample_key", "position"):
+            if col not in self.df.columns:
+                raise ValueError(
+                    f"mutations.csv is missing '{col}'; re-run the prepare step "
+                    f"so canonical keys are attached before using the slim store."
+                )
+        self.store = SlimStore(config.exp_processed_dir / "slim")
+        logger.debug("SlimBoltzDataset with %d rows", len(self.df))
+
+    def __len__(self) -> int:
+        return len(self.df)
+
+    def __getitem__(self, idx) -> dict:
+        row = self.df.iloc[idx]
+        wt_id, mutation = row["wt_id"], row["mutation"]
+        mut_pos = int(row["position"]) - 1
+
+        sample = build_sample(self.store, row["wt_key"], row["sample_key"], mut_pos)
+        sample.update({
+            "wt_id": wt_id,
+            "mut_id": f"{wt_id}_{mutation}",
+            "mutation": mutation,
+            "ddg": torch.tensor(row["ddg"], dtype=torch.float32),
+        })
+        return sample
