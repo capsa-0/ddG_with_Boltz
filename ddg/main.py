@@ -6,9 +6,9 @@ Orchestrates Boltz model execution on prepared query files.
 
 import logging
 import argparse
-from src.config.config_loader import ProjectConfig
-from src.feature_extraction.generate_queries import main as generate_queries 
-from src.feature_extraction.extract_features import main as extract_features
+from ddg.config.config_loader import ProjectConfig
+from ddg.feature_extraction.generate_queries import main as generate_queries 
+from ddg.feature_extraction.extract_features import main as extract_features
 
 # ----- Setup logging -----
 logging.basicConfig(
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--names-config",
-        default="src/config/internal_config.yaml",
+        default="ddg/config/internal_config.yaml",
         help="Path to internal configuration YAML file"
     )
     

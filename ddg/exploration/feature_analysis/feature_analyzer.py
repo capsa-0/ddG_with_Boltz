@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 from .extractors import extract_features
 from .plots import plot_umap, plot_correlations, plot_correlation_summary
-from src.datasets.boltz_dataset import BoltzDataset
+from ddg.datasets.boltz_dataset import BoltzDataset
 
 logger = logging.getLogger(__name__)
 

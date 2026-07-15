@@ -6,8 +6,8 @@ Orchestrates Boltz model execution on prepared query files.
 
 import logging
 import argparse
-from src.config.config_loader import ProjectConfig
-from src.feature_extraction.extraction.run_boltz import run_boltz_predictions
+from ddg.config.config_loader import ProjectConfig
+from ddg.feature_extraction.extraction.run_boltz import run_boltz_predictions
 
 # ----- Setup logging -----
 logging.basicConfig(
@@ -17,7 +17,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main(experiment_config_path: str, names_config_path: str = "src/config/internal_config.yaml"):
+def main(experiment_config_path: str, names_config_path: str = "ddg/config/internal_config.yaml"):
     """
     Execute Boltz predictions on prepared query files.
     
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--names-config",
-        default="src/config/internal_config.yaml",
+        default="ddg/config/internal_config.yaml",
         help="Path to internal configuration YAML file"
     )
     

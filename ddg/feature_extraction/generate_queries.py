@@ -6,17 +6,17 @@ Orchestrates multifasta generation, MSA generation, mutation application, and YA
 
 import logging
 import argparse
-from src.config.config_loader import ProjectConfig
-from src.datasets.load_input_dataset import load_dataset
-from src.feature_extraction.model_inputs.multifasta_generator import MultifastaGenerator
-from src.feature_extraction.model_inputs.msa_generator import MsaGenerator
-from src.feature_extraction.model_inputs.msa_modifier import MSADirectoryModifier
-from src.feature_extraction.model_inputs.queries_generator import MsaToBoltzYamlConverter
+from ddg.config.config_loader import ProjectConfig
+from ddg.datasets.load_input_dataset import load_dataset
+from ddg.feature_extraction.model_inputs.multifasta_generator import MultifastaGenerator
+from ddg.feature_extraction.model_inputs.msa_generator import MsaGenerator
+from ddg.feature_extraction.model_inputs.msa_modifier import MSADirectoryModifier
+from ddg.feature_extraction.model_inputs.queries_generator import MsaToBoltzYamlConverter
 
 logger = logging.getLogger(__name__)
 
 
-def main(experiment_config_path: str, names_config_path: str = "src/config/internal_config.yaml"):
+def main(experiment_config_path: str, names_config_path: str = "ddg/config/internal_config.yaml"):
     """
     Execute complete data preparation and query generation pipeline.
     

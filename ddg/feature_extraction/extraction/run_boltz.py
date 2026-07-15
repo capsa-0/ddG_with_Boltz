@@ -11,7 +11,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from src.config.config_loader import ProjectConfig
+from ddg.config.config_loader import ProjectConfig
 
 # ----- Setup logging -----
 logging.basicConfig(

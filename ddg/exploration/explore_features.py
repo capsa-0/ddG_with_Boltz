@@ -6,9 +6,9 @@ Orchestrates feature analysis and visualization generation.
 
 import logging
 import argparse
-from src.config.config_loader import ProjectConfig
-from src.datasets.boltz_dataset import BoltzDataset
-from src.exploration.feature_analysis.feature_analyzer import FeatureAnalyzer
+from ddg.config.config_loader import ProjectConfig
+from ddg.datasets.boltz_dataset import BoltzDataset
+from ddg.exploration.feature_analysis.feature_analyzer import FeatureAnalyzer
 
 # ----- Setup logging -----
 logging.basicConfig(
@@ -18,7 +18,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def main(experiment_config_path: str, names_config_path: str = "src/config/internal_config.yaml"):
+def main(experiment_config_path: str, names_config_path: str = "ddg/config/internal_config.yaml"):
     """
     Execute feature analysis and visualization pipeline.
     

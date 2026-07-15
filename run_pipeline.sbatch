@@ -51,7 +51,7 @@ echo
 #==============================================================================
 echo "Starting pipeline execution..."
 
-srun python -m src.main --config experiment_configs/experiment2.yaml
+srun python -m ddg.main --config experiment_configs/experiment2.yaml
 
 echo
 echo ">>> Pipeline completed successfully. <<<"

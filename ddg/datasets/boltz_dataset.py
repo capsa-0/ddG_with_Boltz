@@ -10,6 +10,8 @@ from pathlib import Path
 from torch.utils.data import Dataset
 import logging
 
+from ddg.datasets.ids import wt_key, mutant_key
+
 logger = logging.getLogger(__name__)
 
 
@@ -112,16 +114,23 @@ class BoltzDataset(Dataset):
         row = self.df.iloc[idx]
         wt_id = row['wt_id']
         mutation = row['mutation']
-        
-        # ----- Construct mutation identifier -----
+
+        # ----- Construct display identifier -----
         mut_id = f"{wt_id}_{mutation}"
-        
-        # ----- Look up embedding file paths -----
-        wt_path = self.path_index.get(wt_id)
-        mut_path = self.path_index.get(mut_id)
-        
+
+        # ----- Look up embedding file paths using canonical (sanitized) keys -----
+        # Prediction folders are named after the sanitized query header, so we
+        # must sanitize wt_id/mutation the same way before indexing (bug 1.1).
+        wt_lookup = wt_key(wt_id)
+        mut_lookup = mutant_key(wt_id, mutation)
+        wt_path = self.path_index.get(wt_lookup)
+        mut_path = self.path_index.get(mut_lookup)
+
         if not wt_path or not mut_path:
-            raise FileNotFoundError(f"Missing embeddings for {wt_id} or {mut_id}")
+            raise FileNotFoundError(
+                f"Missing embeddings for {wt_id} or {mut_id} "
+                f"(looked up keys '{wt_lookup}' / '{mut_lookup}')"
+            )
             
         # ----- Load tensors using BoltzNPZLoader -----
         s_wt, z_wt, pdistogram_wt = BoltzNPZLoader.load_tensors(wt_path)

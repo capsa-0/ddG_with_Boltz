@@ -11,6 +11,8 @@ import yaml
 from pathlib import Path
 from tqdm import tqdm
 
+from ddg.datasets.ids import sanitize_id
+
 logger = logging.getLogger(__name__)
 
 
@@ -115,8 +117,8 @@ class MsaToBoltzYamlConverter:
                 original_id, sequence = self._extract_msa_query_info(a3m_path)
                 doc = self._build_query_doc(str(idx), sequence, a3m_path)
                 
-                # ----- Sanitize original ID for filename -----
-                safe_name = re.sub(r'[^\w\-\.]', '_', original_id)
+                # ----- Sanitize original ID for filename (shared sanitizer) -----
+                safe_name = sanitize_id(original_id)
                 out_path = os.path.join(yaml_output_dir, f"{safe_name}.yaml")
 
                 with open(out_path, 'w') as out_f:
