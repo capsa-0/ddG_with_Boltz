@@ -24,7 +24,7 @@ feature_extraction:
     write_full_pae: false
     write_full_pde: false
     # Reuse the existing Boltz cache with the downloaded model weights:
-    cache: "/grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache"
+    #cache: "cache"
     write_embeddings: true
     skip_run_structure: true
 
