@@ -28,29 +28,35 @@ cd "$(dirname "$0")/.."
 
 echo "config=${CONFIG}  shards=${NSHARDS}  max_parallel=${MAXPAR}"
 
+# Per-step job names so `squeue` shows which step is running. The NAME column
+# truncates to 8 chars by default, so these stay unique at 8: ddg-prep,
+# ddg-pred, ddg-slim, ddg-feat (see the squeue format hint printed below).
+
 # 1) prepare (CPU): build queries + warm the Boltz cache serially.
-PREP=$(sbatch --parsable slurm/cpu_step.sbatch "$CONFIG" prepare)
+PREP=$(sbatch --parsable --job-name=ddg-prepare \
+        slurm/cpu_step.sbatch "$CONFIG" prepare)
 echo "prepare  : job  ${PREP}"
 
 # 2) predict (GPU array): only if prepare succeeded. Parallelism is here.
-PRED=$(sbatch --parsable \
+PRED=$(sbatch --parsable --job-name=ddg-predict \
         --dependency=afterok:"${PREP}" \
         --array=0-$((NSHARDS-1))%"${MAXPAR}" \
         slurm/predict_array.sbatch "$CONFIG" "$NSHARDS")
 echo "predict  : array ${PRED}  (0-$((NSHARDS-1))%${MAXPAR})"
 
 # 3) slim (CPU): only after the WHOLE predict array succeeds.
-SLIM=$(sbatch --parsable --dependency=afterok:"${PRED}" \
+SLIM=$(sbatch --parsable --job-name=ddg-slim --dependency=afterok:"${PRED}" \
         slurm/cpu_step.sbatch "$CONFIG" slim)
 echo "slim     : job  ${SLIM}"
 
 # 4) features (CPU): only after slim succeeds.
-FEAT=$(sbatch --parsable --dependency=afterok:"${SLIM}" \
+FEAT=$(sbatch --parsable --job-name=ddg-features --dependency=afterok:"${SLIM}" \
         slurm/cpu_step.sbatch "$CONFIG" features)
 echo "features : job  ${FEAT}"
 
 echo
-echo "Chain submitted. Watch it with:  squeue -u \$USER"
+echo "Chain submitted. Watch it (full step names) with:"
+echo "  squeue -u \$USER -o '%.10i %.14j %.9T %.10M %.6D %R'"
 echo
 echo "If a predict shard dies on a bad node, the whole array is marked failed and"
 echo "slim/features stay PENDING with reason (DependencyNeverSatisfied). Recover by:"
