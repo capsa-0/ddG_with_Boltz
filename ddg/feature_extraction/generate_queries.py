@@ -4,10 +4,12 @@ Description: Main entry point for data preparation and query generation pipeline
 Orchestrates multifasta generation, MSA generation, mutation application, and YAML conversion.
 """
 
+import json
 import logging
 import argparse
 from ddg.config.config_loader import ProjectConfig
 from ddg.datasets.load_input_dataset import load_dataset
+from ddg.datasets.prepare import prepare_mutations_frame
 from ddg.feature_extraction.model_inputs.multifasta_generator import MultifastaGenerator
 from ddg.feature_extraction.model_inputs.msa_generator import MsaGenerator
 from ddg.feature_extraction.model_inputs.msa_modifier import MSADirectoryModifier
@@ -43,8 +45,23 @@ def main(experiment_config_path: str, names_config_path: str = "ddg/config/inter
     )
 
     logger.info("Processing and saving consolidated DataFrames...")
-    mutations_df = dataset.to_mutations_dataframe()
+    raw_mutations_df = dataset.to_mutations_dataframe()
     metadata_df = dataset.to_metadata_dataframe()
+
+    # Validate mutations (WT-identity check) and attach canonical keys.
+    mutations_df, report = prepare_mutations_frame(raw_mutations_df)
+    if len(mutations_df) == 0:
+        raise ValueError(
+            "No valid mutations after preparation; see dataset_report.json"
+        )
+    report_path = config.exp_processed_dir / "dataset_report.json"
+    with open(report_path, "w") as f:
+        json.dump(report.as_dict(), f, indent=2)
+    logger.info(
+        f"Prepared {report.output_rows}/{report.input_rows} mutations "
+        f"across {report.n_proteins} proteins (report: {report_path})"
+    )
+
     mutations_df.to_csv(config.mutations_df_path, index=False)
     metadata_df.to_csv(config.metadata_df_path, index=False)
     logger.debug(f"Saved {len(mutations_df)} mutations to {config.mutations_df_path}")
