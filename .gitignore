@@ -4,6 +4,10 @@
 boltz_cache/
 data/processed/
 
+# Local working notes / planning (not shared)
+notes/
+CLAUDE.md
+
 # =========================
 # Python Cache
 # =========================
