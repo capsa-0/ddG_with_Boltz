@@ -12,8 +12,8 @@
 #SBATCH --partition=cpu
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
-#SBATCH -e slurm-%j.err
-#SBATCH -o slurm-%j.out
+#SBATCH -e logs/slurm-%j.err
+#SBATCH -o logs/slurm-%j.out
 
 set -e
 

@@ -17,10 +17,14 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-# No --time (gpu partition is unlimited). Exclude too-small/old GPUs.
-#SBATCH --exclude=nodo11,nodo12,nodo14,nodo15,sauron
-#SBATCH -e slurm-%A_%a.err
-#SBATCH -o slurm-%A_%a.out
+# No --time (gpu partition is unlimited). Exclude too-small/old GPUs and
+# nodo3 (broken dynamic linker: boltz aborts with ld.so assertion / exit 127).
+#SBATCH --exclude=nodo3,nodo11,nodo12,nodo14,nodo15,sauron
+# Auto-requeue if the node fails/preempts (predict is resumable: on rerun it
+# skips queries already predicted, so requeue only redoes leftover work).
+#SBATCH --requeue
+#SBATCH -e logs/slurm-%A_%a.err
+#SBATCH -o logs/slurm-%A_%a.out
 
 set -e
 

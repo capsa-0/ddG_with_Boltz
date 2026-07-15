@@ -62,3 +62,8 @@ eggs/
 .eggs/
 *.egg-info/
 *.egg
+
+# SLURM job logs: keep the dir, ignore the outputs
+logs/*.out
+logs/*.err
+!logs/.gitkeep

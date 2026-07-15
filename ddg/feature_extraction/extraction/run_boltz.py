@@ -43,6 +43,12 @@ def _shard_files(all_files, shard):
     return all_files[i::n]
 
 
+def _is_done(dst_predictions: Path, key: str) -> bool:
+    """True if this query already has a canonical embeddings prediction on disk."""
+    d = dst_predictions / key
+    return d.is_dir() and any(d.glob("embeddings_*.npz"))
+
+
 def _boltz_cmd(input_path, out_dir, boltz_flags):
     return [
         "boltz", "predict", str(input_path),
@@ -90,30 +96,43 @@ def run_boltz_predictions(config, shard=None) -> None:
 
     boltz_flags = config.boltz_flags
     dst_predictions = Path(config.raw_features_dir) / "predictions"
-    tmp_dirs = []
 
+    # Select this run's files: the whole directory, or just one shard.
     if shard is None:
-        input_path = queries_dir
-        out_dir = Path(config.exp_processed_dir)
-        logger.info("Running Boltz on all %d queries", len(all_files))
+        files, tag, label = all_files, "all", f"all {len(all_files)} queries"
     else:
         i, n = shard
         files = _shard_files(all_files, shard)
-        logger.info("Running Boltz on shard %d/%d (%d of %d queries)",
-                    i, n, len(files), len(all_files))
+        tag = f"shard_{i:04d}"
+        label = f"shard {i}/{n} ({len(files)} of {len(all_files)} queries)"
         if not files:
             logger.warning("shard %d/%d is empty; nothing to do", i, n)
             return
-        base = Path(config.exp_processed_dir) / "_predict_shards"
-        input_path = base / f"shard_{i:04d}_in"
-        out_dir = base / f"shard_{i:04d}_out"
-        for d in (input_path, out_dir):
-            if d.exists():
-                shutil.rmtree(d)
-            d.mkdir(parents=True)
-        for f in files:  # symlink the shard's yamls into a private input dir
-            (input_path / f.name).symlink_to(f.resolve())
-        tmp_dirs = [input_path, out_dir]
+
+    # Resumability: skip queries whose canonical prediction already exists, so a
+    # resubmitted array only redoes leftover work. A node dying mid-shard then
+    # costs at most one structure instead of the whole shard.
+    pending = [f for f in files if not _is_done(dst_predictions, f.stem)]
+    skipped = len(files) - len(pending)
+    if skipped:
+        logger.info("Skipping %d already-predicted queries in %s", skipped, label)
+    if not pending:
+        logger.info("Nothing to do for %s; all predictions already present", label)
+        return
+    logger.info("Running Boltz on %s (%d pending)", label, len(pending))
+
+    # Symlink just the pending files into a private input dir (and use a private
+    # out dir) so concurrent shards never collide over shared paths.
+    base = Path(config.exp_processed_dir) / "_predict_shards"
+    input_path = base / f"{tag}_in"
+    out_dir = base / f"{tag}_out"
+    for d in (input_path, out_dir):
+        if d.exists():
+            shutil.rmtree(d)
+        d.mkdir(parents=True)
+    for f in pending:
+        (input_path / f.name).symlink_to(f.resolve())
+    tmp_dirs = [input_path, out_dir]
 
     cmd = _boltz_cmd(input_path, out_dir, boltz_flags)
     logger.info("Executing: %s", " ".join(cmd))

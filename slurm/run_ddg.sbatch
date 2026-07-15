@@ -12,10 +12,13 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 # GPU partition has no time limit -> no --time.
-# Exclude nodes whose GPU is too small/old for Boltz-2 (verify nodo13 yourself).
-#SBATCH --exclude=nodo11,nodo12,nodo14,nodo15,sauron
-#SBATCH -e slurm-%j.err
-#SBATCH -o slurm-%j.out
+# Exclude nodes whose GPU is too small/old for Boltz-2 (verify nodo13 yourself)
+# and nodo3 (broken dynamic linker: boltz aborts with ld.so assertion / exit 127).
+#SBATCH --exclude=nodo3,nodo11,nodo12,nodo14,nodo15,sauron
+# Auto-requeue on node failure/preemption (predict resumes, skipping done queries).
+#SBATCH --requeue
+#SBATCH -e logs/slurm-%j.err
+#SBATCH -o logs/slurm-%j.out
 
 set -e
 
