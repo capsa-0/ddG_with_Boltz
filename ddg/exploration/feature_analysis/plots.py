@@ -9,7 +9,6 @@ import logging
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
-import umap
 import numpy as np
 import math
 
@@ -105,8 +104,16 @@ def plot_umap(df: pd.DataFrame, output_dir: str):
         df: DataFrame with features and 'ddg' column
         output_dir: Output directory for plot
     """
+    # Optional dependency: skip the UMAP plot (not the whole features step) if
+    # umap-learn isn't installed. The features_summary.parquet is the deliverable.
+    try:
+        import umap
+    except ImportError:
+        logger.warning("umap-learn not installed; skipping UMAP projection plot")
+        return
+
     os.makedirs(output_dir, exist_ok=True)
-    
+
     # ----- Select feature columns -----
     feature_cols = [c for c in df.columns if c not in ['wt_id', 'mut_id', 'mutation', 'ddg']]
     X = df[feature_cols].dropna()
