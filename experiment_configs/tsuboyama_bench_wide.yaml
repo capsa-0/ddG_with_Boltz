@@ -1,0 +1,44 @@
+# Benchmark corpus — WIDE arm.
+# All 412 Tsuboyama proteins, ~90 mutations/protein subsampled stratified by
+# substitution (built by ddg_datasets/build_benchmark_corpus.py --k 90).
+# ~37.5k Boltz predictions (mutants + WT). At ~0.8 it/s over 3 GPUs this is ~5-6 h.
+# One corpus -> every generalization holdout is a downstream split of the
+# resulting features_summary.parquet (see docs/benchmark_plan.md).
+#
+# mutate_first_row only edits the ungapped query row, so it is NOT affected by
+# the mutate_across_msa column-indexing bug. This is the runnable arm today.
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_bench_wide"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_bench_wide.csv"
+  dataset_type: "dms"
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    write_embeddings: true
+    skip_run_structure: true
+
+slim:
+  keep_s: true
+  delete_raw: true
+
+feature:
+  source: "auto"
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
