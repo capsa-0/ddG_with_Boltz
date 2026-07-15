@@ -88,13 +88,20 @@ python ddg_datasets/build_benchmark_corpus.py --k 90 --out data/raw/tsuboyama_be
 # or the wide corpus overnight:
 ./slurm/submit_all.sh experiment_configs/tsuboyama_bench_wide.yaml 12 3
 
-# 3. build features (once predict finishes)
-python -m src.exploration.explore_features --config experiment_configs/tsuboyama_bench_fast.yaml
+# 3. build features (once predict finishes) -> features_summary.parquet
+python -m ddg.exploration.explore_features --config experiment_configs/tsuboyama_bench_fast.yaml
 
-# 4. run the holdout splits downstream (notebook / eval script) over
-#    features_summary.parquet using protein_id, is_natural, chem_category,
-#    and the MMseqs2 clusters.
+# 4. run the full holdout suite (tables + figures under data/processed/<exp>/benchmark/)
+python -m ddg.evaluation --config experiment_configs/tsuboyama_bench_fast.yaml --model svr
+#    add the homology holdout (needs the mmseqs binary):
+python -m ddg.evaluation --config experiment_configs/tsuboyama_bench_fast.yaml --build-clusters
 ```
+
+Or drive it from `notebooks/benchmark_eval.ipynb` (loads the parquet, runs
+`run_benchmark`, shows the summary table + figures inline). The suite lives in
+`ddg/evaluation/`: `labels.py` (derives every split label from the parquet's own
+`wt_id`/`mutation`), `splits.py`, `models.py` (SVR/Ridge/MLP), `metrics.py`,
+`benchmark.py` (orchestrator), `plots.py`, `cluster.py` (MMseqs2 helper).
 
 ### Cluster labels for holdout #2
 
