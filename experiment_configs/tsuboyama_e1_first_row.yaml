@@ -1,0 +1,43 @@
+# E1 (first-row MSA arm) — Tsuboyama family subset.
+# Runnable today: mutate_first_row only edits the ungapped query row, so it is
+# NOT affected by the MSA column-indexing bug (that only hits mutate_across_msa).
+# The single_seq / mutate_across arms come once those strategies are implemented.
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_e1_first_row"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_subset.csv"
+  dataset_type: "dms"
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    # Reuse the existing Boltz cache with the downloaded model weights:
+    cache: "/grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache"
+    write_embeddings: true
+    skip_run_structure: true
+
+# Keep embeddings compact: store only the mutation-row slices (float16) and
+# delete the raw Boltz NPZs as each is slimmed.
+slim:
+  keep_s: true
+  delete_raw: true
+
+feature:
+  source: "auto"   # uses the slim store once the slim step has run
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
