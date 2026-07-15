@@ -28,7 +28,11 @@ def slim_dir(config: ProjectConfig) -> Path:
 
 def _run_prepare(exp_cfg, names_cfg):
     from ddg.feature_extraction.generate_queries import main as generate_queries
+    from ddg.feature_extraction.extraction.run_boltz import ensure_boltz_cache
     generate_queries(exp_cfg, names_cfg)
+    # Warm the shared Boltz cache serially so parallel predict shards never race
+    # the first-time weight/CCD download (corrupts mols.tar / mols/).
+    ensure_boltz_cache(ProjectConfig(exp_cfg, names_cfg))
 
 
 def _run_predict(exp_cfg, names_cfg, shard=None):

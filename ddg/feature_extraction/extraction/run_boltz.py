@@ -16,6 +16,25 @@ from pathlib import Path
 logger = logging.getLogger(__name__)
 
 
+def ensure_boltz_cache(config) -> None:
+    """Populate the Boltz cache (weights + CCD) once, serially.
+
+    Boltz downloads/extracts its weights and CCD data into --cache on first use.
+    When several predict shards start against a *cold* shared cache at once they
+    race that download: one writes a partial mols.tar or half-extracted mols/
+    dir, another sees it 'exists', skips, and then fails with a tarfile
+    ReadError or 'CCD component ... not found'. Warming the cache here (from the
+    single, serial prepare step) guarantees the GPU shards only ever read it.
+    """
+    from boltz.main import download_boltz2
+
+    cache = Path(config.boltz_flags.get("cache", "~/.boltz")).expanduser()
+    cache.mkdir(parents=True, exist_ok=True)
+    logger.info("Warming Boltz cache at %s (weights + CCD)...", cache)
+    download_boltz2(cache)
+    logger.info("Boltz cache ready at %s", cache)
+
+
 def _shard_files(all_files, shard):
     """Deterministic round-robin split: shard (i, n) -> files[i::n]."""
     i, n = shard
