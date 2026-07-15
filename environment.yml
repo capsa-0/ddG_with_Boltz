@@ -13,6 +13,9 @@ dependencies:
   - pip:
 
       - -e ./external/boltz_modified
-      
+
+      # the ddg package itself, so the `ddg` CLI command is available
+      - -e .
+
       - matplotlib==3.10.8
       - seaborn==0.13.2
