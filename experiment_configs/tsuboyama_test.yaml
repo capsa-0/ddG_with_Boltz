@@ -20,7 +20,7 @@ feature_extraction:
     recycling_steps: 3
     write_full_pae: false
     write_full_pde: false
-    #cache: "/grupos/Marce/estructural/ddG_with_Boltz/boltz/new_boltz_cache"
+    #cache: "cache"
     cache: "boltz_cache"
     write_embeddings: true
     skip_run_structure: true
