@@ -112,18 +112,20 @@ figures (substitution heatmap, chemistry bars) show the per-cell values.
 
 Random **5-fold** CV, HGB, fast corpus (`raw_vs_summary.py`):
 
-| Representation | # feat | CV r |
-|---|---|---|
-| z summary stats | 84 | 0.626 |
-| pd summary stats | 86 | 0.639 |
-| raw Δs | 384 | 0.658 |
-| **ALL summary statistics** | 653 | **0.710** |
-| concat WT‖mut s | 768 | 0.717 |
-| **raw Δz diagonal** | 128 | **0.752** |
-| raw Δz row-pooled | 128 | 0.768 |
-| **raw Δz (diagonal + pooled)** | 256 | **0.780** |
-| raw Δs + raw Δz | 640 | 0.774 |
-| concat WT‖mut (s + z-diagonal) | 1024 | 0.781 |
+RMSE and MAE in kcal/mol.
+
+| Representation | # feat | CV r | RMSE | MAE |
+|---|---|---|---|---|
+| z summary stats | 84 | 0.625 | 0.793 | 0.585 |
+| pd summary stats | 86 | 0.639 | 0.782 | 0.578 |
+| raw Δs | 384 | 0.658 | 0.769 | 0.575 |
+| **ALL summary statistics** | 653 | **0.710** | 0.716 | 0.526 |
+| concat WT‖mut s | 768 | 0.717 | 0.715 | 0.530 |
+| **raw Δz diagonal** | 128 | **0.752** | 0.669 | 0.490 |
+| raw Δz row-pooled | 128 | 0.768 | 0.650 | 0.474 |
+| **raw Δz (diagonal + pooled)** | 256 | **0.780** | 0.636 | 0.461 |
+| raw Δs + raw Δz | 640 | 0.774 | 0.644 | 0.467 |
+| concat WT‖mut (s + z-diagonal) | 1024 | 0.781 | 0.636 | 0.464 |
 
 Notes: adding raw Δs to raw Δz *slightly hurts* (0.780→0.774) → `s` is redundant with
 raw `z`. Concatenation ≈ delta (0.781 vs 0.780) at 4× width. The §3 holdout numbers
