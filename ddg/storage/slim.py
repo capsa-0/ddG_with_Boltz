@@ -25,6 +25,8 @@ key, so no pickling is needed to read them back.
 
 import logging
 import shutil
+import zipfile
+import zlib
 from pathlib import Path
 
 import numpy as np
@@ -119,6 +121,7 @@ def slim_predictions(
         keys = sorted(d.name for d in predictions_dir.iterdir() if d.is_dir())
 
     slims = {}
+    corrupt = []
     for key in keys:
         npz = predictions_dir / key / f"embeddings_{key}.npz"
         if not npz.exists():
@@ -128,7 +131,24 @@ def slim_predictions(
         if positions is None:
             logger.warning("slim: no known positions for structure '%s'; skipping", key)
             continue
-        slims[key] = slim_structure(npz, positions, keep_s=keep_s, dtype=dtype)
+        try:
+            slims[key] = slim_structure(npz, positions, keep_s=keep_s, dtype=dtype)
+        except (zipfile.BadZipFile, EOFError, zlib.error) as e:
+            # Genuine corruption (e.g. a truncated write -> "Bad CRC-32"). The
+            # file is worthless, so delete the whole prediction folder: the
+            # resumable predict step will regenerate only what is missing. Keep
+            # going so every corrupt structure is found in this one pass.
+            logger.error("slim: corrupt embeddings for '%s' (%s): %s", key, npz, e)
+            shutil.rmtree(predictions_dir / key, ignore_errors=True)
+            corrupt.append(key)
+
+    if corrupt:
+        raise RuntimeError(
+            f"slim: found and deleted {len(corrupt)} corrupt prediction(s): "
+            f"{corrupt[:10]}{' ...' if len(corrupt) > 10 else ''}. "
+            f"Re-run the predict step (it is resumable and will only redo these), "
+            f"then re-run slim."
+        )
 
     write_shard(slims, out_shard)
 
