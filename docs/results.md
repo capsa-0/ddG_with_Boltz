@@ -92,6 +92,18 @@ memorizing proteins, protein-holdout accuracy would collapse; it barely moves. T
 model has learned a largely protein-transferable mapping from embedding perturbation
 to stability change.
 
+The out-of-fold predictions directly:
+
+![Predicted vs experimental ΔΔG](figures/results/regression_holdouts.png)
+
+The three panels barely differ — random, unseen-protein and unseen-substitution
+all cluster the same way around the diagonal, which is the visual form of the
+generalization result. **One caveat is visible: the fit line (black) is shallower
+than the identity (orange) — the model *regresses toward the mean* and
+systematically under-predicts the most destabilizing mutations (ΔΔG > 2).** This is
+typical of a squared-error regressor on a skewed target and is a lead for
+improvement (e.g. a heavier-tailed loss or reweighting).
+
 ### 2.2 The mean hides nothing bad — per-protein distribution
 
 ![Per-protein distribution](figures/results/per_unit_distribution.png)
@@ -102,11 +114,31 @@ family where the model silently fails — unusual and reassuring for a stability
 
 ### 2.3 Chemistry is transferable
 
-![Substitution heatmap](figures/results/substitution_pearson_heatmap.png)
-
 Holding out entire amino-acid substitutions (A→B) and predicting them from the
-*other* substitutions still gives r ≈ 0.70 pooled — the model captures chemistry
+*other* substitutions still gives **r ≈ 0.70 pooled** — the model captures chemistry
 that transfers across substitution types, not per-substitution lookups.
+
+**First, how much data backs each substitution** (this also explains the gaps in
+the accuracy map below):
+
+![Substitution counts](figures/results/substitution_counts.png)
+
+Counts are very uneven: `E` is a common source (up to 117 E→L), while `M`, `W` and
+especially `C` are rare (cysteine appears as a source in a single substitution,
+n=1). Substitutions with < 10 examples are dropped from the accuracy analysis,
+which is why the accuracy map has blank cells for most `C→`, `M→` and `W→` rows.
+
+**Accuracy per substitution** — each cell is the Pearson r for that A→B, when A→B
+was held out of training:
+
+![Substitution accuracy heatmap](figures/results/substitution_pearson_heatmap.png)
+
+> **Reading the two "0.70"s.** The **0.70 above is the *pooled* r** — one Pearson
+> over all ~12k held-out predictions at once, which benefits from getting each
+> substitution's *baseline* ΔΔG right. The **per-cell values average to ~0.53**
+> (a stricter *within-substitution* ranking, on tens of points each, so individual
+> cells — especially the few negative ones like H→W at n=10 — are noisy). Both are
+> valid; they answer different questions.
 
 ---
 
