@@ -67,3 +67,7 @@ eggs/
 logs/*.out
 logs/*.err
 !logs/.gitkeep
+
+# Docs
+
+docs/*
