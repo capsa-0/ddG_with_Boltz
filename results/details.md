@@ -48,7 +48,7 @@ At the mutated residue `i` (0-based), for WT and mutant:
 - **`z[i, i, :]`** — pair diagonal (residue with itself), 128-dim.
 - **`z[i, :, :]`** — pair interaction row (residue with all L), L×128.
 
-**Summary representation (original, 653 features).** Each slice's WT−mutant
+**Summary representation (653 features).** Each slice's WT−mutant
 difference is taken in three "modes" — `abs` = |Δ|, `signed` = Δ, `l2` = per-residue
 L2 norm — then **flattened and reduced to ~14 scalar moments** (mean, SD, sum, max,
 mean_abs, gini, entropy, skew, kurtosis, and normalized variants) by
@@ -88,7 +88,12 @@ are likely a touch *higher* than reported.
 
 Defined in `ddg/evaluation/splits.py`:
 - **random** — `KFold(10, shuffle)`.
-- **protein / cluster** — `GroupKFold(5)` on `wt_id` (cluster needs an external map).
+- **protein** — `GroupKFold(5)` on `wt_id`.
+- **cluster (homology)** — `GroupKFold(5)` on a cluster label. Clusters come from
+  greedy CD-HIT-style assignment of the WT sequences (BLOSUM62 global alignment;
+  identity = identical residues / alignment length; ≥ 0.8 coverage). Thresholds
+  30/50/90 % identity → 147/261/345 clusters. Homology holdout pooled r =
+  0.765/0.766/0.772; the 30 % split costs only −0.009 vs. the protein holdout.
 - **de-novo** — binary transfer: train natural→test designed, and reverse (2 folds).
 - **substitution / source / target / chemistry** — `leave_out_folds`, one fold per
   category, **filtered to categories with ≥ 10 test and ≥ 50 train mutations**.
@@ -112,7 +117,7 @@ Random **5-fold** CV, HGB, fast corpus (`raw_vs_summary.py`):
 | z summary stats | 84 | 0.626 |
 | pd summary stats | 86 | 0.639 |
 | raw Δs | 384 | 0.658 |
-| **ALL summary stats (original pipeline)** | 653 | **0.710** |
+| **ALL summary statistics** | 653 | **0.710** |
 | concat WT‖mut s | 768 | 0.717 |
 | **raw Δz diagonal** | 128 | **0.752** |
 | raw Δz row-pooled | 128 | 0.768 |
@@ -133,7 +138,9 @@ here.
 - **Per-protein (raw Δz):** mean 0.806, median 0.831, SD 0.109; 87 % of proteins
   r>0.7, none <0.3, none <0.
 - **Regression to the mean:** the predicted-vs-actual fit slope is < 1 — the model
-  under-predicts the most destabilizing mutations (visible in figure 04).
+  under-predicts the most destabilizing mutations.
+- **Per-residue holdouts (raw Δz):** source (X→*) pooled 0.754, target (*→X) 0.743;
+  worst source P=0.55, N=0.61; worst target C=0.60, P=0.61.
 
 ---
 
@@ -143,10 +150,12 @@ here.
 |---|---|---|
 | 01_feature_comparison_raw_vs_summary | §1.3 | raw vs summary representations, CV r |
 | 02_holdout_generalization | §3 | raw-Δz Pearson r per holdout |
-| 03_per_protein_distribution | §3.1 | per-protein r box/strip |
-| 04_predicted_vs_experimental | §3.2 | pred-vs-actual hexbin (random/protein/substitution) |
-| 05_substitution_heatmap | §3.3 | 20×20 source×target leave-one-substitution-out r |
-| 06_chemistry_class_introduce_vs_remove | §3.3 | per-chemistry-class r, introduce vs remove |
+| 03_homology_sweep | §3.1 | pooled r vs sequence-identity clustering threshold |
+| 04_per_protein_distribution | §3.2 | per-protein r box/strip |
+| 05_predicted_vs_experimental | §3.3 | pred-vs-actual hexbin (random/protein/substitution) |
+| 06_substitution_heatmap | §3.4 | 20×20 source×target leave-one-substitution-out r |
+| 07_residue_holdouts | §3.4 | per-residue source (X→*) and target (*→X) holdout r |
+| 08_chemistry_class_introduce_vs_remove | §3.4 | per-chemistry-class r, introduce vs remove |
 
 ---
 
@@ -156,9 +165,6 @@ here.
   its pipeline still uses **summary** features — it has *not* been re-run on raw Δz.
   The main outstanding task: **rebuild the extractor to emit raw Δz directly**, then
   re-run wide.
-- **Cluster / homology holdout not run** — the one missing generalization axis. The
-  identity-clustering attempt over-merged (single-linkage percolation) and needs a
-  coverage-gated fix.
 - **`z` still float16** in the slim store (only `s` was moved to float32), so raw-Δz
   numbers are marginally *under*-stated.
 - **SVR not re-run on raw Δz** (it beat HGB slightly on summary features but doesn't
