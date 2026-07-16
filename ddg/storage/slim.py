@@ -73,7 +73,12 @@ def slim_structure(npz_path, positions, keep_s=True, dtype=np.float16) -> dict:
         }
         if keep_s:
             s = _collapse_single(np.squeeze(data["s"]))
-            out["s"] = s.astype(dtype)
+            # s carries raw per-dimension features (the richest signal), so keep
+            # it float32: casting to float16 overflows for large values -> inf/NaN
+            # and corrupts the s-derived features (measured ~0.04 Pearson lost).
+            # The pair tensors (zrow/pdrow) are only summary-statted, so they stay
+            # float16 to bound disk.
+            out["s"] = s.astype(np.float32)
         if "pdistogram" in data:
             pd_ = _collapse_matrix(np.squeeze(data["pdistogram"]))
             out["pdrow"] = pd_[pos, :, :].astype(dtype)
