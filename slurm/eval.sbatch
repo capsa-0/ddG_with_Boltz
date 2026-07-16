@@ -29,4 +29,5 @@ cd "$PROJECT_ROOT"
 eval "$(conda shell.bash hook)"
 source activate ddG_with_Boltz
 
-srun python -m ddg.evaluation --config "$CONFIG" --model "$MODEL"
+# Extra args after the model are forwarded (e.g. --drop-s for the s-ablation).
+srun python -m ddg.evaluation --config "$CONFIG" --model "$MODEL" "${@:3}"
