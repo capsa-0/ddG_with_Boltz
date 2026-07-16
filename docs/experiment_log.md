@@ -96,6 +96,25 @@ hyperparameters, no tuning/nested-CV, no model comparison. See §6.
 - **features** (job 211902) + **eval** (job 211903, `afterok`): submitted; features
   ~1.9 it/s over 12,360 samples (~1.5–2 h). [results pending]
 
+### 2026-07-16 — fast results, SVR→HGB, wide run
+- **fast features** (211902): completed → `features_summary.parquet` (12,359 rows,
+  **653 features**, with s).
+- **fast eval, SVR** (211903): headline holdouts (in `logs/slurm-211903.err`):
+  **random r=0.758, protein r=0.736, de-novo r=0.630**. Strong: protein barely
+  below random ⇒ generalizes, not memorizing. **But SVR does not scale** — the
+  random fold alone took 39 min; it stalled ~6 h on the ~360 leave-one-substitution
+  folds and was cancelled. Decision: **switch the eval model to HistGradientBoosting**
+  (commit adds `hgb`, made default): ~6 s/fit at 12k×653 ⇒ full sweep ~40 min, and
+  it scales to wide (SVR would take days there). Re-running fast eval with HGB,
+  with-s (211945) and `--drop-s` (211946) for the s-ablation.
+- **wide prepare** (211913): the MMseqs2 server failed all 412 requests
+  ("Too many failed attempts", rate-limit/outage). Recovered by **reusing fast's
+  base MSAs** (same 412 wt_ids ⇒ same `{wt_id}.a3m`); copied them into wide's
+  `msas/` and re-ran prepare → "All MSAs already present". COMPLETED.
+- **wide predict**: first array (211914) partially failed; a chaotic manual
+  resubmission left it at 28,120/37,492 with no job running. Resubmitted the array
+  (211933, resumable) to fill the ~9.4k missing (shards 8/9/11).
+
 ### Known issues / observations
 - **float16 overflow in `s`**: slim casts `s` (and `zrow`) to float16; some values
   exceed 65504 → `inf` in the slim store → those features get imputed downstream.
