@@ -50,7 +50,7 @@ def main():
     ap.add_argument("--config", help="experiment YAML (locates the parquet)")
     ap.add_argument("--parquet", help="features_summary.parquet (overrides config)")
     ap.add_argument("--out", help="output dir (default <processed>/benchmark)")
-    ap.add_argument("--model", default="svr", choices=["svr", "ridge", "mlp"])
+    ap.add_argument("--model", default="hgb", choices=["hgb", "svr", "ridge", "mlp"])
     ap.add_argument("--cluster-map", help="CSV protein_id,cluster for the homology holdout")
     ap.add_argument("--build-clusters", action="store_true",
                     help="build the cluster map from wt_sequences.fasta via mmseqs")

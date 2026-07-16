@@ -4,8 +4,8 @@
 # as a CPU job. Writes tables + figures under data/processed/<exp>/benchmark/.
 #
 # Usage:
-#   sbatch slurm/eval.sbatch <config.yaml> [model]        # model: svr (default) | ridge | mlp
-#   sbatch slurm/eval.sbatch experiment_configs/tsuboyama_bench_fast.yaml svr
+#   sbatch slurm/eval.sbatch <config.yaml> [model]        # model: hgb (default) | svr | ridge | mlp
+#   sbatch slurm/eval.sbatch experiment_configs/tsuboyama_bench_fast.yaml hgb
 #==============================================================================
 #SBATCH --job-name=ddg-eval
 #SBATCH --partition=cpu
@@ -21,7 +21,7 @@ PROJECT_ROOT="/grupos/Marce/estructural/ddG_with_Boltz/ddG_with_Boltz"
 # ----------------------------------------------------
 
 CONFIG="${1:?Usage: sbatch slurm/eval.sbatch <config.yaml> [model]}"
-MODEL="${2:-svr}"
+MODEL="${2:-hgb}"
 
 echo "EVAL  job ${SLURM_JOB_ID}  node ${SLURM_JOB_NODELIST}  config ${CONFIG}  model ${MODEL}"
 

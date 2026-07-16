@@ -10,6 +10,7 @@ baseline; MLP is optional.
 
 import numpy as np
 import pandas as pd
+from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.neural_network import MLPRegressor
@@ -20,10 +21,21 @@ from sklearn.svm import SVR
 from ddg.evaluation.labels import feature_columns
 
 
-def make_model(name: str = "svr") -> Pipeline:
-    """Return a fresh pipeline for the named estimator ('svr' | 'ridge' | 'mlp')."""
+def make_model(name: str = "hgb") -> Pipeline:
+    """
+    Return a fresh pipeline for the named estimator.
+
+    'hgb'   — HistGradientBoosting: fast, strong on tabular, scales to the wide
+              corpus (SVR is O(n^2-3) and infeasible past ~10k samples/fold).
+    'svr'   — RBF SVR (the project's original model; only tractable on small folds).
+    'ridge' — fast linear baseline.  'mlp' — small MLP.
+    """
     name = name.lower()
-    if name == "svr":
+    if name == "hgb":
+        est = HistGradientBoostingRegressor(
+            max_iter=400, learning_rate=0.05, max_leaf_nodes=31,
+            l2_regularization=1.0, early_stopping=True, random_state=0)
+    elif name == "svr":
         est = SVR(kernel="rbf", C=10.0, gamma="scale", epsilon=0.1)
     elif name == "ridge":
         est = Ridge(alpha=1.0)
@@ -31,7 +43,7 @@ def make_model(name: str = "svr") -> Pipeline:
         est = MLPRegressor(hidden_layer_sizes=(256, 64), alpha=1e-3,
                            max_iter=500, early_stopping=True, random_state=0)
     else:
-        raise ValueError(f"unknown model '{name}' (use svr | ridge | mlp)")
+        raise ValueError(f"unknown model '{name}' (use hgb | svr | ridge | mlp)")
     return Pipeline([
         ("impute", SimpleImputer(strategy="median")),
         ("scale", StandardScaler()),
