@@ -39,15 +39,16 @@ def make_model(name: str = "svr") -> Pipeline:
     ])
 
 
-def build_xy(df: pd.DataFrame, feat_cols: list[str] | None = None):
+def build_xy(df: pd.DataFrame, feat_cols: list[str] | None = None,
+             drop_s: bool = False):
     """
     Extract (X, y, feat_cols) from a labelled features table.
 
     Infs are converted to NaN so the pipeline's imputer can handle them; columns
-    that are entirely non-finite are dropped.
+    that are entirely non-finite are dropped. drop_s excludes s-derived columns.
     """
     if feat_cols is None:
-        feat_cols = feature_columns(df)
+        feat_cols = feature_columns(df, drop_s=drop_s)
     X = df[feat_cols].replace([np.inf, -np.inf], np.nan)
     keep = [c for c in feat_cols if X[c].notna().any()]
     X = X[keep].to_numpy(dtype=float)

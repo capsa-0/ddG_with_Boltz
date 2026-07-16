@@ -98,10 +98,23 @@ def add_label_columns(df: pd.DataFrame, cluster_map: dict | None = None) -> pd.D
     return out
 
 
-def feature_columns(df: pd.DataFrame) -> list[str]:
-    """Numeric feature columns: everything that is not metadata or a label."""
+# Prefixes of the s-derived feature columns (see extractors.py: local_s_*,
+# wt_local_s*, neigh_*_s_*). Dropping these mimics keep_s: false at the model
+# level, which is how the s-ablation is run on a corpus that kept s.
+S_FEATURE_PREFIXES = ("local_s_", "wt_local_s", "neigh_")
+
+
+def feature_columns(df: pd.DataFrame, drop_s: bool = False) -> list[str]:
+    """
+    Numeric feature columns: everything that is not metadata or a label.
+
+    drop_s=True additionally removes every s-derived column (the s-ablation).
+    """
     drop = set(META_COLS) | set(LABEL_COLS)
-    return [
+    cols = [
         c for c in df.columns
         if c not in drop and pd.api.types.is_numeric_dtype(df[c])
     ]
+    if drop_s:
+        cols = [c for c in cols if not c.startswith(S_FEATURE_PREFIXES)]
+    return cols

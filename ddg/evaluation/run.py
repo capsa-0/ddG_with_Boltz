@@ -56,10 +56,15 @@ def main():
                     help="build the cluster map from wt_sequences.fasta via mmseqs")
     ap.add_argument("--min-seq-id", type=float, default=0.3)
     ap.add_argument("--holdouts", help="comma list; default all feasible")
+    ap.add_argument("--drop-s", action="store_true",
+                    help="exclude s-derived features (s-ablation); writes to <out>_no_s")
     ap.add_argument("--names-config", default="ddg/config/internal_config.yaml")
     args = ap.parse_args()
 
     parquet, out, fasta = _resolve_paths(args)
+    # Keep the ablation's outputs separate from the with-s baseline.
+    if args.drop_s and not args.out:
+        out = out.parent / f"{out.name}_no_s"
     if not parquet.exists():
         raise SystemExit(f"features table not found: {parquet}\n"
                          f"run the features step first (explore_features).")
@@ -75,7 +80,8 @@ def main():
 
     holdouts = args.holdouts.split(",") if args.holdouts else None
     results = run_benchmark(df, model_name=args.model, out_dir=out,
-                            cluster_map=cluster_map, holdouts=holdouts)
+                            cluster_map=cluster_map, holdouts=holdouts,
+                            drop_s=args.drop_s)
 
     figs = plots_mod.make_all(results, out / "figures")
     logger.info("done: %d holdouts, %d figures -> %s",

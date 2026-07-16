@@ -150,36 +150,41 @@ def extract_features(sample: dict, mut_pos: int, window_size: int = 5) -> dict:
         Dictionary with extracted features
     """
     features = {}
-    L = sample["wt_s"].shape[0]
-    
-    wt_s_local = sample["wt_s"][mut_pos]
-    mut_s_local = sample["mut_s"][mut_pos]
-    
-    # ----- Extract per-dimension signed differences -----
-    diff_signed_local_s = mut_s_local - wt_s_local
-    D = diff_signed_local_s.shape[0]
-    for d in range(D):
-        features[f"local_s_dim_{d}_signed_diff"] = diff_signed_local_s[d].item()
+    # s (single track) is optional: some runs drop it from the slim store
+    # (keep_s: false). When absent, skip every s-derived feature and take the
+    # sequence length from the z pair tensor (L, L, D) instead.
+    has_s = "wt_s" in sample and "mut_s" in sample
+    L = sample["wt_s"].shape[0] if has_s else sample["wt_z"].shape[0]
 
-    # ----- SECTION 1: Wild-type context and similarity -----
-    features.update(_get_stats(wt_s_local, prefix="wt_local_s", L=L))
-    features["local_s_cosine_sim"] = F.cosine_similarity(
-        wt_s_local.unsqueeze(0), mut_s_local.unsqueeze(0)
-    ).item()
+    if has_s:
+        wt_s_local = sample["wt_s"][mut_pos]
+        mut_s_local = sample["mut_s"][mut_pos]
+
+        # ----- Extract per-dimension signed differences -----
+        diff_signed_local_s = mut_s_local - wt_s_local
+        D = diff_signed_local_s.shape[0]
+        for d in range(D):
+            features[f"local_s_dim_{d}_signed_diff"] = diff_signed_local_s[d].item()
+
+        # ----- SECTION 1: Wild-type context and similarity -----
+        features.update(_get_stats(wt_s_local, prefix="wt_local_s", L=L))
+        features["local_s_cosine_sim"] = F.cosine_similarity(
+            wt_s_local.unsqueeze(0), mut_s_local.unsqueeze(0)
+        ).item()
 
     # ----- SECTION 2: Iterate over all difference modes -----
     for mode in ["abs", "signed", "l2"]:
-        # --- Local changes ---
-        diff_s_local = compute_diff(wt_s_local, mut_s_local, mode=mode)
-        features.update(_get_stats(diff_s_local, prefix=f"local_s_{mode}", L=L))
+        # --- Local + neighborhood s changes (only when s is present) ---
+        if has_s:
+            diff_s_local = compute_diff(wt_s_local, mut_s_local, mode=mode)
+            features.update(_get_stats(diff_s_local, prefix=f"local_s_{mode}", L=L))
 
-        # --- Neighborhood context ---
-        start = max(0, mut_pos - window_size)
-        end = min(L, mut_pos + window_size + 1)
-        diff_s_neigh = compute_diff(
-            sample["wt_s"][start:end], sample["mut_s"][start:end], mode=mode
-        )
-        features.update(_get_stats(diff_s_neigh, prefix=f"neigh_{window_size}_s_{mode}", L=L))
+            start = max(0, mut_pos - window_size)
+            end = min(L, mut_pos + window_size + 1)
+            diff_s_neigh = compute_diff(
+                sample["wt_s"][start:end], sample["mut_s"][start:end], mode=mode
+            )
+            features.update(_get_stats(diff_s_neigh, prefix=f"neigh_{window_size}_s_{mode}", L=L))
 
         # --- Matrix interactions (z and pdistogram) ---
         for emb_type in ["z", "pdistogram"]:

@@ -32,7 +32,11 @@ feature_extraction:
     skip_run_structure: true
 
 slim:
-  keep_s: true
+  # Drop the single-track s from the slim store: the s-ablation on the fast
+  # corpus decides whether s helps; wide commits to no-s (smaller shard, faster
+  # features, and it sidesteps the float16-overflow-in-s issue). The extractor
+  # skips all s-derived features when s is absent.
+  keep_s: false
   delete_raw: true
 
 feature:

@@ -98,17 +98,19 @@ def run_benchmark(
     k_group: int = 5,
     seed: int = 42,
     holdouts: list[str] | None = None,
+    drop_s: bool = False,
 ) -> BenchmarkResults:
     """
     Run holdouts on a features table (must have wt_id, mutation, ddg + features).
 
     holdouts: subset of {'random','protein','cluster','denovo','substitution',
     'source_residue','target_residue','chemistry'}; default = all feasible.
+    drop_s: exclude s-derived features (the s-ablation).
     """
     df = add_label_columns(features, cluster_map=cluster_map).reset_index(drop=True)
-    X, y, feat_cols = build_xy(df)
-    logger.info("Benchmark on %d mutations, %d features, model=%s",
-                len(df), len(feat_cols), model_name)
+    X, y, feat_cols = build_xy(df, drop_s=drop_s)
+    logger.info("Benchmark on %d mutations, %d features, model=%s, drop_s=%s",
+                len(df), len(feat_cols), model_name, drop_s)
 
     all_holdouts = ["random", "protein", "cluster", "denovo", "substitution",
                     "source_residue", "target_residue", "chemistry"]
