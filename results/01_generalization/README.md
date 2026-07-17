@@ -17,6 +17,22 @@ substitutions/residues.
   `SimpleImputer(median) → StandardScaler → HGB` pipeline.
 - **Suite:** `python -m ddg.evaluation` (splits in `ddg/evaluation/splits.py`).
 
+## Data & provenance (where everything lives)
+
+| Item | Path / name |
+|---|---|
+| Experiment config | `experiment_configs/tsuboyama_bench_fast.yaml` |
+| Source dataset | Tsuboyama et al. 2023 single mutants, `data/raw/tsuboyama_single_mutants_ddg.csv` (389k rows, 412 proteins) |
+| This corpus (subset) | `data/raw/tsuboyama_bench_fast.csv` — built by `ddg_datasets/build_benchmark_corpus.py --k 30` (all 412 proteins, ~30 muts each, stratified) |
+| Processed dir | `data/processed/tsuboyama_bench_fast/` (mutations.csv, slim store, features) |
+| Feature table | `rawz_features.parquet` (256 raw-Δz cols) — equivalently now `features_summary.parquet` from the refactored `features` step |
+| Benchmark output | `data/processed/tsuboyama_bench_fast/benchmark_rawz/` (`benchmark_summary.csv`, `per_unit/`, `figures/`) |
+| Model / eval code | `ddg/evaluation/` (`python -m ddg.evaluation --config experiment_configs/tsuboyama_bench_fast.yaml`) |
+
+Note: `data/processed/` is gitignored — it lives on the cluster
+(`/grupos/Marce/estructural/ddG_with_Boltz/ddG_with_Boltz/data/processed/`) and as
+a local copy; only the config and this `results/` folder are committed.
+
 ## Headline numbers (pooled Pearson r)
 
 | Holdout | r |
