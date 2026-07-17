@@ -1,0 +1,111 @@
+# Project history — the path through the experiments
+
+The narrative thread linking the results in this folder: how we got from "extract
+something from Boltz-2" to a specific, validated ΔΔG predictor. Read this first for
+the *why*; each `NN_*/` folder has the *what* and the numbers.
+
+---
+
+## 0. The goal
+
+Predict the change in folding free energy (**ΔΔG**) of a single-point mutation
+**without running full structure prediction**. Boltz-2 is run in an
+**embeddings-only** mode: we keep the trunk representations for the wild-type and
+the mutant sequence, and regress ΔΔG on features derived from their difference.
+The open question was never "does a structure model know about stability" but
+**which internal representation carries that signal, and in what form.**
+
+The trunk exposes three tensors per structure:
+- `s` — single track, one vector per residue (L × 384),
+- `z` — pair track, residue×residue (L × L × 128),
+- `pdistogram` — predicted distance distribution (L × L × bins).
+
+## 1. Which embedding? (feature-representation experiment)
+
+We compared feature representations built from the WT−mutant difference at the
+mutated residue, all with the same model (HGB) and CV protocol. Two families:
+
+- **Summary statistics** — reduce each difference slice (`s`, `z`, `pdistogram`) to
+  ~14 scalar moments (mean, SD, gini, entropy, skew, …), concatenated to **653
+  features**. This was the original pipeline.
+- **Raw Δz** — keep the pair track *raw*: `Δz_diagonal` (128) = `mut_z[i,i]−wt_z[i,i]`
+  plus `Δz_row-pooled` (128) = residue-mean of `mut_z[i,:]−wt_z[i,:]`. **256
+  features**, no summarizing.
+
+**Result (5-fold CV, fast corpus):**
+
+| Representation | # feat | CV r |
+|---|---|---|
+| ALL summary statistics | 653 | 0.710 |
+| raw Δs | 384 | 0.658 |
+| **raw Δz (diagonal + pooled)** | **256** | **0.780** |
+| raw Δs + raw Δz | 640 | 0.774 |
+
+Two things fell out of this:
+1. **Raw Δz beats the entire 653-feature summary set** (0.780 vs 0.710) at a third
+   the width — summarizing `z` into moments throws away most of the signal.
+2. **Adding `s` slightly *hurts*** (0.780 → 0.774): the single track is redundant
+   with the raw pair track. So `s` is optional (kept only as a config switch).
+
+→ **Decision: raw Δz is the representation.** (Figure: `01_generalization/figures/01_feature_comparison_raw_vs_summary.png`.)
+
+## 2. Making it the pipeline (refactor)
+
+That decision was baked into the code: the `features` step now emits raw Δz
+directly from the slim embedding store (`ddg/features/build_features.py`), and the
+old summary-statistics extractor (`ddg/exploration/`) was removed. `slim.keep_s`
+became an opt-in switch (default off), since `s` is redundant.
+
+## 3. Does it generalize? → `01_generalization/`
+
+Random CV overstates real performance because mutations of the same protein leak
+across folds. We ran a holdout suite of increasing strictness
+(`experiment_configs/tsuboyama_bench_fast.yaml`, 12,359 mutations):
+
+| Holdout | pooled r |
+|---|---|
+| Random | 0.783 |
+| Protein (unseen proteins) | 0.702 |
+| Homology (30 / 50 / 90 % identity) | 0.765 / 0.766 / 0.772 |
+| De-novo (natural ↔ designed transfer) | 0.615 |
+
+**It generalizes.** Holding out whole proteins costs ~0.08 r; homology clustering
+barely adds to that; the hardest transfer (natural↔designed) still holds at 0.62.
+Per-protein mean r = 0.81.
+
+## 4. Where does it break? → `02_stress_extrapolation/`, `03_stress_learning_curve/`
+
+Generalization across *proteins* is not the same as across *effect sizes* or *data
+budgets*. Two stress tests on the wide corpus
+(`data/processed/tsuboyama_bench_wide/`, 37,080 mutations, raw Δz):
+
+- **Extrapolation to the destabilizing tail** (`02_`) — train only on mild
+  mutations (|ΔΔG|<1), test on the strongly destabilizing tail (ΔΔG>2). The model
+  **collapses**: tail r ≈ 0.09, fit slope ≈ 0.02, and predictions cap at the
+  training range (never exceed ~0.9 kcal/mol while true values reach 5.7). This is
+  the regression-to-the-mean weakness in its extreme form — the predictor
+  interpolates, it does not extrapolate beyond the ΔΔG range it was trained on.
+- **Learning curve** (`03_`) — pooled r vs. number of training proteins, proteins
+  held out. **Near-saturated**: 33 proteins already give r ≈ 0.74, and a 10×
+  increase to 330 proteins adds only ~0.05 (→ 0.79). The representation is strong
+  enough that the model is not badly data-starved — more proteins help only
+  marginally.
+
+## 5. Does the evolutionary signal matter? → no-MSA ablation (in progress)
+
+Boltz normally sees a multiple-sequence alignment (MSA) per protein. We re-ran the
+fast corpus with Boltz in **single-sequence mode** (`no_msa: true`,
+`experiment_configs/tsuboyama_bench_fast_nomsa.yaml`) — identical corpus, features,
+and model, differing *only* in the MSA — to isolate how much of the ΔΔG signal
+comes from the evolutionary input vs. the structural prior. Comparison table to be
+added here when the run completes.
+
+---
+
+### Result folders
+- `01_generalization/` — the holdout study (the "it works and generalizes" result).
+- `02_stress_extrapolation/` — the destabilizing-tail extrapolation failure.
+- `03_stress_learning_curve/` — data-efficiency curve.
+- (planned) `04_cross_dataset_fireprot/` — transfer to an independent dataset.
+
+See each folder's `README.md` for exact configs, data paths, and numbers.
