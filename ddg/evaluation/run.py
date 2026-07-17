@@ -67,7 +67,8 @@ def main():
         out = out.parent / f"{out.name}_no_s"
     if not parquet.exists():
         raise SystemExit(f"features table not found: {parquet}\n"
-                         f"run the features step first (explore_features).")
+                         f"run the features step first "
+                         f"(python -m ddg run <config> --step features).")
     logger.info("loading features from %s", parquet)
     df = pd.read_csv(parquet) if str(parquet).endswith(".csv") else pd.read_parquet(parquet)
 

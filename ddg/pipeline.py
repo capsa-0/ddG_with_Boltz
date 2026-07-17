@@ -47,15 +47,15 @@ def _run_slim(exp_cfg, names_cfg):
     pos_by_struct = positions_by_structure(df)
     predictions = Path(config.raw_features_dir) / "predictions"
     out = slim_dir(config) / "shard_0000.npz"
-    keep_s = bool(config.exp_config.get("slim", {}).get("keep_s", True))
+    keep_s = bool(config.exp_config.get("slim", {}).get("keep_s", False))
     delete_raw = bool(config.exp_config.get("slim", {}).get("delete_raw", False))
     slim_predictions(predictions, pos_by_struct, out,
                      keep_s=keep_s, delete_raw=delete_raw)
 
 
 def _run_features(exp_cfg, names_cfg):
-    from ddg.exploration.explore_features import main as explore_features
-    explore_features(exp_cfg, names_cfg)
+    from ddg.features.build_features import main as build_features
+    build_features(exp_cfg, names_cfg)
 
 
 RUN_FUNCS = {

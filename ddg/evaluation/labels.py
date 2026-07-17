@@ -98,10 +98,11 @@ def add_label_columns(df: pd.DataFrame, cluster_map: dict | None = None) -> pd.D
     return out
 
 
-# Prefixes of the s-derived feature columns (see extractors.py: local_s_*,
-# wt_local_s*, neigh_*_s_*). Dropping these mimics keep_s: false at the model
-# level, which is how the s-ablation is run on a corpus that kept s.
-S_FEATURE_PREFIXES = ("local_s_", "wt_local_s", "neigh_")
+# Prefixes of the s-derived feature columns. In the raw-Δz pipeline these are
+# the `sdim_*` columns (mut_s[i] − wt_s[i]), emitted only when slim.keep_s is
+# set. Dropping them mimics keep_s: false at the model level, which is how the
+# s-ablation is run on a corpus that kept s.
+S_FEATURE_PREFIXES = ("sdim_",)
 
 
 def feature_columns(df: pd.DataFrame, drop_s: bool = False) -> list[str]:
