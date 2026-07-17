@@ -91,14 +91,19 @@ budgets*. Two stress tests on the wide corpus
   enough that the model is not badly data-starved — more proteins help only
   marginally.
 
-## 5. Does the evolutionary signal matter? → no-MSA ablation (in progress)
+## 5. Does the evolutionary signal matter? → `04_no_msa_ablation/`
 
 Boltz normally sees a multiple-sequence alignment (MSA) per protein. We re-ran the
 fast corpus with Boltz in **single-sequence mode** (`no_msa: true`,
 `experiment_configs/tsuboyama_bench_fast_nomsa.yaml`) — identical corpus, features,
 and model, differing *only* in the MSA — to isolate how much of the ΔΔG signal
-comes from the evolutionary input vs. the structural prior. Comparison table to be
-added here when the run completes.
+comes from the evolutionary input vs. the structural prior.
+
+**The MSA is worth a uniform ~0.08–0.10 pooled r** across every holdout (mean Δr ≈
+−0.086), largest for de-novo transfer (−0.099). But single-sequence Boltz still
+reaches r = 0.70 (random) / 0.69 (unseen proteins): **most of the ΔΔG signal is
+structural**, the MSA is a real but modest add-on, and the predictor degrades
+gracefully without it (useful, since the MSA server is rate-limited/flaky).
 
 ---
 
@@ -106,6 +111,7 @@ added here when the run completes.
 - `01_generalization/` — the holdout study (the "it works and generalizes" result).
 - `02_stress_extrapolation/` — the destabilizing-tail extrapolation failure.
 - `03_stress_learning_curve/` — data-efficiency curve.
-- (planned) `04_cross_dataset_fireprot/` — transfer to an independent dataset.
+- `04_no_msa_ablation/` — MSA vs. single-sequence Boltz (evolutionary-signal value).
+- (planned) `05_cross_dataset_fireprot/` — transfer to an independent dataset.
 
 See each folder's `README.md` for exact configs, data paths, and numbers.
