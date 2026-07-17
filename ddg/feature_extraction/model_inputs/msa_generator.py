@@ -98,6 +98,31 @@ class MsaGenerator:
         with open(os.path.join(self.output_dir, f"{seq_id}.a3m"), 'w') as f:
             f.write('\n'.join(lines))
 
+    def write_single_sequence_msas(self):
+        """Write single-sequence a3m files (no MSA search).
+
+        For `no_msa` runs we skip the MMseqs2 server entirely and emit one
+        query-only a3m per WT sequence (`>{seq_id}` + the bare sequence). This
+        carries the WT sequence through the same downstream machinery
+        (trimming, mutation application, YAML conversion) as a real MSA, so the
+        per-mutation query sequences are built identically; only the `msa:`
+        field in the final Boltz YAML differs (set to `empty`). Resumable: an
+        existing .a3m is left untouched.
+        """
+        sequences = self.get_sequences_from_fasta(self.config.multifasta_path)
+        logger.info(f"no_msa: writing {len(sequences)} single-sequence a3m files "
+                    f"(skipping MMseqs2 server)")
+        written = 0
+        for seq_id, sequence in sequences.items():
+            output_path = os.path.join(self.output_dir, f"{seq_id}.a3m")
+            if os.path.exists(output_path):
+                continue
+            with open(output_path, 'w') as f:
+                f.write(f">{seq_id}\n{sequence}\n")
+            written += 1
+        logger.info(f"no_msa: wrote {written} single-sequence a3m files to "
+                    f"{self.output_dir}")
+
     def generate_msas_for_multifasta(self):
         """Generate MSAs for all sequences in the multifasta file.
 

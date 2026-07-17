@@ -72,9 +72,14 @@ def main(experiment_config_path: str, names_config_path: str = "ddg/config/inter
     multifasta_generator.define_samples() 
     multifasta_generator.generate_multifasta()
 
-    logger.info("Generating base MSAs (this may take some time)...")
     msa_generator = MsaGenerator(config)
-    msa_generator.generate_msas_for_multifasta()
+    if config.no_msa:
+        logger.info("no_msa enabled: skipping MMseqs2 MSA search, running "
+                    "Boltz in single-sequence mode")
+        msa_generator.write_single_sequence_msas()
+    else:
+        logger.info("Generating base MSAs (this may take some time)...")
+        msa_generator.generate_msas_for_multifasta()
 
     logger.info("Applying mutations and trimming to MSAs...")
     msa_modifier = MSADirectoryModifier(config)

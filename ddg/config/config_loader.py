@@ -43,6 +43,9 @@ class ProjectConfig:
         self.msa_strategy = data_proc['msa_strategy']
         self.msa_mutation_strategy = data_proc['msa_mutation_strategy']
         self.max_msa_sequences = data_proc['max_msa_sequences']
+        # Single-sequence mode: skip MSA generation and tell Boltz to run
+        # without an MSA (`msa: empty`). Default False -> normal MSA pipeline.
+        self.no_msa = bool(data_proc.get('no_msa', False))
                 
         self.process_one_by_one = self.exp_config['feature_extraction']['process_one_by_one']
         self.boltz_flags = self.exp_config['feature_extraction']['boltz_flags']

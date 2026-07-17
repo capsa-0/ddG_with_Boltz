@@ -76,14 +76,18 @@ class MsaToBoltzYamlConverter:
         Returns:
             Dictionary in Boltz YAML format
         """
-        # ----- Convert to relative path from project root -----
-        msa_path_obj = Path(msa_path).resolve()
-        try:
-            msa_relative = msa_path_obj.relative_to(Path.cwd())
-            msa_to_use = str(msa_relative)
-        except ValueError:
-            logger.debug(f"MSA path outside cwd, using absolute: {msa_path}")
-            msa_to_use = str(msa_path)
+        # ----- Single-sequence mode: tell Boltz to run without an MSA -----
+        if getattr(self.config, "no_msa", False):
+            msa_to_use = "empty"
+        else:
+            # ----- Convert to relative path from project root -----
+            msa_path_obj = Path(msa_path).resolve()
+            try:
+                msa_relative = msa_path_obj.relative_to(Path.cwd())
+                msa_to_use = str(msa_relative)
+            except ValueError:
+                logger.debug(f"MSA path outside cwd, using absolute: {msa_path}")
+                msa_to_use = str(msa_path)
         
         return {
             "sequences": [{

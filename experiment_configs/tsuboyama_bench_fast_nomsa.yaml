@@ -1,0 +1,46 @@
+# Benchmark corpus — FAST arm, NO-MSA (single-sequence) variant.
+# Identical corpus to tsuboyama_bench_fast (same 412 proteins, same ~30
+# mutations/protein, same Boltz flags) but Boltz runs in single-sequence mode:
+# no MMseqs2 MSA search, and each query YAML carries `msa: empty`.
+#
+# Purpose: isolate the contribution of the evolutionary (MSA) signal to the
+# ΔΔG features by comparing head-to-head against tsuboyama_bench_fast. The two
+# experiments differ ONLY in the MSA (no_msa: true here). Boltz warns that
+# predictions are suboptimal without an MSA — that suboptimality is exactly
+# what we are measuring.
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_bench_fast_nomsa"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_bench_fast.csv"
+  dataset_type: "dms"
+  no_msa: true
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    write_embeddings: true
+    skip_run_structure: true
+
+slim:
+  keep_s: true
+  delete_raw: true
+
+feature:
+  source: "auto"
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
