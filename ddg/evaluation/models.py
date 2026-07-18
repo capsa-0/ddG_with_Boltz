@@ -41,12 +41,10 @@ def make_model(name: str = "hgb") -> Pipeline:
     elif name == "ridge":
         est = Ridge(alpha=1.0)
     elif name == "mlp":
-        # A single MLPRegressor is high-variance on this tabular problem: its
-        # holdout score swings widely across group folds because it depends on
-        # the weight init and the internal early-stopping split (a lone-seed net
-        # gave non-monotonic homology numbers 0.47/0.39/0.72 vs HGB's flat ~0.77).
-        # Average several seed-decorrelated nets — the standard variance-reduction
-        # fix — each a moderately deep, L2-regularized MLP that early-stops
+        # A single MLP is high-variance on this tabular problem — its group-holdout
+        # score depends on the weight init and the internal early-stopping split.
+        # Average several seed-decorrelated nets (the standard variance-reduction
+        # fix), each a moderately deep, L2-regularized MLP that early-stops
         # patiently on its own validation split. n_jobs fits the members in
         # parallel, so the ensemble costs ~one net of wall time.
         def _member(seed):
