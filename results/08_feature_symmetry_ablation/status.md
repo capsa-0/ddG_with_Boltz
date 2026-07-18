@@ -1,6 +1,6 @@
 # Status — 08_feature_symmetry_ablation
 
-**State:** 🚧 In progress — features built, ablation running
+**State:** ✅ Done — verdict: adopt **concat + symmetry** (FP +0.03 Pearson, Tsu neutral)
 **Last updated:** 2026-07-18
 
 ## Current state
@@ -39,7 +39,37 @@ on Tsuboyama and FireProt each?**
 ## Blockers
 - None. Local sklearn compute (features rebuilt from slim stores pulled from the cluster).
 
+## Results (pooled Pearson r, GroupKFold-by-protein OOF)
+
+| Dataset | Feature | no-aug | +symmetry |
+|---|---|---|---|
+| Tsuboyama | Δz (current) | 0.792 | **0.598** |
+| Tsuboyama | concat | 0.801 | 0.799 |
+| FireProt | Δz (current) | 0.573 | 0.593 |
+| FireProt | concat | 0.578 | **0.605** |
+
+(Spearman: Tsu ~0.777 for all except essentially unchanged; FP dz-none 0.653, concat-sym 0.648.
+RMSE: Tsu dz-sym blows up to 0.961 vs ~0.61 elsewhere; FP concat-sym best at 1.379.)
+
+**Verdict — adopt concat + symmetry:**
+- **concat ≥ Δz everywhere** (free: strictly more info, `zpool = mtz − wtz`).
+- **symmetry is representation-dependent**: on Δz it forces an odd-function model
+  (`f(−x)=−f(x)`) that fights Tsuboyama's destabilizing skew → Pearson/RMSE collapse
+  while Spearman is preserved (a calibration failure, not a ranking one). With concat
+  the reverse mutation is a natural input transform (swap halves), so it's safe **and**
+  lifts FireProt.
+- Best combo **concat+sym** vs current baseline (Δz, no-aug): Tsu 0.799 vs 0.792
+  (noise-level), **FireProt 0.605 vs 0.573 (+0.032 Pearson, RMSE 1.42→1.38)**.
+- Still short of the old notebook's ~0.63 on FireProt — the remaining gap is the two
+  variables NOT tested here: **`mutate_across_msa`** (needs a Boltz re-run) and the
+  larger **≤500** corpus.
+
 ## Log — newest first
+### 2026-07-18 — ablation complete → concat+symmetry wins (see Results)
+- Ran the 2×2×2 (`run_ablation.py`, ~40 min). Key numbers above; `results.csv` committed.
+  Symmetry-on-Δz collapse (0.79→0.60 Pearson, Spearman intact) is a calibration artifact
+  of feature-negation on a skewed dataset — safe under concat. Recommend adopting
+  concat+symmetry in the pipeline (build_features + a symmetry-aug training option).
 ### 2026-07-18 — set up + running
 - Reconciled the user's remembered ~0.65 FireProt: it was the old notebook's *within-FireProt*
   protein-holdout with concat features + symmetry aug + `mutate_across_msa` (not a transfer;
