@@ -1,4 +1,4 @@
-# 08 — Feature form & symmetry augmentation ablation
+# 07 — Feature form & symmetry augmentation ablation
 
 **What:** A 2×2 ablation, run **within each dataset** (Tsuboyama and FireProt separately,
 protein-holdout), of two techniques an earlier notebook used but the current pipeline

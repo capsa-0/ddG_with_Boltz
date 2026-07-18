@@ -1,4 +1,4 @@
-# Status — 07_finetune_fireprot
+# Status — 08_finetune_fireprot
 
 **State:** 📋 Planned
 **Last updated:** 2026-07-18

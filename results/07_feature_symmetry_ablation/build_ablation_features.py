@@ -1,5 +1,5 @@
 """
-Build the feature table for 08_feature_symmetry_ablation from a slim embedding store.
+Build the feature table for 07_feature_symmetry_ablation from a slim embedding store.
 
 Emits, per mutation at 0-based position i, from the Boltz pair track z:
   Δz (difference; the current pipeline's features):
@@ -10,7 +10,7 @@ Emits, per mutation at 0-based position i, from the Boltz pair track z:
     mtz_0..127   = mean_j( mut_z[i,j] )    (mutant pooled row)
 Note zpool == mtz - wtz, so Δz is recoverable from concat but not vice-versa.
 
-    python results/08_feature_symmetry_ablation/build_ablation_features.py <processed_dir>
+    python results/07_feature_symmetry_ablation/build_ablation_features.py <processed_dir>
 writes <processed_dir>/features_ablation.parquet.
 """
 import sys

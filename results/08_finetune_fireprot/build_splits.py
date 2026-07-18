@@ -1,5 +1,5 @@
 """
-Build the cross-dataset homology splits for 07_finetune_fireprot.
+Build the cross-dataset homology splits for 08_finetune_fireprot.
 
 Pools the WT sequences of Tsuboyama (tsuboyama_bench_fast) and FireProt (fireprot_le200)
 and clusters them with MMseqs2 (``mmseqs`` must be on PATH) at each identity threshold
@@ -12,7 +12,7 @@ OR across datasets) shares > threshold identity:
   * Tsu-only and FP-only clusters -> 80/20 split each (seeded), so both datasets are
     represented in the test side.
 
-Writes to results/07_finetune_fireprot/splits/:
+Writes to results/08_finetune_fireprot/splits/:
   cluster_map_NN.csv   protein_id,cluster
   split_NN.csv         protein_id,dataset,cluster,set
                        set in {tsu_train, tsu_test, fp_finetune, fp_test}
@@ -27,7 +27,7 @@ import pandas as pd
 from ddg.evaluation.cluster import _read_fasta, cluster_wt_sequences
 
 ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
-OUT = ROOT / "results/07_finetune_fireprot/splits"
+OUT = ROOT / "results/08_finetune_fireprot/splits"
 OUT.mkdir(parents=True, exist_ok=True)
 SEED = 42
 TEST_FRAC = 0.20

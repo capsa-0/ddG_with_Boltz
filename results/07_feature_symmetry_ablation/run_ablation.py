@@ -1,5 +1,5 @@
 """
-08_feature_symmetry_ablation — do concat features and/or symmetry augmentation help?
+07_feature_symmetry_ablation — do concat features and/or symmetry augmentation help?
 
 Within-dataset protein-holdout (GroupKFold by wt_id) on Tsuboyama and FireProt
 separately, out-of-fold pooled metrics, for the 2x2 ablation:
@@ -13,7 +13,7 @@ Symmetry reversal:
 
 Model = the project MLP (5-seed ensemble). Prints a table and writes results.csv.
 
-    python results/08_feature_symmetry_ablation/run_ablation.py
+    python results/07_feature_symmetry_ablation/run_ablation.py
 """
 from pathlib import Path
 
@@ -25,7 +25,7 @@ from ddg.evaluation.models import make_model
 from ddg.evaluation.metrics import compute_metrics
 
 ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
-OUT = ROOT / "results/08_feature_symmetry_ablation"
+OUT = ROOT / "results/07_feature_symmetry_ablation"
 DATASETS = {
     "Tsuboyama": ROOT / "data/processed/tsuboyama_bench_fast/features_ablation.parquet",
     "FireProt": ROOT / "data/processed/fireprot_le200/features_ablation.parquet",

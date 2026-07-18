@@ -1,4 +1,4 @@
-# Status — 08_feature_symmetry_ablation
+# Status — 07_feature_symmetry_ablation
 
 **State:** ✅ Done — verdict: adopt **concat + symmetry** (FP +0.03 Pearson, Tsu neutral)
 **Last updated:** 2026-07-18

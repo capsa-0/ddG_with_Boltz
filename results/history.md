@@ -140,6 +140,26 @@ the mean on FireProt's out-of-range tails. Useful for **ranking/triage**, not
 absolute ΔΔG. (Aside: reaching the full corpus required fixing a FireProt-adapter
 bug that had silently dropped 3 UniProt-less proteins keyed only by `pdb_id`.)
 
+## 8. Two improvements adopted as the default → `07_feature_symmetry_ablation/`
+
+Revisiting an older notebook that reached ~0.63 on FireProt surfaced two techniques the
+pipeline had dropped. A within-dataset 2×2 ablation (Tsuboyama and FireProt, protein
+holdout) settled both, and **from here on they are the project default:**
+
+- **Concat features instead of the Δz difference.** For the mutated residue we now keep
+  the mutant residue's pooled pair-vector *and* the wild-type's — `concat = [wtz, mtz]`
+  (256-dim) — instead of only their difference `zpool = mtz − wtz`. Strictly more
+  information; concat ≥ Δz on both datasets (small but consistent).
+- **Antisymmetry augmentation.** Each training mutation is paired with its reverse
+  (ΔΔG(A→B) = −ΔΔG(B→A)); with concat this is a natural input transform (swap the two
+  halves). It lifts FireProt (**+0.03 Pearson**) and is neutral on Tsuboyama. Crucially it
+  is *only* safe with concat — applied to Δz (feature negation) it forces an odd-function
+  model that collapses Tsuboyama's calibration (Pearson 0.79→0.60, Spearman intact).
+
+Net: **concat + antisymmetry** — neutral on Tsuboyama, a real gain on FireProt. The
+residual gap to the notebook's 0.63 is the one variable not yet tested (`mutate_across_msa`
++ the larger ≤500 corpus). Later experiments (the finetuning study, `08_`) use these.
+
 ---
 
 ### Result folders
@@ -149,5 +169,7 @@ bug that had silently dropped 3 UniProt-less proteins keyed only by `pdb_id`.)
 - `04_no_msa_ablation/` — MSA vs. single-sequence Boltz (evolutionary-signal value).
 - `05_cross_dataset_fireprot/` — transfer to an independent dataset (FireProt).
 - `06_mlp_generalization/` — 01's suite with an MLP (representation vs model check).
+- `07_feature_symmetry_ablation/` — concat features + antisymmetry adopted as default.
+- `08_finetune_fireprot/` — sequentially fine-tune on FireProt (concat+antisymmetry).
 
 See each folder's `README.md` for exact configs, data paths, and numbers.
