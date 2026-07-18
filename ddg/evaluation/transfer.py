@@ -257,11 +257,17 @@ def main() -> None:
     res["predictions"].to_parquet(out / "predictions.parquet", index=False)
     _scatter(res["predictions"], br, args.label_train, args.label_test,
              out / "scatter.png")
-    from ddg.evaluation.error_curves import plot_error_vs_true
+    from ddg.evaluation.error_curves import plot_error_vs_true, plot_density_error
     plot_error_vs_true(
         res["predictions"]["y"], res["predictions"]["pred"], out / "error_vs_ddg.png",
         title=f"{args.label_train} → {args.label_test}: error vs measured ΔΔG",
         train_range=(br["lo"], br["hi"]))
+    _, dstats = plot_density_error(
+        train_df["ddg"], res["predictions"]["y"], res["predictions"]["pred"],
+        out / "density_vs_error.png", train_label=args.label_train,
+        title=f"{args.label_train} → {args.label_test}: training density vs test error")
+    summary.update(dstats)
+    (out / "transfer_summary.json").write_text(json.dumps(summary, indent=2))
 
     p = res["pooled"]
     print(f"\n=== transfer {args.label_train} -> {args.label_test} "
