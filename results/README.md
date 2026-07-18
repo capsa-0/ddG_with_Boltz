@@ -24,3 +24,7 @@ experiments (why raw Δz, how generalization was proved, where it breaks).
   model tested on FireProt (1,543 muts / 82 proteins, ≤200 aa). Boltz features
   **done** on the cluster; **transfer evaluation not yet run** — see its
   [`status.md`](05_cross_dataset_fireprot/status.md).
+
+### Archive
+- **`old/`** — pre-refactor exploratory artifacts kept for reference (e.g. the
+  P03050 Ala-scanning embedding gallery). Not part of the numbered result series.
