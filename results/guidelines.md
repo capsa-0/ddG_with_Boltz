@@ -16,17 +16,23 @@ Name folders `NN_short_slug` in the order they were produced (`01_generalization
 |---|---|
 | **`README.md`** | What / Why / How + headline numbers + a **data & provenance table** (config path, source dataset, processed dir, feature table, benchmark output, code entry point). This is the first thing to read. |
 | **`status.md`** | Living log of state and progress — see below. **Always present**, even for a planned/blocked experiment that has no results yet. |
-| **`figures/`** *(when there are figures)* | Numbered PNGs (`01_*.png`, …) + a `figures/README.md` index. |
+| **`figures/`** | Numbered PNGs (`01_*.png`, …) + a `figures/README.md` index. **Required once the experiment has results** (a completed experiment always has at least one figure). |
+| **`report.pdf`** | Paper-facing narrative write-up. **Required once the result is settled.** Prefer a committed `build_report.py` that regenerates it from the result tables + figures (see the report rule below). |
+
+A **planned or still-running** experiment needs only `README.md` (may be a stub) and
+`status.md`; `figures/` and `report.pdf` become required as soon as it has settled results.
+
+### The `report.pdf` rule — paper-facing only
+
+**Include only what would appear in a paper** — motivation, methods, results,
+figures/tables, and interpretation. **Exclude** everything that is not part of the
+scientific story: data provenance and file paths, pipeline/plumbing details, job IDs,
+and any account of problems encountered or how the corpus was assembled (partial runs,
+bug fixes, retries). Those belong in `status.md` (the debugging/work log), the README
+**provenance table**, and `details.md` — never in `report.pdf`.
 
 ### Recommended
 
-- **`report.(pdf\|md)`** — the narrative write-up, once the result is settled.
-  **Paper-facing: include only what would appear in a paper** — motivation, methods,
-  results, figures/tables, and interpretation. **Exclude** everything that is not part
-  of the scientific story: data provenance and file paths, pipeline/plumbing details,
-  job IDs, and any account of problems encountered or how the corpus was assembled
-  (partial runs, bug fixes, retries). Those belong in `status.md` (the debugging/work
-  log), the README **provenance table**, and `details.md` — never in `report.*`.
 - **`details.md`** — methods/provenance appendix: exact hyperparameters, split
   definitions, per-number provenance behind the README's summary statements.
 - **Result tables** — the raw `*.csv` / `*.json` the figures and headline numbers
