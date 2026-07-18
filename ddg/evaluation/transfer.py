@@ -134,9 +134,20 @@ def _scatter(pred_df: pd.DataFrame, pooled: dict, label_train: str,
     fig, ax = plt.subplots(figsize=(5.6, 5.4))
     ax.scatter(pred_df["y"], pred_df["pred"], s=10, alpha=0.4,
                color="#4C72B0", edgecolors="none")
-    lo = float(min(pred_df["y"].min(), pred_df["pred"].min()))
-    hi = float(max(pred_df["y"].max(), pred_df["pred"].max()))
-    ax.plot([lo, hi], [lo, hi], "--", color="0.4", lw=1)
+    # Scale each axis to its own data range (predictions span a much narrower band
+    # than measured ΔΔG, so a shared range leaves the y-axis mostly empty). Draw the
+    # y=x reference only across the range visible on both axes so it doesn't stretch
+    # the limits back out.
+    def _lim(v, pad=0.05):
+        lo, hi = float(v.min()), float(v.max())
+        m = (hi - lo) * pad or 1.0
+        return lo - m, hi + m
+    xlo, xhi = _lim(pred_df["y"])
+    ylo, yhi = _lim(pred_df["pred"])
+    d0, d1 = max(xlo, ylo), min(xhi, yhi)
+    ax.plot([d0, d1], [d0, d1], "--", color="0.4", lw=1)
+    ax.set_xlim(xlo, xhi)
+    ax.set_ylim(ylo, yhi)
     ax.set_xlabel(f"Measured ΔΔG ({label_test})")
     ax.set_ylabel(f"Predicted ΔΔG (trained on {label_train})")
     ax.set_title(f"Transfer {label_train} → {label_test}\n"
