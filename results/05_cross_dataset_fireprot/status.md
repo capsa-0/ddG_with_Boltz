@@ -52,6 +52,13 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-18 — ≤500 extension shelved (cancelled)
+- The `fireprot_201to500` chain never landed: repeated GPU starvation (≤2 concurrent
+  shards on the large ≤500 proteins) plus a slim failure on 2 transient-corrupt NPZs
+  (Bad CRC-32). After a resumable resubmit it was still at ~645/1,715 structures after
+  many hours. **Cancelled** (212290/291/292) — the ≤200 result already answers the
+  transfer question and is corroborated by ThermoMPNN (FireProt transfer 0.65) and
+  AFToolkit. Resubmit later if the cluster frees up; not blocking anything.
 ### 2026-07-18 — new error-vs-ΔΔG diagnostic; nodo1 found bad; ≤500 predict resubmitted
 - Dropped the linear-calibration idea (didn't add skill). Added **in-range vs
   out-of-range** split to `transfer.py` (by training ΔΔG range, default 1st/99th pct;
