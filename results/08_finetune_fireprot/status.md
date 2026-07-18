@@ -1,17 +1,38 @@
 # Status — 08_finetune_fireprot
 
-**State:** 📋 Planned
+**State:** ✅ Done — finetuning gives a modest FireProt gain, no Tsuboyama forgetting
 **Last updated:** 2026-07-18
 
-## Current state
-New experiment (design locked, not yet implemented). **Question:** does *sequentially
-fine-tuning* a Tsuboyama-pretrained raw-Δz ΔΔG regressor on FireProt improve accuracy
-on FireProt — and does it degrade accuracy back on Tsuboyama (catastrophic forgetting)?
-Builds on 05 (Tsuboyama→FireProt transfer, which showed error is governed by training
-density in ΔΔG space): here we add FireProt labels to the *training* side and measure
-the effect on both datasets, under homology-controlled splits.
+## Results (concat + antisymmetry; A = Tsuboyama-only, D = fine-tuned)
 
-**Scope note:** "fine-tune" = the downstream **regressor**, not Boltz. Raw-Δz features
+**FireProt-test** — does finetuning help?
+
+| Identity | A r → D r | A ρ → D ρ | A RMSE → D RMSE | n (prot) |
+|---|---|---|---|---|
+| 30% | 0.466 → **0.522** | 0.693 → **0.739** | 2.13 → 1.97 | 254 (13) |
+| 50% | 0.507 → **0.528** | 0.672 → **0.716** | 1.93 → 1.80 | 287 (14) |
+| 90% | 0.355 → 0.343 | 0.658 → **0.686** | 1.78 → 1.84 | 231 (17) |
+
+**Tsuboyama-test** — forgetting? 0.794→0.790, 0.787→0.784, 0.790→0.778 (≤0.012, negligible).
+
+**Verdict:** sequential fine-tuning on FireProt **helps FireProt** — Spearman up +0.03–0.05
+on all three thresholds, Pearson/RMSE better at 30/50 % — with **no meaningful Tsuboyama
+forgetting** (≤0.012). The 90 % Pearson dip (Spearman still rises) is a calibration wobble
+on the smallest/noisiest fp_test (231 muts / 17 prot). Clearer than the Δz prototype
+(FP-test 0.487→0.496); concat+antisymmetry lifted the whole thing.
+
+## Current state
+**Question:** does *sequentially fine-tuning* a Tsuboyama-pretrained ΔΔG regressor on
+FireProt improve FireProt accuracy — and does it degrade Tsuboyama accuracy (catastrophic
+forgetting)? Builds on 05 (transfer) and uses the project defaults adopted in **07**:
+**concat features** (`wtz`+`mtz`) and **antisymmetry augmentation** on every training set.
+
+**Update:** originally numbered 07 and prototyped with Δz features (finetuning barely
+helped: FP-test 0.487→0.496). Renumbered to **08** and **redone** with concat+antisymmetry
+(`run_finetune.py`). Conditions A (Tsuboyama-only) + D (fine-tuned), each tested on
+tsu_test and fp_test, across the 30/50/90 % homology splits (unchanged from before).
+
+**Scope note:** "fine-tune" = the downstream **regressor**, not Boltz. The features
 are fixed Boltz-2 outputs; we adapt the sklearn MLP on top of them.
 
 ## Design (locked)
@@ -85,6 +106,15 @@ Headline readouts, per identity threshold:
   on this workstation, no cluster GPU needed (features already extracted).
 
 ## Log — newest first
+### 2026-07-18 — redone with concat+antisymmetry → finetuning helps FireProt
+- Renumbered 07→08. Re-ran (`run_finetune.py`, 5-seed MLP, concat features +
+  antisymmetry aug on tsu_train and fp_finetune; imputer/scaler fit on augmented
+  tsu_train and reused for the FireProt stage). Results table above; `results.csv` committed.
+- Finetuning (D) beats Tsuboyama-only (A) on fp_test in Spearman at all 3 thresholds
+  (+0.03–0.05) and Pearson/RMSE at 30/50 %; Tsu-test drops ≤0.012 (no real forgetting).
+- Finetune settings: pretrain max_iter=250, continue on FireProt lr=1e-3 max_iter=400,
+  `early_stopping=False` throughout (toggling it across warm-start fits raises in sklearn).
+  Not heavily tuned; a FP-val split could tune LR/epochs further.
 ### 2026-07-18 — splits built; finetune prototyped → marginal effect (feature-limited)
 - Built cross-dataset homology splits with **mmseqs** (`build_splits.py`; Biopython
   single-linkage collapsed to 1 cluster at 30% — chaining — so switched to mmseqs

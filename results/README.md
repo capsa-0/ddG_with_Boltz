@@ -22,13 +22,7 @@ experiments (why raw Δz, how generalization was proved, where it breaks).
 | [06_mlp_generalization](06_mlp_generalization/) | Experiment 01's holdout suite re-run with an **MLP** (5-seed ensemble) instead of HGB — same corpus/features/splits. Tests whether the result depends on the model or the representation. | MLP **matches/slightly beats** HGB on every holdout (random **0.80**, protein **0.79**, per-protein mean **0.83**): the generalization is a property of the **raw-Δz features**, not the tree model. |
 
 | [07_feature_symmetry_ablation](07_feature_symmetry_ablation/) | Within-dataset (Tsuboyama & FireProt) 2×2 ablation of **concat vs Δz features** and **symmetry augmentation**, motivated by an old notebook that used both. | **Adopt concat+symmetry** (now the project default): concat ≥ Δz everywhere (free); symmetry helps FireProt (**+0.03 r**) but only with concat (on Δz it collapses Tsuboyama calibration). Neutral on Tsuboyama. |
-
-### Planned / in progress
-- **[08_finetune_fireprot](08_finetune_fireprot/)** — **In progress.** Sequentially
-  fine-tune the Tsuboyama-pretrained MLP on FireProt (using the new **concat features +
-  antisymmetry** from 07), test on **both** datasets under a cross-dataset homology split
-  (identity sweep 30/50/90 %). Does fine-tuning help FireProt without forgetting
-  Tsuboyama? See its [`status.md`](08_finetune_fireprot/status.md).
+| [08_finetune_fireprot](08_finetune_fireprot/) | Sequentially fine-tune the Tsuboyama-pretrained MLP on FireProt (concat + antisymmetry), test on **both** under a cross-dataset homology split (30/50/90 %). Does fine-tuning help FireProt without forgetting Tsuboyama? | **Yes, modestly:** FireProt-test Spearman **+0.03–0.05** at all thresholds (Pearson/RMSE better at 30/50 %); Tsuboyama-test drops ≤0.012 (no real forgetting). |
 
 ### Archive
 - **`old/`** — pre-refactor exploratory artifacts kept for reference (e.g. the
