@@ -85,6 +85,8 @@ destabilizing/stabilizing tails it never saw in training. Useful for **ranking a
 triage**, not for absolute ΔΔG on out-of-range mutations.
 
 ## Files
+- `report.pdf` — the standalone narrative write-up (regenerate with
+  `python results/05_cross_dataset_fireprot/build_report.py`).
 - `transfer_summary.csv` / `transfer_summary.json` — pooled + per-protein-distribution
   metrics (MLP); `transfer_summary_hgb.json` — the HGB comparison.
 - `per_protein.csv` — per-protein r/ρ/RMSE/MAE/n (85 proteins).

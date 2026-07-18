@@ -52,6 +52,11 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-18 — added report.pdf
+- Wrote `build_report.py` (self-contained; reads the committed summaries/per_protein
+  + processed parquets, embeds figures as base64, renders via `wkhtmltopdf` — no LaTeX)
+  and committed `report.pdf` (4 pp: abstract, methods, results w/ both figures + 3
+  tables, the magnitude ceiling, corpus-completeness provenance).
 ### 2026-07-18 — full corpus extracted; transfer eval done → result complete
 - Chain 212209–212212 all COMPLETED. Pulled `features_summary.parquet`:
   **1,543 muts / 85 proteins**, all 3 recovered proteins present, no NaN features.
