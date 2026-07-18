@@ -121,6 +121,25 @@ land on the same generalization profile → the signal lives in the raw-Δz feat
 not the regressor.** The regression-to-the-mean weakness persists, confirming it's a
 property of the features/objective (cf. `02_`), not the model.
 
+## 7. Does it survive a whole different dataset? → `05_cross_dataset_fireprot/`
+
+Every holdout so far splits *within* Tsuboyama. The real test is transfer to an
+independently curated dataset. We trained on **all 12,359 Tsuboyama mutations** and
+predicted — with no refitting — **all 1,543 FireProt mutations** (85 real proteins
+≤200 aa, `experiment_configs/fireprot_le200.yaml`, raw-Δz features). FireProt is a
+genuine adversary: **zero `wt_id` overlap** with the training set, a different
+stability assay, and a much wider ΔΔG range ([−13.7, +12.0]).
+
+It **transfers**: pooled **r = 0.62 / ρ = 0.68** (MLP; HGB 0.61, within noise —
+same representation-not-model story as `06_`), per-protein **median r = 0.67** (70 %
+of proteins r > 0.5). The Boltz raw-Δz signal is **not a Tsuboyama artifact** — it
+generalizes to independently sourced stability data. The ceiling is again
+**magnitude, not ranking** (cf. `02_`): the predicted-vs-measured slope is 0.26 and
+predictions span only ~40 % of the true spread, so the model regresses hard toward
+the mean on FireProt's out-of-range tails. Useful for **ranking/triage**, not
+absolute ΔΔG. (Aside: reaching the full corpus required fixing a FireProt-adapter
+bug that had silently dropped 3 UniProt-less proteins keyed only by `pdb_id`.)
+
 ---
 
 ### Result folders
@@ -128,7 +147,7 @@ property of the features/objective (cf. `02_`), not the model.
 - `02_stress_extrapolation/` — the destabilizing-tail extrapolation failure.
 - `03_stress_learning_curve/` — data-efficiency curve.
 - `04_no_msa_ablation/` — MSA vs. single-sequence Boltz (evolutionary-signal value).
-- (in progress) `05_cross_dataset_fireprot/` — transfer to an independent dataset.
+- `05_cross_dataset_fireprot/` — transfer to an independent dataset (FireProt).
 - `06_mlp_generalization/` — 01's suite with an MLP (representation vs model check).
 
 See each folder's `README.md` for exact configs, data paths, and numbers.

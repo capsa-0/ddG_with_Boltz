@@ -1,12 +1,18 @@
 # Status — 05_cross_dataset_fireprot
 
-**State:** 🚧 In progress — features were only PARTIAL (773/1543); full re-extraction
-running on the cluster, transfer eval will run on the full corpus once it lands
+**State:** ✅ Done — full FireProt corpus (1,543 muts / 85 proteins) extracted and the
+Tsuboyama→FireProt transfer eval run. Headline: pooled **r=0.62 / ρ=0.68** (MLP),
+per-protein median r=0.67. README/figures written.
 **Last updated:** 2026-07-18
 
 ## Current state
 Cross-dataset transfer test: does the **Tsuboyama-trained** raw-Δz ΔΔG predictor
-generalize to the independent **FireProt** dataset?
+generalize to the independent **FireProt** dataset? **Yes** — trained on all 12,359
+Tsuboyama mutations, tested with no refitting on all 1,543 FireProt mutations (85
+proteins, zero `wt_id` overlap): pooled **r=0.621, ρ=0.684, RMSE=1.41** (MLP; HGB
+r=0.607). Per-protein **median r=0.67** (70 % of proteins r>0.5). Same magnitude
+ceiling as 02/06: fit slope 0.26 — ranks well, under-predicts the tails.
+See `README.md` for the full write-up.
 
 **Correction (2026-07-18):** the earlier claim that the FireProt feature pipeline was
 "complete" was wrong. `features_summary.parquet` (built 2026-07-17 15:39) contained
@@ -20,26 +26,22 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   `mutate_wt_msa` / `mutate_first_row`, max_msa 1000, `keep_s: false`, `delete_raw: true`).
 - **Corpus:** FireProt ≤200 aa — **1,543 mutations / 82 proteins**, 0 dropped
   (`data/processed/fireprot_le200/dataset_report.json` all-clean).
-- **Cluster processed dir:** `data/processed/fireprot_le200/` — has `msas/`,
-  `queries/`, `boltz_raw_output/`, `slim/`, and **`features_summary.parquet`**
-  (built 2026-07-17 15:39). prepare → predict → slim → features are DONE.
-- **Missing:** no `benchmark/` output under `fireprot_le200`. The transfer eval
-  (train on Tsuboyama features → predict FireProt → correlate) has not been wired up
-  or run. Note: `python -m ddg.evaluation` does *within-dataset* holdouts, so running
-  it on this config alone gives a FireProt-internal benchmark, **not** the transfer
-  result we want.
+- **Cluster processed dir:** `data/processed/fireprot_le200/` — full
+  `features_summary.parquet` (1,543 × 256, rebuilt 2026-07-18 by jobs 212209–212212).
+- **Transfer output:** `data/processed/fireprot_le200/transfer_from_tsuboyama{,_hgb}/`
+  (pulled locally). Note: `python -m ddg.evaluation` does *within-dataset* holdouts —
+  the cross-dataset transfer is a separate tool, `ddg/evaluation/transfer.py`.
 
 ## Next steps
-- [ ] Wire/run the transfer evaluation: fit the raw-Δz model on Tsuboyama
-      (`tsuboyama_bench_fast` or `_wide` `rawz_features.parquet`), predict on
-      `data/processed/fireprot_le200/features_summary.parquet`, report pooled r /
-      RMSE / MAE (overall + per-protein).
-- [ ] **Watch the ΔΔG sign convention** — FireProt (`ddG`) vs Tsuboyama (`ddg`) may
-      differ in which sign is destabilizing. If correlation comes out negative, flip.
-      (See `CLAUDE.md` "ΔΔG column name differs by adapter".)
-- [ ] Once there are numbers: write `README.md` (What/Why/How + provenance table +
-      headline), add `figures/`, and update `results/README.md` + `history.md`
-      (move 05 from "Planned" to a result row).
+- [x] Full FireProt corpus extracted (1,543 / 85) after the `pdb_id`-fallback fix.
+- [x] Transfer eval run (`ddg/evaluation/transfer.py`, MLP + HGB); sign convention
+      confirmed identical (no flip). README + figures written; indexes updated.
+- [ ] Optional: re-run the transfer with the **wide** Tsuboyama corpus
+      (`tsuboyama_bench_wide` `rawz_features.parquet`, 37,080 muts) as the training
+      set to see whether more/broader training data lifts the FireProt transfer.
+- [ ] Optional: commit `data/raw/fireprot_le200.csv` + `experiment_configs/fireprot_le200.yaml`
+      (currently untracked on both machines) so the experiment is fully reproducible
+      from git alone.
 
 ## Blockers
 - None active. **Historical:** the predict step repeatedly failed at startup when
@@ -50,6 +52,35 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-18 — full corpus extracted; transfer eval done → result complete
+- Chain 212209–212212 all COMPLETED. Pulled `features_summary.parquet`:
+  **1,543 muts / 85 proteins**, all 3 recovered proteins present, no NaN features.
+- Ran `python -m ddg.evaluation.transfer --train …/tsuboyama_bench_fast/rawz_features.parquet
+  --test …/fireprot_le200/features_summary.parquet --model mlp` (also `--model hgb`).
+  **MLP:** pooled r=0.621, ρ=0.684, RMSE=1.41, MAE=0.86; per-protein mean 0.488 /
+  **median 0.668** (76/85 scored). **HGB:** r=0.607, ρ=0.675. `sign_flipped=false`.
+  Predicted-vs-measured slope 0.262 (magnitude compression, as in 02/06).
+- Outputs: `data/processed/fireprot_le200/transfer_from_tsuboyama{,_hgb}/`. Copied
+  tables + scatter into this folder; built `figures/02_per_protein_r_hist.png`; wrote
+  `README.md` + `figures/README.md`; updated `results/README.md` + `history.md`.
+  State → ✅ Done.
+### 2026-07-18 — root-caused the 29-mutation gap; adapter fix + full re-run
+- First re-run (jobs 212187/212188/212189) completed and lifted coverage to
+  **1,514 muts / 82 proteins** (from 773/54) — but still 29 short of 1,543.
+- Root cause of the 29: the FireProt adapter keyed `wt_id` on `uniprot_id` alone.
+  **3 proteins have no UniProt id** — `3PG0` (ThreeFoil, 10 muts), `2IMM` (5),
+  `1YYX` (14) — only a `pdb_id` + sequence, so `wt_id` was NaN and they never got
+  MSAs/queries. Not a compute failure; positions are all in range.
+- Fix (commit `5e55812`): `dataset_fireprot.get_wt_id` falls back to `pdb_id` when
+  `uniprot_id` is missing → 0 NaN wt_id, **85 proteins / 1,543 muts** (verified
+  locally through the adapter). Pushed; pulled on cluster.
+- Resubmitted the **full** chain (prepare needed to add the 3 proteins' MSAs/queries;
+  `overwrite: false` so the 82 existing MSAs are reused, only 3 new base MSAs fetched):
+  **prepare 212209 → predict 212210** (8 shards, `%3`, `--exclude=nodo3,nodo5,nodo11,nodo12,nodo14,nodo15,sauron`)
+  **→ slim 212211 → features 212212**. Watch: prepare hits the ColabFold MSA server
+  for the 3 new WT sequences.
+- Transfer eval (`ddg/evaluation/transfer.py`, default model now `mlp`) will run on the
+  full 1,543-row features once the chain lands.
 ### 2026-07-18 — discovered partial features; re-running full extraction
 - Audited the actual `features_summary.parquet`: **773 muts / 54 proteins**, not the
   1,543 / 82 that the prior status entry claimed. Feature columns are the raw-Δz set
