@@ -52,6 +52,24 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-18 — new error-vs-ΔΔG diagnostic; nodo1 found bad; ≤500 predict resubmitted
+- Dropped the linear-calibration idea (didn't add skill). Added **in-range vs
+  out-of-range** split to `transfer.py` (by training ΔΔG range, default 1st/99th pct;
+  used [-1,4]): per-bin r/ρ/RMSE/MAE + a scatter that shades the in-range band and
+  colors out-of-range points. Key ≤200 finding: in-range r=0.66 RMSE=0.87; out-of-range
+  RMSE≈3.7 and the within-tail correlation collapses (below -1: r=-0.61; above 4: r=0.21)
+  — the pooled out-of-range r is a two-cluster artifact (kept out of the legend).
+- Added `ddg/evaluation/error_curves.py`: prediction error/variance vs measured ΔΔG
+  (binned bias±SD + RMSE/MAE). Shows the regression-to-mean signature for both the
+  transfer (05) and within-Tsuboyama (01) — error is bias-dominated, rising toward both
+  tails. `transfer.py` now emits `error_vs_ddg.png` too. TODO: roll the error curve out
+  to the other experiments (need their prediction parquets; 02/03/06 are cluster-only).
+- **`fireprot_201to500` predict failed**: 7/8 shards landed on **nodo1**, which crashes
+  boltz at CUDA init (`RuntimeError: CUDA unknown error … Setting the available devices
+  to be zero`). New bad node — added to CLAUDE.md + exclude list. Cancelled the failed
+  chain (212246 FAILED, 212247/212248 CANCELLED); **resubmitted predict 212256 → slim
+  212257 → features 212258** with `--exclude=nodo1,nodo3,nodo5,…`. prepare 212245 was
+  fine (1,715 queries + MSAs on disk), so predict-only resubmit.
 ### 2026-07-18 — extending to ≤500 aa: running the 201–500 band separately
 - Goal: extend the FireProt transfer test from ≤200 aa to **≤500 aa** by running only
   the **excluded band** (201–500 aa) and merging with the existing `fireprot_le200`
