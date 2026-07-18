@@ -257,6 +257,11 @@ def main() -> None:
     res["predictions"].to_parquet(out / "predictions.parquet", index=False)
     _scatter(res["predictions"], br, args.label_train, args.label_test,
              out / "scatter.png")
+    from ddg.evaluation.error_curves import plot_error_vs_true
+    plot_error_vs_true(
+        res["predictions"]["y"], res["predictions"]["pred"], out / "error_vs_ddg.png",
+        title=f"{args.label_train} → {args.label_test}: error vs measured ΔΔG",
+        train_range=(br["lo"], br["hi"]))
 
     p = res["pooled"]
     print(f"\n=== transfer {args.label_train} -> {args.label_test} "
