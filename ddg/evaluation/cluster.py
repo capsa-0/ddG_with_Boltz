@@ -37,6 +37,66 @@ def load_cluster_map(csv_path) -> dict:
     return out
 
 
+def cluster_by_identity(seqs: dict, threshold: float = 0.3, out_csv=None) -> dict:
+    """
+    Cluster sequences by pairwise identity with single linkage — no external
+    binary, uses Biopython. Two sequences join the same cluster when their global
+    (BLOSUM62) alignment identity, counted as identical residues / min(len), is
+    >= ``threshold``; linkage is transitive (A~B, B~C => one cluster).
+
+    For the ~400 short Tsuboyama domains the full O(N^2) sweep is a few seconds.
+    Returns {id -> cluster_representative}. Prefer MMseqs2 (cluster_wt_sequences)
+    when the binary is available and you want the canonical --min-seq-id semantics.
+    """
+    from Bio.Align import PairwiseAligner, substitution_matrices
+
+    ids = list(seqs)
+    parent = {i: i for i in ids}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    def union(a, b):
+        ra, rb = find(a), find(b)
+        if ra != rb:
+            parent[rb] = ra
+
+    aligner = PairwiseAligner(
+        mode="global", substitution_matrix=substitution_matrices.load("BLOSUM62"),
+        open_gap_score=-11, extend_gap_score=-1,
+    )
+
+    def identity(a, b):
+        aln = aligner.align(a, b)[0]
+        idn = 0
+        for (a0, a1), (b0, b1) in zip(aln.aligned[0], aln.aligned[1]):
+            idn += sum(1 for x, y in zip(a[a0:a1], b[b0:b1]) if x == y)
+        return idn / min(len(a), len(b))
+
+    for i in range(len(ids)):
+        si = seqs[ids[i]]
+        for j in range(i + 1, len(ids)):
+            if find(ids[i]) == find(ids[j]):
+                continue
+            if identity(si, seqs[ids[j]]) >= threshold:
+                union(ids[i], ids[j])
+
+    mapping = {i: find(i) for i in ids}
+    logger.info("identity clustering: %d seqs -> %d clusters at id>=%.2f",
+                len(ids), len(set(mapping.values())), threshold)
+    if out_csv:
+        with open(out_csv, "w", newline="") as fh:
+            w = csv.writer(fh)
+            w.writerow(["protein_id", "cluster"])
+            for k, v in mapping.items():
+                w.writerow([k, v])
+        logger.info("wrote cluster map to %s", out_csv)
+    return mapping
+
+
 def _read_fasta(fasta_path):
     seqs, name, buf = {}, None, []
     with open(fasta_path) as fh:

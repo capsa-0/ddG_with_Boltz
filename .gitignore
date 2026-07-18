@@ -71,3 +71,14 @@ logs/*.err
 # Docs
 
 docs/*
+
+# Results working notes (local-only; the result folders themselves are committed)
+results/guidelines.md
+results/**/status.md
+
+# Dataset working area: raw DB dumps, cleaning notebooks, intermediate CSVs
+# (large + unshared for now; see docs/TODO.md §5 — add `!` negations here later
+#  for the audit docs / clean_*.py scripts we decide to commit)
+ddg_datasets/
+# stray benchmark cluster map
+data/raw/tsuboyama_bench_clusters.csv
