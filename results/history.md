@@ -105,6 +105,22 @@ reaches r = 0.70 (random) / 0.69 (unseen proteins): **most of the ΔΔG signal i
 structural**, the MSA is a real but modest add-on, and the predictor degrades
 gracefully without it (useful, since the MSA server is rate-limited/flaky).
 
+## 6. Is it the representation or the model? → `06_mlp_generalization/`
+
+Experiment 01 proved generalization using gradient-boosted trees (HGB). To check
+whether that's a property of the **representation** or just of one estimator, we
+re-ran the entire holdout suite unchanged (same fast corpus, same 256 raw-Δz
+features, same splits) with a **neural-network MLP** instead — a 5-seed ensemble of
+a deeper, L2-regularized MLP. (A single-seed MLP was too high-variance across group
+folds — non-monotonic homology numbers — so it's averaged over seeds.)
+
+The MLP **matches or slightly beats HGB on every holdout** (random 0.80 vs 0.78,
+protein 0.79 vs 0.77, homology +~0.017, per-protein mean 0.83 vs 0.81; even on the
+hard de-novo/substitution/chemistry transfers). **Two independent model families
+land on the same generalization profile → the signal lives in the raw-Δz features,
+not the regressor.** The regression-to-the-mean weakness persists, confirming it's a
+property of the features/objective (cf. `02_`), not the model.
+
 ---
 
 ### Result folders
@@ -112,6 +128,7 @@ gracefully without it (useful, since the MSA server is rate-limited/flaky).
 - `02_stress_extrapolation/` — the destabilizing-tail extrapolation failure.
 - `03_stress_learning_curve/` — data-efficiency curve.
 - `04_no_msa_ablation/` — MSA vs. single-sequence Boltz (evolutionary-signal value).
-- (planned) `05_cross_dataset_fireprot/` — transfer to an independent dataset.
+- (in progress) `05_cross_dataset_fireprot/` — transfer to an independent dataset.
+- `06_mlp_generalization/` — 01's suite with an MLP (representation vs model check).
 
 See each folder's `README.md` for exact configs, data paths, and numbers.
