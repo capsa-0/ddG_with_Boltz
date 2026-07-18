@@ -12,13 +12,13 @@ Both tables must be raw-Δz feature tables (``zdiag_*`` + ``zpool_*`` columns, p
 ``wt_id``/``mutation``/``ddg``). The model is the benchmark's pipeline
 (median-impute -> standardize -> estimator); ``hgb`` by default.
 
-Linear recalibration
---------------------
-Transferred predictions are affinely miscalibrated (compressed toward the mean on an
-out-of-range target). The eval also reports an out-of-sample (5-fold CV) linear
-recalibration ``real ≈ a + b·pred`` — a ``pred_corrected`` column, ``corrected_*``
-pooled metrics, and a ``scatter_corrected.png``. It lowers RMSE/MAE but, being affine,
-leaves Pearson/Spearman unchanged.
+In-range vs out-of-range
+------------------------
+The model is trained on Tsuboyama, whose ΔΔG labels occupy a narrow range (~−1 to 4
+kcal/mol, the central ~98% of the training distribution). FireProt has mutations well
+outside that, which are genuine extrapolation. The eval scores the transfer separately
+for **in-range** and **out-of-range** test mutations (by measured ΔΔG vs the training
+range), and the scatter shades the in-range band and colors out-of-range points.
 
 Sign convention
 ---------------
@@ -64,25 +64,14 @@ def _matrix(df: pd.DataFrame, feat_cols: list[str]) -> np.ndarray:
              .to_numpy(dtype=float)
 
 
-def _cv_linear_calibration(y, pred, k: int = 5, seed: int = 0):
-    """
-    Out-of-sample affine recalibration of ``pred`` toward ``y``.
+def _train_ddg_range(train_df: pd.DataFrame, pct: float = 1.0):
+    """In-range boundary = [pct, 100-pct] percentile of the training ΔΔG labels.
 
-    Transferred predictions are affinely miscalibrated (compressed toward the mean on
-    an out-of-range target dataset). Fit ``y ≈ a + b·pred`` by k-fold CV — each point
-    is corrected by a fit that never saw it — so the corrected metrics aren't fitted on
-    the points they score. This is a scale/offset fix only: it lowers RMSE/MAE but
-    leaves Pearson/Spearman unchanged (correlation is invariant to affine transforms).
-
-    Returns (corrected_predictions, global_intercept_a, global_slope_b).
+    Percentiles (not min/max) so a few extreme training points don't widen the range;
+    the default 1st/99th ≈ the '−1 to 4 kcal/mol' effective Tsuboyama range.
     """
-    from sklearn.model_selection import KFold
-    cor = np.full(len(y), np.nan, dtype=float)
-    for tr, te in KFold(n_splits=k, shuffle=True, random_state=seed).split(pred):
-        b, a = np.polyfit(pred[tr], y[tr], 1)
-        cor[te] = a + b * pred[te]
-    b, a = np.polyfit(pred, y, 1)   # global coeffs, for reporting
-    return cor, float(a), float(b)
+    y = train_df["ddg"].to_numpy(dtype=float)
+    return float(np.percentile(y, pct)), float(np.percentile(y, 100 - pct))
 
 
 def run_transfer(
@@ -90,12 +79,17 @@ def run_transfer(
     test_df: pd.DataFrame,
     model_name: str = "mlp",
     drop_s: bool = False,
+    train_range: tuple[float, float] | None = None,
 ) -> dict:
     """
     Fit ``model_name`` on all of ``train_df`` and predict every row of ``test_df``.
 
+    ``train_range`` = (lo, hi) defining the in-range band on measured ΔΔG; test points
+    outside it are out-of-range (extrapolation). Defaults to the training ΔΔG's
+    1st/99th percentile.
+
     Returns a dict with the pooled metrics, the per-protein distribution, a
-    ``sign_flipped`` flag, and a predictions DataFrame (``y``/``pred``/``unit``).
+    ``sign_flipped`` flag, the in/out-of-range split, and a predictions DataFrame.
     """
     # Feature columns common to both tables (both are raw-Δz here, so this is the
     # full zdiag_/zpool_ set; the intersection guards against schema drift).
@@ -135,12 +129,22 @@ def run_transfer(
         pooled = compute_metrics(y_te, pred)
         sign_flipped = True
 
-    # Out-of-sample linear recalibration (scale/offset fix; see helper).
-    pred_cor, cal_a, cal_b = _cv_linear_calibration(y_te, pred)
-    pooled_corrected = compute_metrics(y_te, pred_cor)
+    # In-range vs out-of-range split, by measured ΔΔG against the training range.
+    lo, hi = train_range if train_range is not None else _train_ddg_range(train_df)
+    in_range = (y_te >= lo) & (y_te <= hi)
+    by_range = {
+        "lo": float(lo), "hi": float(hi),
+        "in": compute_metrics(y_te[in_range], pred[in_range]),
+        "out": compute_metrics(y_te[~in_range], pred[~in_range]),
+        "out_below": compute_metrics(y_te[y_te < lo], pred[y_te < lo]),
+        "out_above": compute_metrics(y_te[y_te > hi], pred[y_te > hi]),
+    }
+    logger.info("in-range [%.2f,%.2f]: n_in=%d n_out=%d (below=%d above=%d)",
+                lo, hi, int(in_range.sum()), int((~in_range).sum()),
+                int((y_te < lo).sum()), int((y_te > hi).sum()))
 
     labelled = add_label_columns(test_df).reset_index(drop=True)
-    pred_df = pd.DataFrame({"y": y_te, "pred": pred, "pred_corrected": pred_cor,
+    pred_df = pd.DataFrame({"y": y_te, "pred": pred, "in_range": in_range,
                             "unit": labelled["protein"]})
 
     per_unit_rows = []
@@ -151,9 +155,7 @@ def run_transfer(
 
     return {
         "pooled": pooled,
-        "pooled_corrected": pooled_corrected,
-        "cal_intercept": cal_a,
-        "cal_slope": cal_b,
+        "by_range": by_range,
         "dist": dist,
         "sign_flipped": sign_flipped,
         "per_protein": per_protein,
@@ -163,35 +165,44 @@ def run_transfer(
     }
 
 
-def _scatter(pred_df: pd.DataFrame, pooled: dict, label_train: str,
-             label_test: str, path: Path, *, pred_col: str = "pred",
-             color: str = "#4C72B0", ylabel: str | None = None,
-             title_suffix: str = "") -> None:
+def _scatter(pred_df: pd.DataFrame, by_range: dict, label_train: str,
+             label_test: str, path: Path) -> None:
+    """Predicted vs measured ΔΔG, in-range band shaded and out-of-range points colored."""
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig, ax = plt.subplots(figsize=(5.6, 5.4))
-    ax.scatter(pred_df["y"], pred_df[pred_col], s=10, alpha=0.4,
-               color=color, edgecolors="none")
+    lo, hi = by_range["lo"], by_range["hi"]
+    ins = pred_df["in_range"].to_numpy()
+    fig, ax = plt.subplots(figsize=(6.0, 5.6))
     # Scale each axis to its own data range (predictions span a much narrower band
-    # than measured ΔΔG, so a shared range leaves the y-axis mostly empty). Draw the
-    # y=x reference only across the range visible on both axes so it doesn't stretch
-    # the limits back out.
+    # than measured ΔΔG, so a shared range leaves the y-axis mostly empty).
     def _lim(v, pad=0.05):
-        lo, hi = float(v.min()), float(v.max())
-        m = (hi - lo) * pad or 1.0
-        return lo - m, hi + m
+        a, b = float(v.min()), float(v.max())
+        m = (b - a) * pad or 1.0
+        return a - m, b + m
     xlo, xhi = _lim(pred_df["y"])
-    ylo, yhi = _lim(pred_df[pred_col])
+    ylo, yhi = _lim(pred_df["pred"])
+    ax.axvspan(lo, hi, color="#4C72B0", alpha=0.07, zorder=0)
+    for x in (lo, hi):
+        ax.axvline(x, color="#4C72B0", ls=":", lw=1.2, zorder=1)
+    # in-range shows r (meaningful); out-of-range shows RMSE only — its pooled r is a
+    # two-cluster artifact (the two tails sit far apart), so per-tail r goes in the table.
+    m_in, m_out = by_range["in"], by_range["out"]
+    ax.scatter(pred_df["y"][ins], pred_df["pred"][ins], s=10, alpha=0.4,
+               color="#4C72B0", edgecolors="none",
+               label=f"in-range (n={m_in['n']}):  r={m_in['pearson']:.2f}, RMSE={m_in['rmse']:.2f}")
+    ax.scatter(pred_df["y"][~ins], pred_df["pred"][~ins], s=12, alpha=0.55,
+               color="#C44E52", edgecolors="none",
+               label=f"out-of-range (n={m_out['n']}):  RMSE={m_out['rmse']:.2f}, MAE={m_out['mae']:.2f}")
     d0, d1 = max(xlo, ylo), min(xhi, yhi)
-    ax.plot([d0, d1], [d0, d1], "--", color="0.4", lw=1)
+    ax.plot([d0, d1], [d0, d1], "--", color="0.4", lw=1, zorder=1)
     ax.set_xlim(xlo, xhi)
     ax.set_ylim(ylo, yhi)
     ax.set_xlabel(f"Measured ΔΔG ({label_test})")
-    ax.set_ylabel(ylabel or f"Predicted ΔΔG (trained on {label_train})")
-    ax.set_title(f"Transfer {label_train} → {label_test}{title_suffix}\n"
-                 f"r={pooled['pearson']:.3f}  ρ={pooled['spearman']:.3f}  "
-                 f"RMSE={pooled['rmse']:.2f}  n={pooled['n']}")
+    ax.set_ylabel(f"Predicted ΔΔG (trained on {label_train})")
+    ax.set_title(f"Transfer {label_train} → {label_test}\n"
+                 f"training range [{lo:.1f}, {hi:.1f}] kcal/mol shaded")
+    ax.legend(loc="upper left", fontsize=8, framealpha=0.9)
     ax.grid(True, alpha=0.3)
     fig.tight_layout()
     fig.savefig(path, dpi=150)
@@ -209,13 +220,21 @@ def main() -> None:
     ap.add_argument("--drop-s", action="store_true", help="exclude s-derived features")
     ap.add_argument("--label-train", default="train")
     ap.add_argument("--label-test", default="test")
+    ap.add_argument("--train-range", help="in-range band 'lo,hi' on measured ΔΔG "
+                    "(default: 1st/99th percentile of training ΔΔG)")
     args = ap.parse_args()
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
     train_df, test_df = _load(args.train), _load(args.test)
-    res = run_transfer(train_df, test_df, model_name=args.model, drop_s=args.drop_s)
+    tr_range = None
+    if args.train_range:
+        lo, hi = (float(x) for x in args.train_range.split(","))
+        tr_range = (lo, hi)
+    res = run_transfer(train_df, test_df, model_name=args.model, drop_s=args.drop_s,
+                       train_range=tr_range)
 
+    br = res["by_range"]
     summary = {
         "train": args.label_train, "test": args.label_test,
         "train_path": str(args.train), "test_path": str(args.test),
@@ -223,10 +242,12 @@ def main() -> None:
         "n_train": int(len(train_df)), "n_test": int(len(test_df)),
         "n_test_proteins": int(test_df["wt_id"].nunique()),
         "sign_flipped": res["sign_flipped"],
-        "cal_intercept": res["cal_intercept"],
-        "cal_slope": res["cal_slope"],
+        "range_lo": br["lo"], "range_hi": br["hi"],
         **{f"pooled_{k}": v for k, v in res["pooled"].items()},
-        **{f"corrected_{k}": v for k, v in res["pooled_corrected"].items()},
+        **{f"in_{k}": v for k, v in br["in"].items()},
+        **{f"out_{k}": v for k, v in br["out"].items()},
+        **{f"out_below_{k}": v for k, v in br["out_below"].items()},
+        **{f"out_above_{k}": v for k, v in br["out_above"].items()},
         **res["dist"],
     }
     (out / "transfer_summary.json").write_text(json.dumps(summary, indent=2))
@@ -234,22 +255,21 @@ def main() -> None:
     res["per_protein"].sort_values("n", ascending=False).to_csv(
         out / "per_protein.csv", index=False)
     res["predictions"].to_parquet(out / "predictions.parquet", index=False)
-    _scatter(res["predictions"], res["pooled"], args.label_train,
-             args.label_test, out / "scatter.png")
-    _scatter(res["predictions"], res["pooled_corrected"], args.label_train,
-             args.label_test, out / "scatter_corrected.png",
-             pred_col="pred_corrected", color="#55934f",
-             ylabel="Predicted ΔΔG — linear-corrected",
-             title_suffix=" (linear-corrected, 5-fold CV)")
+    _scatter(res["predictions"], br, args.label_train, args.label_test,
+             out / "scatter.png")
 
-    p, pc = res["pooled"], res["pooled_corrected"]
+    p = res["pooled"]
     print(f"\n=== transfer {args.label_train} -> {args.label_test} "
           f"({res['model']}, sign_flipped={res['sign_flipped']}) ===")
-    print(f"pooled:     r={p['pearson']:.3f}  rho={p['spearman']:.3f}  "
+    print(f"pooled:        r={p['pearson']:.3f}  rho={p['spearman']:.3f}  "
           f"RMSE={p['rmse']:.3f}  MAE={p['mae']:.3f}  n={p['n']}")
-    print(f"lin-corr:   r={pc['pearson']:.3f}  rho={pc['spearman']:.3f}  "
-          f"RMSE={pc['rmse']:.3f}  MAE={pc['mae']:.3f}  "
-          f"(real ≈ {res['cal_intercept']:.3f} + {res['cal_slope']:.3f}·pred)")
+    print(f"in-range [{br['lo']:.2f},{br['hi']:.2f}]: r={br['in']['pearson']:.3f}  "
+          f"rho={br['in']['spearman']:.3f}  RMSE={br['in']['rmse']:.3f}  "
+          f"MAE={br['in']['mae']:.3f}  n={br['in']['n']}")
+    print(f"out-of-range:  r={br['out']['pearson']:.3f}  rho={br['out']['spearman']:.3f}  "
+          f"RMSE={br['out']['rmse']:.3f}  MAE={br['out']['mae']:.3f}  n={br['out']['n']} "
+          f"(below n={br['out_below']['n']} RMSE={br['out_below']['rmse']:.2f} | "
+          f"above n={br['out_above']['n']} RMSE={br['out_above']['rmse']:.2f})")
     d = res["dist"]
     print(f"per-protein: r={d['pearson_mean']:.3f}±{d['pearson_sd']:.3f}  "
           f"(units={d['n_units']}, scored={d['n_units_scored']})")
