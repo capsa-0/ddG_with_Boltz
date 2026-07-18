@@ -49,6 +49,7 @@ the first two (the third needs a Boltz re-run) to decide whether they are worth 
 `data/processed/` is gitignored; only the scripts + `results.csv` are committed.
 
 ## Files
+- `report.pdf` — paper-facing write-up (regenerate: `python results/07_feature_symmetry_ablation/build_report.py`).
 - `results.csv` — the 8-row table (dataset × feature × augment).
 - `build_ablation_features.py`, `run_ablation.py` — reproduce from the slim stores.
 - `status.md` — log + full verdict.

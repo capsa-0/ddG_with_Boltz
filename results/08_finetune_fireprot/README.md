@@ -48,6 +48,7 @@ Pearson dip, with Spearman still rising, is a calibration wobble on the smallest
 | Features | `data/processed/{tsuboyama_bench_fast,fireprot_le200}/features_ablation.parquet` (concat, from 07's `build_ablation_features.py`) |
 
 ## Files
+- `report.pdf` — paper-facing write-up (regenerate: `python results/08_finetune_fireprot/build_report.py`).
 - `results.csv` — full A/D × {tsu_test, fp_test} × {30,50,90}.
 - `build_splits.py`, `run_finetune.py` — reproduce.
 - `status.md` — log + verdict.
