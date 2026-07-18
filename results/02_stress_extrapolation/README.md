@@ -26,7 +26,7 @@ the training range — while true ΔΔG reaches 5.7. It interpolates within the 
 band it was trained on and cannot reach beyond it. Practical implication: to rank
 or screen strongly destabilizing mutations, the training set must span that range.
 
-See `extrapolation_pred_vs_actual.png` (the tail predictions are a flat cloud).
+See `figures/01_extrapolation_pred_vs_actual.png` (the tail predictions are a flat cloud).
 
 ## Data & provenance
 
@@ -38,7 +38,8 @@ See `extrapolation_pred_vs_actual.png` (the tail predictions are a flat cloud).
 | Reproduce | `python -m ddg.evaluation.stress extrapolation --parquet <rawz_features.parquet> --out results/02_stress_extrapolation` |
 
 ## Files
-- `extrapolation_pred_vs_actual.png` — in-distribution vs. tail, with y=x and fit line.
+- `report.pdf` — paper-facing write-up (regenerate with `build_report.py`).
+- `figures/01_extrapolation_pred_vs_actual.png` — in-distribution vs. tail, with y=x and fit line.
 - `extrapolation_summary.csv` / `.json` — the metrics above.
 
 Caveat: mild-train and tail-test can share proteins; this isolates ΔΔG-magnitude

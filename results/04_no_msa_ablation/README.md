@@ -42,7 +42,7 @@ penalty (mean Δr ≈ −0.086). Two takeaways:
    input. So keep the MSA when it's available, but the predictor degrades gracefully
    (not catastrophically) without it.
 
-See `comparison.png`.
+See `figures/01_comparison.png`.
 
 ## Data & provenance
 
@@ -64,6 +64,7 @@ python -m ddg.evaluation.compare_runs \
 ```
 
 ## Files
-- `comparison.png` — grouped bar chart, MSA vs. no-MSA per holdout, with Δr labels.
+- `report.pdf` — paper-facing write-up (regenerate with `build_report.py`).
+- `figures/01_comparison.png` — grouped bar chart, MSA vs. no-MSA per holdout, with Δr labels.
 - `comparison.csv` — merged table (r / RMSE / MAE for both + Δr).
 - `benchmark_summary_nomsa.csv` — the raw no-MSA benchmark summary (all metrics).

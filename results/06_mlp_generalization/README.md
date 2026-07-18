@@ -77,6 +77,7 @@ densely the training set sampled that value; the extrapolation limit is a
 training-coverage effect, not model-specific (cf. the same pattern under transfer in 05).
 
 ## Files
+- `report.pdf` — paper-facing write-up (regenerate with `build_report.py`).
 - `benchmark_summary.csv` — the numbers above (7 holdouts + 3 homology thresholds).
 - `details.md` — model design (why an ensemble), hyperparameters, provenance, the
   per-number appendix.

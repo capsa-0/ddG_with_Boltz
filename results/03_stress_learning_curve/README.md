@@ -28,7 +28,7 @@ The curve is concave and flattening — the raw-Δz representation is strong eno
 that the model is not badly data-starved, and adding proteins yields diminishing
 returns. Seed SD is tiny (≤ 0.002), so the trend is robust.
 
-See `learning_curve.png`.
+See `figures/01_learning_curve.png`.
 
 ## Data & provenance
 
@@ -40,5 +40,6 @@ See `learning_curve.png`.
 | Reproduce | `python -m ddg.evaluation.stress learning_curve --parquet <rawz_features.parquet> --out results/03_stress_learning_curve` |
 
 ## Files
-- `learning_curve.png` — pooled r (left axis) and RMSE (right axis) vs. #training proteins.
+- `report.pdf` — paper-facing write-up (regenerate with `build_report.py`).
+- `figures/01_learning_curve.png` — pooled r (left axis) and RMSE (right axis) vs. #training proteins.
 - `learning_curve.csv` — the table above, with per-fraction seed SD.
