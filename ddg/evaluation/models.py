@@ -10,7 +10,7 @@ baseline; MLP is optional.
 
 import numpy as np
 import pandas as pd
-from sklearn.ensemble import HistGradientBoostingRegressor
+from sklearn.ensemble import HistGradientBoostingRegressor, VotingRegressor
 from sklearn.impute import SimpleImputer
 from sklearn.linear_model import Ridge
 from sklearn.neural_network import MLPRegressor
@@ -28,7 +28,8 @@ def make_model(name: str = "hgb") -> Pipeline:
     'hgb'   — HistGradientBoosting: fast, strong on tabular, scales to the wide
               corpus (SVR is O(n^2-3) and infeasible past ~10k samples/fold).
     'svr'   — RBF SVR (the project's original model; only tractable on small folds).
-    'ridge' — fast linear baseline.  'mlp' — small MLP.
+    'ridge' — fast linear baseline.
+    'mlp'   — seed-ensembled MLP (see below).
     """
     name = name.lower()
     if name == "hgb":
@@ -40,8 +41,22 @@ def make_model(name: str = "hgb") -> Pipeline:
     elif name == "ridge":
         est = Ridge(alpha=1.0)
     elif name == "mlp":
-        est = MLPRegressor(hidden_layer_sizes=(256, 64), alpha=1e-3,
-                           max_iter=500, early_stopping=True, random_state=0)
+        # A single MLPRegressor is high-variance on this tabular problem: its
+        # holdout score swings widely across group folds because it depends on
+        # the weight init and the internal early-stopping split (a lone-seed net
+        # gave non-monotonic homology numbers 0.47/0.39/0.72 vs HGB's flat ~0.77).
+        # Average several seed-decorrelated nets — the standard variance-reduction
+        # fix — each a moderately deep, L2-regularized MLP that early-stops
+        # patiently on its own validation split. n_jobs fits the members in
+        # parallel, so the ensemble costs ~one net of wall time.
+        def _member(seed):
+            return MLPRegressor(
+                hidden_layer_sizes=(256, 128, 64), activation="relu",
+                solver="adam", alpha=3e-3, learning_rate_init=1e-3,
+                batch_size=256, max_iter=1000, early_stopping=True,
+                n_iter_no_change=25, validation_fraction=0.1, random_state=seed)
+        est = VotingRegressor(
+            estimators=[(f"mlp{s}", _member(s)) for s in range(5)], n_jobs=-1)
     else:
         raise ValueError(f"unknown model '{name}' (use hgb | svr | ridge | mlp)")
     return Pipeline([
