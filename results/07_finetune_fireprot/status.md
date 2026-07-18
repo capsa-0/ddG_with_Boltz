@@ -85,6 +85,21 @@ Headline readouts, per identity threshold:
   on this workstation, no cluster GPU needed (features already extracted).
 
 ## Log — newest first
+### 2026-07-18 — splits built; finetune prototyped → marginal effect (feature-limited)
+- Built cross-dataset homology splits with **mmseqs** (`build_splits.py`; Biopython
+  single-linkage collapsed to 1 cluster at 30% — chaining — so switched to mmseqs
+  `-c 0.8`). Only 4 mixed Tsu↔FP clusters per threshold. Committed `0b83b23`.
+- Fixed an sklearn gotcha: toggling `early_stopping` across warm-start `fit` calls
+  raises (`best_loss_` None); keep `early_stopping=False` in both stages.
+- **Prototype (50% split, 3-seed MLP, fp_test=14 prot/287 muts):**
+  A tsu-only FP-test r=0.487 / Tsu-test r=0.757; B fp-only 0.402 / 0.652;
+  C pooled 0.444 / 0.758; **D finetune (lr1e-3,it500) 0.496 / 0.763** (Tsu RMSE
+  0.667→0.726 = mild forgetting). Aggressive lr3e-3 hurt both.
+- **Finding:** finetuning barely helps FireProt (+0.01 r); nothing beats Tsuboyama-only;
+  FireProt-only is *worst* on FP-test. FP-test looks **feature-limited (~0.5 ceiling)**,
+  not training-data-limited — same bottleneck story as 05/06. Pending: confirm across
+  30/50/90 thresholds (full sweep) + decide whether to write up as-is or try le500 /
+  a different finetune.
 ### 2026-07-18 — planned + initialized
 - Locked design with user: sequential warm-start fine-tune (not pooled); FireProt **≤200**
   to start; cross-dataset homology split **swept at 30/50/90 %**. Conditions A (Tsu-only)
