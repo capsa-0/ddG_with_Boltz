@@ -1,28 +1,30 @@
 # Status — 06_mlp_generalization
 
-**State:** 🚧 In progress
+**State:** ✅ Done
 **Last updated:** 2026-07-18
 
 ## Current state
-Replication of `01_generalization` with an **MLP** regressor in place of HGB, same
-corpus/features/holdouts (`tsuboyama_bench_fast`, 12,359 muts, 256 raw-Δz features,
-`rawz_features.parquet`). The `mlp` estimator was redesigned (commit `215a6ce`) from
-a lone single-seed `MLPRegressor((256,64))` — which was unstable across group folds
-(non-monotonic homology) — to a **5-seed `VotingRegressor`** of a deeper,
-L2-regularized MLP `(256,128,64), alpha=3e-3, patient early stopping`, fit in
-parallel. The discarded single-seed variant is not reported.
-
-Homology sweep done; main 7-holdout job still running (writing at the very end).
+Complete. Replication of `01_generalization` with an **MLP** (5-seed
+`VotingRegressor` of `(256,128,64), alpha=3e-3` nets, commit `215a6ce`) in place of
+HGB — same corpus/features/holdouts (`tsuboyama_bench_fast`, 12,359 muts, 256 raw-Δz
+features). **Headline: MLP matches/slightly beats HGB on every holdout** (random
+0.803, protein 0.792, homology 0.781/0.785/0.790, per-protein mean 0.827) → the
+generalization is a property of the raw-Δz representation, not the model. README,
+details, figures, combined `benchmark_summary.csv` all committed. Benchmark output on
+cluster: `data/processed/tsuboyama_bench_fast/benchmark_rawz_mlp[_cl{30,50,90}]/`.
 
 ## Next steps
-- [ ] Main job 212168 finishes → pull `benchmark_rawz_mlp/benchmark_summary.csv`.
-- [ ] Build MLP-vs-HGB comparison figure + README + figures/README index.
-- [ ] Update top-level `results/README.md` index + `history.md`.
+- [ ] None — result settled. (Follow-up, not blocking: parallelize the eval fold
+      loop, `ddg/evaluation/benchmark.py`, to cut the 332-fold substitution cost.)
 
 ## Blockers
 - None.
 
 ## Log — newest first
+### 2026-07-18 — completed + written up
+- Main job 212168 COMPLETED (~75 min). Full MLP numbers pulled; MLP ≥ HGB on all
+  holdouts. Built comparison figure `figures/01_mlp_vs_hgb_holdouts.png`, README,
+  details.md, figures index; updated top-level `results/README.md` + `history.md`.
 ### 2026-07-18 — MLP replication run
 - Redesigned `ddg/evaluation/models.py` `mlp` → 5-seed VotingRegressor (commits
   `0845ba2`, `215a6ce`). First single-seed attempt gave unstable homology
