@@ -21,6 +21,12 @@ Name folders `NN_short_slug` in the order they were produced (`01_generalization
 ### Recommended
 
 - **`report.(pdf\|md)`** — the narrative write-up, once the result is settled.
+  **Paper-facing: include only what would appear in a paper** — motivation, methods,
+  results, figures/tables, and interpretation. **Exclude** everything that is not part
+  of the scientific story: data provenance and file paths, pipeline/plumbing details,
+  job IDs, and any account of problems encountered or how the corpus was assembled
+  (partial runs, bug fixes, retries). Those belong in `status.md` (the debugging/work
+  log), the README **provenance table**, and `details.md` — never in `report.*`.
 - **`details.md`** — methods/provenance appendix: exact hyperparameters, split
   definitions, per-number provenance behind the README's summary statements.
 - **Result tables** — the raw `*.csv` / `*.json` the figures and headline numbers

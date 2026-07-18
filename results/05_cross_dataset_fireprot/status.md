@@ -52,6 +52,22 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-18 — extending to ≤500 aa: running the 201–500 band separately
+- Goal: extend the FireProt transfer test from ≤200 aa to **≤500 aa** by running only
+  the **excluded band** (201–500 aa) and merging with the existing `fireprot_le200`
+  features (proteins are disjoint by length, so the merge is a clean concat).
+- Band source: `data/raw/fireprot_201to500.csv` = `fireprot_filtered.csv` sliced to
+  201≤seqlen≤500 → **1,662 muts / 53 proteins** (all valid: 0 wt/pos mismatch, 0 NaN
+  id, 0 overlap with the 85 le200 proteins). Config `experiment_configs/fireprot_201to500.yaml`
+  (clone of le200). Committed `15e00c1`, pushed, pulled on cluster.
+- Combined ≤500 target = 85 + 53 = **138 proteins / 3,205 muts** (note: this keeps the
+  3 UniProt-less proteins that `fireprot_filtered_500.csv` had dropped).
+- Submitted chain: **prepare 212245 → predict 212246** (8 shards, `%3`,
+  `--exclude=nodo3,nodo5,nodo11,nodo12,nodo14,nodo15,sauron`) **→ slim 212247 → features 212248**.
+  Watch: prepare fetches **53** new base MSAs from the ColabFold server (bigger load
+  than the 3 before); proteins are larger (mean 371 aa, max 477) so predict is heavier.
+- Next when features land: concat the two `features_summary.parquet` → `fireprot_le500`
+  merged table, re-run `ddg.evaluation.transfer` on the ≤500 corpus, compare to ≤200.
 ### 2026-07-18 — added report.pdf
 - Wrote `build_report.py` (self-contained; reads the committed summaries/per_protein
   + processed parquets, embeds figures as base64, renders via `wkhtmltopdf` — no LaTeX)
