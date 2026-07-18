@@ -61,6 +61,21 @@ tree model; the MLP is a viable interchangeable regressor.
 Same known weakness as 01: the predicted-vs-actual slope is < 1 (under-prediction of
 the most destabilizing mutations); the model interpolates, it does not extrapolate.
 
+## Error depends on training density (figs 08–09)
+
+Binning the random-holdout predictions by measured ΔΔG makes the weakness precise
+(`08_error_vs_ddg.png`): a clean regression-to-mean bias line (over-predicts low ΔΔG,
+under-predicts high) crossing zero near the training mode, with RMSE/MAE minimized in
+the dense center (~0.4 kcal/mol) and rising toward both tails (~2.3 at ΔΔG≈4.75). The
+±SD band is roughly flat, so the tail error is **systematic bias, not added variance**.
+
+`09_density_vs_error.png` isolates the cause: relating per-bin error to the **training
+observation density** in ΔΔG space (KDE of the Tsuboyama labels), test error is almost
+perfectly anti-correlated with training density — **Spearman ρ = −0.97 (bins)**, −0.40
+(points), log-log slope ≈ −0.3. The model's accuracy at a given ΔΔG is set by how
+densely the training set sampled that value; the extrapolation limit is a
+training-coverage effect, not model-specific (cf. the same pattern under transfer in 05).
+
 ## Files
 - `benchmark_summary.csv` — the numbers above (7 holdouts + 3 homology thresholds).
 - `details.md` — model design (why an ensemble), hyperparameters, provenance, the

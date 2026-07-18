@@ -21,6 +21,13 @@ cluster: `data/processed/tsuboyama_bench_fast/benchmark_rawz_mlp[_cl{30,50,90}]/
 - None.
 
 ## Log — newest first
+### 2026-07-18 — added error-vs-ΔΔG + training-density diagnostics (figs 08–09)
+- Pulled the random-holdout OOF predictions (`benchmark_rawz_mlp/predictions/random.parquet`)
+  and ran `ddg.evaluation.error_curves` (training density = `rawz_features.parquet` ddg).
+- `08_error_vs_ddg.png`: regression-to-mean bias, RMSE ~0.41 (center) → ~2.3 (ΔΔG≈4.75),
+  bias-dominated (flat ±SD). `09_density_vs_error.png`: test error vs training density,
+  **Spearman ρ = −0.969 (bins)**, −0.402 (points), log-log slope −0.31. Error is set by
+  training density in ΔΔG space (same as the 05 transfer). Updated README + figures index.
 ### 2026-07-18 — completed + written up
 - Main job 212168 COMPLETED (~75 min). Full MLP numbers pulled; MLP ≥ HGB on all
   holdouts. Built comparison figure `figures/01_mlp_vs_hgb_holdouts.png`, README,
