@@ -12,6 +12,14 @@ Both tables must be raw-Δz feature tables (``zdiag_*`` + ``zpool_*`` columns, p
 ``wt_id``/``mutation``/``ddg``). The model is the benchmark's pipeline
 (median-impute -> standardize -> estimator); ``hgb`` by default.
 
+Linear recalibration
+--------------------
+Transferred predictions are affinely miscalibrated (compressed toward the mean on an
+out-of-range target). The eval also reports an out-of-sample (5-fold CV) linear
+recalibration ``real ≈ a + b·pred`` — a ``pred_corrected`` column, ``corrected_*``
+pooled metrics, and a ``scatter_corrected.png``. It lowers RMSE/MAE but, being affine,
+leaves Pearson/Spearman unchanged.
+
 Sign convention
 ---------------
 ΔΔG sign conventions can differ between datasets (FireProt ``ddG`` vs Tsuboyama
@@ -54,6 +62,27 @@ def _matrix(df: pd.DataFrame, feat_cols: list[str]) -> np.ndarray:
     """Feature matrix on a fixed column set; inf -> NaN (imputer handles NaN)."""
     return df.reindex(columns=feat_cols).replace([np.inf, -np.inf], np.nan) \
              .to_numpy(dtype=float)
+
+
+def _cv_linear_calibration(y, pred, k: int = 5, seed: int = 0):
+    """
+    Out-of-sample affine recalibration of ``pred`` toward ``y``.
+
+    Transferred predictions are affinely miscalibrated (compressed toward the mean on
+    an out-of-range target dataset). Fit ``y ≈ a + b·pred`` by k-fold CV — each point
+    is corrected by a fit that never saw it — so the corrected metrics aren't fitted on
+    the points they score. This is a scale/offset fix only: it lowers RMSE/MAE but
+    leaves Pearson/Spearman unchanged (correlation is invariant to affine transforms).
+
+    Returns (corrected_predictions, global_intercept_a, global_slope_b).
+    """
+    from sklearn.model_selection import KFold
+    cor = np.full(len(y), np.nan, dtype=float)
+    for tr, te in KFold(n_splits=k, shuffle=True, random_state=seed).split(pred):
+        b, a = np.polyfit(pred[tr], y[tr], 1)
+        cor[te] = a + b * pred[te]
+    b, a = np.polyfit(pred, y, 1)   # global coeffs, for reporting
+    return cor, float(a), float(b)
 
 
 def run_transfer(
@@ -106,8 +135,13 @@ def run_transfer(
         pooled = compute_metrics(y_te, pred)
         sign_flipped = True
 
+    # Out-of-sample linear recalibration (scale/offset fix; see helper).
+    pred_cor, cal_a, cal_b = _cv_linear_calibration(y_te, pred)
+    pooled_corrected = compute_metrics(y_te, pred_cor)
+
     labelled = add_label_columns(test_df).reset_index(drop=True)
-    pred_df = pd.DataFrame({"y": y_te, "pred": pred, "unit": labelled["protein"]})
+    pred_df = pd.DataFrame({"y": y_te, "pred": pred, "pred_corrected": pred_cor,
+                            "unit": labelled["protein"]})
 
     per_unit_rows = []
     for unit, g in pred_df.groupby("unit"):
@@ -117,6 +151,9 @@ def run_transfer(
 
     return {
         "pooled": pooled,
+        "pooled_corrected": pooled_corrected,
+        "cal_intercept": cal_a,
+        "cal_slope": cal_b,
         "dist": dist,
         "sign_flipped": sign_flipped,
         "per_protein": per_protein,
@@ -127,13 +164,15 @@ def run_transfer(
 
 
 def _scatter(pred_df: pd.DataFrame, pooled: dict, label_train: str,
-             label_test: str, path: Path) -> None:
+             label_test: str, path: Path, *, pred_col: str = "pred",
+             color: str = "#4C72B0", ylabel: str | None = None,
+             title_suffix: str = "") -> None:
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     fig, ax = plt.subplots(figsize=(5.6, 5.4))
-    ax.scatter(pred_df["y"], pred_df["pred"], s=10, alpha=0.4,
-               color="#4C72B0", edgecolors="none")
+    ax.scatter(pred_df["y"], pred_df[pred_col], s=10, alpha=0.4,
+               color=color, edgecolors="none")
     # Scale each axis to its own data range (predictions span a much narrower band
     # than measured ΔΔG, so a shared range leaves the y-axis mostly empty). Draw the
     # y=x reference only across the range visible on both axes so it doesn't stretch
@@ -143,14 +182,14 @@ def _scatter(pred_df: pd.DataFrame, pooled: dict, label_train: str,
         m = (hi - lo) * pad or 1.0
         return lo - m, hi + m
     xlo, xhi = _lim(pred_df["y"])
-    ylo, yhi = _lim(pred_df["pred"])
+    ylo, yhi = _lim(pred_df[pred_col])
     d0, d1 = max(xlo, ylo), min(xhi, yhi)
     ax.plot([d0, d1], [d0, d1], "--", color="0.4", lw=1)
     ax.set_xlim(xlo, xhi)
     ax.set_ylim(ylo, yhi)
     ax.set_xlabel(f"Measured ΔΔG ({label_test})")
-    ax.set_ylabel(f"Predicted ΔΔG (trained on {label_train})")
-    ax.set_title(f"Transfer {label_train} → {label_test}\n"
+    ax.set_ylabel(ylabel or f"Predicted ΔΔG (trained on {label_train})")
+    ax.set_title(f"Transfer {label_train} → {label_test}{title_suffix}\n"
                  f"r={pooled['pearson']:.3f}  ρ={pooled['spearman']:.3f}  "
                  f"RMSE={pooled['rmse']:.2f}  n={pooled['n']}")
     ax.grid(True, alpha=0.3)
@@ -184,7 +223,10 @@ def main() -> None:
         "n_train": int(len(train_df)), "n_test": int(len(test_df)),
         "n_test_proteins": int(test_df["wt_id"].nunique()),
         "sign_flipped": res["sign_flipped"],
+        "cal_intercept": res["cal_intercept"],
+        "cal_slope": res["cal_slope"],
         **{f"pooled_{k}": v for k, v in res["pooled"].items()},
+        **{f"corrected_{k}": v for k, v in res["pooled_corrected"].items()},
         **res["dist"],
     }
     (out / "transfer_summary.json").write_text(json.dumps(summary, indent=2))
@@ -194,12 +236,20 @@ def main() -> None:
     res["predictions"].to_parquet(out / "predictions.parquet", index=False)
     _scatter(res["predictions"], res["pooled"], args.label_train,
              args.label_test, out / "scatter.png")
+    _scatter(res["predictions"], res["pooled_corrected"], args.label_train,
+             args.label_test, out / "scatter_corrected.png",
+             pred_col="pred_corrected", color="#55934f",
+             ylabel="Predicted ΔΔG — linear-corrected",
+             title_suffix=" (linear-corrected, 5-fold CV)")
 
-    p = res["pooled"]
+    p, pc = res["pooled"], res["pooled_corrected"]
     print(f"\n=== transfer {args.label_train} -> {args.label_test} "
           f"({res['model']}, sign_flipped={res['sign_flipped']}) ===")
-    print(f"pooled: r={p['pearson']:.3f}  rho={p['spearman']:.3f}  "
+    print(f"pooled:     r={p['pearson']:.3f}  rho={p['spearman']:.3f}  "
           f"RMSE={p['rmse']:.3f}  MAE={p['mae']:.3f}  n={p['n']}")
+    print(f"lin-corr:   r={pc['pearson']:.3f}  rho={pc['spearman']:.3f}  "
+          f"RMSE={pc['rmse']:.3f}  MAE={pc['mae']:.3f}  "
+          f"(real ≈ {res['cal_intercept']:.3f} + {res['cal_slope']:.3f}·pred)")
     d = res["dist"]
     print(f"per-protein: r={d['pearson_mean']:.3f}±{d['pearson_sd']:.3f}  "
           f"(units={d['n_units']}, scored={d['n_units_scored']})")
