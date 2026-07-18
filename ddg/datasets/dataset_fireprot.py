@@ -61,13 +61,28 @@ class FireProtDataset(MutationDataset):
 
         return MutationSample(
             sample_id=row["sample_id"],
-            wt_id=row["uniprot_id"],
+            wt_id=self.get_wt_id(row),
             mutation=self.get_mutation(row),
             sequence_wt=row["sequence"],
-            ddg=None if self.mode != "train" else float(row["ddG"]), 
+            ddg=None if self.mode != "train" else float(row["ddG"]),
             metadata=metadata
         )
-    
+
+    def get_wt_id(self, row) -> str:
+        """
+        Protein identifier used to key MSAs/queries and to group by protein.
+
+        FireProt's primary key is ``uniprot_id``, but some entries (e.g. ThreeFoil
+        / 3PG0, 2IMM, 1YYX) have no UniProt mapping while still carrying a valid
+        ``pdb_id`` + sequence. Falling back to ``pdb_id`` keeps those proteins in
+        the corpus instead of silently dropping every mutation with a NaN wt_id.
+        """
+        for col in ("uniprot_id", "pdb_id"):
+            val = row.get(col)
+            if isinstance(val, str) and val.strip():
+                return val
+        return row["uniprot_id"]  # NaN -> handled/dropped downstream as before
+
     def get_mutation(self, row) -> str:
         """Parse mutation string from row."""
         return f"{row['wild_type']}{row['position']}{row['mutation']}"
