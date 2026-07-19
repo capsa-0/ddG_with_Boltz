@@ -3,24 +3,25 @@
 **State:** ✅ Done — redone on FireProt ≤500. Revised verdict: fine-tuning does NOT reliably beat Tsuboyama-only transfer (the ≤200 gain washed out on the bigger test).
 **Last updated:** 2026-07-18
 
-## Results (concat + antisymmetry; A = Tsuboyama-only, B = FireProt-only, D = fine-tuned)
+## Results — FireProt ≤500 (concat + antisymmetry; A=Tsuboyama-only, B=FireProt-only, D=fine-tuned)
 
 Pooled Pearson r (best per row bold):
 
-| Identity | FireProt-test A / B / **D** | Tsuboyama-test A / B / D |
-|---|---|---|
-| 30% | 0.466 / 0.477 / **0.522** | 0.794 / 0.680 / 0.790 |
-| 50% | 0.507 / 0.505 / **0.528** | 0.787 / 0.692 / 0.784 |
-| 90% | 0.355 / 0.291 / 0.343 | 0.790 / 0.678 / 0.778 |
+| Identity | FireProt-test A / B / D | Tsuboyama-test A / B / D | fp_test prot |
+|---|---|---|---|
+| 30% | **0.606** / 0.510 / 0.598 | 0.801 / 0.721 / 0.795 | 25 |
+| 50% | **0.599** / 0.557 / 0.562 | 0.777 / 0.655 / 0.760 | 27 |
+| 90% | 0.514 / 0.521 / **0.560** | 0.607* / 0.721 / 0.503* | 27 |
 
-FireProt-test Spearman under D also rises: 0.69→0.74, 0.67→0.72, 0.66→0.69.
+FireProt-test Spearman A→D: 0.58→0.59, 0.56→0.57, 0.53→0.61 (D marginally ≥ A). *90% tsu-test is
+a calibration outlier (A Pearson 0.61 vs Spearman 0.78) — unreliable for the forgetting check.
 
-**Verdict:** fine-tuning (D) is the **only condition good on both** — it beats **both** baselines
-on FireProt-test at 30/50 % (and Spearman at all thresholds) while keeping Tsuboyama (≤0.012 drop).
-The **FireProt-only baseline (B)** matches the transfer on FireProt but **collapses on Tsuboyama**
-(0.79→~0.68) — training on the small FireProt set alone throws away the Tsuboyama signal
-(echoes ThermoMPNN). So fine-tuning *combines* the datasets rather than trading one for the other;
-gain is modest, feature-bounded. (90 % row = smallest/noisiest fp_test: Pearson dips, Spearman rises.)
+**Verdict (revised on ≤500):** **fine-tuning does NOT reliably beat Tsuboyama-only transfer.**
+On FireProt-test, plain Tsuboyama-only (A) is best in Pearson at 30/50 %; D wins only at 90 %;
+Spearman ≈ tied. The earlier ≤200 "fine-tuning helps modestly" was a small-test artifact (13–17
+proteins) — on 25–27 test proteins it washes out. Field-consistent with ThermoMPNN. The robust
+effect survives: **FireProt-only (B) forgets Tsuboyama** (tsu-test 0.72/0.66 vs A 0.80/0.78). The
+winning recipe is big-corpus pretraining + transfer (cf. 05), not fine-tuning the small target set.
 
 ## Current state
 **Question:** does *sequentially fine-tuning* a Tsuboyama-pretrained ΔΔG regressor on
