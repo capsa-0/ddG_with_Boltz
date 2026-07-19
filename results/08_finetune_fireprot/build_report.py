@@ -122,6 +122,18 @@ because training on the small target set alone discards the broad Tsuboyama sign
 conclusion is that the predictor's accuracy is set by the pair-track features and the coverage of
 the large pretraining corpus, not by exposure to FireProt labels; big-corpus pretraining followed
 by transfer is the recipe, and fine-tuning on the small target set adds little.</p>
+
+<h2>5. Fine-tuning fixes calibration, not skill</h2>
+<p>One effect fine-tuning <i>does</i> have is on <b>calibration</b>, separate from correlation.
+A Tsuboyama-only model, trained on a narrow ΔΔG range, badly under-predicts magnitude on FireProt
+— its predictions span only ~43 % of the true spread (predicted-vs-experimental slope ≈ 0.26).
+Fine-tuning adds FireProt's wide-range examples, and the predictions decompress markedly: at the
+50 % split the slope rises to ≈ 0.42 and the spread to ~76 % of the true range. Yet accuracy
+(RMSE) barely moves — because the optimal spread for a model with this correlation (r ≈ 0.56) is
+only ~56 % of the true range, so fine-tuning actually <i>overshoots</i> the calibration optimum,
+trading systematic under-prediction for over-spread. The binding limit is the <b>ranking ceiling
+(r)</b>, set by the features, which fine-tuning does not move. In short: fine-tuning corrects the
+magnitude bias but not the predictive skill — the same conclusion from a different angle.</p>
 </body></html>"""
 
 (R / "report.html").write_text(HTML)

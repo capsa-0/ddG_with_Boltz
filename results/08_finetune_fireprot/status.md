@@ -108,6 +108,13 @@ Headline readouts, per identity threshold:
   on this workstation, no cluster GPU needed (features already extracted).
 
 ## Log — newest first
+### 2026-07-19 — measured decompression: fine-tuning fixes calibration, not skill
+- Checked whether fine-tuning changes the magnitude compression (pred-vs-real slope) on fp_test.
+  At the 50% split: **A (transfer) slope 0.26, pred/real SD ratio 0.43; D (finetuned) slope 0.42,
+  SD ratio 0.76.** So fine-tuning DECOMPRESSES clearly (predictions span 76% of the true range vs
+  43%) — adding FireProt's wide range teaches larger magnitudes. But RMSE ~flat (out-of-range
+  3.24→3.05) because D overshoots the RMSE-optimal spread (optimal ≈ r ≈ 0.56); the binding limit
+  is the ranking ceiling r, which fine-tuning doesn't move. Added report section 5 (calibration vs skill).
 ### 2026-07-19 — redone with FireProt ≤500 → fine-tuning benefit washes out
 - Rebuilt cross-dataset homology splits with 138 FireProt proteins (fp_test now 25–27 prot,
   was 13–17). Re-ran A/B/D with concat+antisymmetry on ≤500.
