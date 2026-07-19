@@ -125,20 +125,20 @@ property of the features/objective (cf. `02_`), not the model.
 
 Every holdout so far splits *within* Tsuboyama. The real test is transfer to an
 independently curated dataset. We trained on **all 12,359 Tsuboyama mutations** and
-predicted — with no refitting — **all 1,543 FireProt mutations** (85 real proteins
-≤200 aa, `experiment_configs/fireprot_le200.yaml`, raw-Δz features). FireProt is a
-genuine adversary: **zero `wt_id` overlap** with the training set, a different
-stability assay, and a much wider ΔΔG range ([−13.7, +12.0]).
+predicted — with no refitting — **all 3,205 FireProt ≤500 aa mutations** (138 real
+proteins, raw-Δz features). FireProt is a genuine adversary: **zero `wt_id` overlap**
+with the training set, a different stability assay, and a much wider ΔΔG range
+([−13.7, +12.0]).
 
-It **transfers**: pooled **r = 0.62 / ρ = 0.68** (MLP; HGB 0.61, within noise —
-same representation-not-model story as `06_`), per-protein **median r = 0.67** (70 %
-of proteins r > 0.5). The Boltz raw-Δz signal is **not a Tsuboyama artifact** — it
-generalizes to independently sourced stability data. The ceiling is again
-**magnitude, not ranking** (cf. `02_`): the predicted-vs-measured slope is 0.26 and
-predictions span only ~40 % of the true spread, so the model regresses hard toward
-the mean on FireProt's out-of-range tails. Useful for **ranking/triage**, not
-absolute ΔΔG. (Aside: reaching the full corpus required fixing a FireProt-adapter
-bug that had silently dropped 3 UniProt-less proteins keyed only by `pdb_id`.)
+It **transfers**: pooled **r = 0.65 / ρ = 0.66** (MLP; HGB 0.62, within noise —
+same representation-not-model story as `06_`), per-protein **median r = 0.65**. This is
+**on par with the published state of the art** — ThermoMPNN and the AFToolkit framework
+report ~0.65 Pearson transferring to FireProt from the same Megascale/Tsuboyama data with
+AlphaFold2 / GNN backbones; the Boltz-2 raw-Δz pipeline reaches the same level with a
+simple regressor. The ceiling is again **magnitude, not ranking** (cf. `02_`): slope 0.27,
+predictions span ~40 % of the true spread, and error is almost perfectly anti-correlated
+with training density in ΔΔG space (ρ = −0.96). Useful for **ranking/triage**, not absolute
+ΔΔG on out-of-range mutations.
 
 ## 8. Two improvements adopted as the default → `07_feature_symmetry_ablation/`
 
@@ -156,9 +156,23 @@ holdout) settled both, and **from here on they are the project default:**
   is *only* safe with concat — applied to Δz (feature negation) it forces an odd-function
   model that collapses Tsuboyama's calibration (Pearson 0.79→0.60, Spearman intact).
 
-Net: **concat + antisymmetry** — neutral on Tsuboyama, a real gain on FireProt. The
-residual gap to the notebook's 0.63 is the one variable not yet tested (`mutate_across_msa`
-+ the larger ≤500 corpus). Later experiments (the finetuning study, `08_`) use these.
+Net: **concat + antisymmetry** — neutral on Tsuboyama, best FireProt config. The residual
+gap to the old notebook's 0.63 is the one variable not yet tested (`mutate_across_msa`).
+Later experiments use these defaults.
+
+## 9. Does fine-tuning on FireProt help? → `08_finetune_fireprot/`
+
+Given a Tsuboyama-pretrained model, can fine-tuning on FireProt improve FireProt accuracy
+without forgetting Tsuboyama? Under a cross-dataset homology split (Tsuboyama + FireProt ≤500
+clustered together, 30/50/90 % identity), we compared Tsuboyama-only (A), FireProt-only (B),
+and fine-tuned (D). On the ≤500 test set (25–27 held-out proteins) **fine-tuning does not
+reliably beat plain transfer** — Tsuboyama-only is the best FireProt-test model in Pearson at
+30/50 %, fine-tuning only at 90 %, rank correlation ~tied. (A smaller ≤200 test had hinted at a
+modest gain; it washed out on the larger set.) The one robust effect is that **FireProt-only
+training forgets Tsuboyama.** This matches the field (ThermoMPNN) and this project's own
+density-limited picture: accuracy is set by the features and the coverage of the large
+pretraining corpus, not by exposure to the small target set. **Big-corpus pretraining +
+transfer is the recipe.**
 
 ---
 
