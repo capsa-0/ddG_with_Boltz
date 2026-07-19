@@ -1,6 +1,6 @@
 # Status — 08_finetune_fireprot
 
-**State:** ✅ Done — finetuning gives a modest FireProt gain, no Tsuboyama forgetting
+**State:** ✅ Done — redone on FireProt ≤500. Revised verdict: fine-tuning does NOT reliably beat Tsuboyama-only transfer (the ≤200 gain washed out on the bigger test).
 **Last updated:** 2026-07-18
 
 ## Results (concat + antisymmetry; A = Tsuboyama-only, B = FireProt-only, D = fine-tuned)
@@ -107,6 +107,15 @@ Headline readouts, per identity threshold:
   on this workstation, no cluster GPU needed (features already extracted).
 
 ## Log — newest first
+### 2026-07-19 — redone with FireProt ≤500 → fine-tuning benefit washes out
+- Rebuilt cross-dataset homology splits with 138 FireProt proteins (fp_test now 25–27 prot,
+  was 13–17). Re-ran A/B/D with concat+antisymmetry on ≤500.
+- **FireProt-test Pearson (A/B/D):** 30% 0.606/0.510/0.598; 50% 0.599/0.557/0.562; 90% 0.514/0.521/0.560.
+  **Tsuboyama-only (A) is best at 30/50%; D wins only at 90%; Spearman ~tied (D marginally ahead).**
+  So the ≤200 "fine-tuning helps modestly" was a small-test artifact — it washes out on ≤500.
+  Field-consistent (ThermoMPNN). Robust effect: **B (FP-only) forgets Tsuboyama** (tsu-test 0.72/0.66
+  vs A 0.80/0.78). (90% tsu-test is a calibration outlier: A Pearson 0.61 vs Spearman 0.78.)
+- Regenerated figure, README, report with the revised conclusion.
 ### 2026-07-18 — added FireProt-only baseline (B); it strengthens the story
 - Added condition **B (FireProt-only)** to `run_finetune.py` (fresh model on `fp_finetune`
   with its own scaler) — the missing baseline. FireProt-test: B 0.477/0.505/0.291 vs A

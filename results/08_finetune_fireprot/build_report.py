@@ -60,12 +60,13 @@ HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <p class="sub">Experiment 08 · ddG_with_Boltz · concat features + antisymmetry · MLP · cross-dataset homology holdout.</p>
 
 <div class="headline">
-A ΔΔG regressor pretrained on Tsuboyama and then <b>sequentially fine-tuned on FireProt</b> is
-the <b>only</b> configuration that is good on both datasets: it beats both a Tsuboyama-only and a
-FireProt-only baseline on FireProt-test (at 30/50 % identity, and on Spearman throughout) while
-losing essentially nothing on Tsuboyama (≤0.012 Pearson). Training on FireProt alone matches the
-transfer on FireProt but collapses on Tsuboyama — so fine-tuning genuinely combines the two
-datasets rather than trading one for the other. The gain is modest, bounded by the feature ceiling.
+On a FireProt ≤500 test set of 25–27 homology-held-out proteins, <b>sequentially fine-tuning</b>
+a Tsuboyama-pretrained ΔΔG regressor on FireProt <b>does not reliably improve FireProt accuracy</b>:
+plain Tsuboyama-only transfer is the best in Pearson at the 30 % and 50 % thresholds, fine-tuning
+wins only at 90 %, and in rank correlation the two are within noise. The one robust effect is that
+training on FireProt <b>alone</b> forgets Tsuboyama. The winning recipe is therefore big-corpus
+pretraining + transfer, not fine-tuning on the small target set — consistent with the published
+literature and with this project's density-limited picture of the error.
 </div>
 
 <h2>1. Motivation</h2>
@@ -102,23 +103,24 @@ evaluated on Tsuboyama-test and FireProt-test.</p>
 </table>
 
 <figure><img src="{fig}">
-<figcaption><b>Figure 1.</b> Pooled Pearson r for A / B / D. Left: FireProt-test (D best at
-30/50%). Right: Tsuboyama-test — FireProt-only (B) drops to ~0.68 while A and D stay ~0.79
-(D does not forget).</figcaption></figure>
+<figcaption><b>Figure 1.</b> Pooled Pearson r for A / B / D. Left: FireProt-test — Tsuboyama-only
+(A) is best at 30/50 %, fine-tuning (D) only at 90 %. Right: Tsuboyama-test — FireProt-only (B)
+drops well below A/D (forgets); the 90 % A/D bars are a calibration outlier on that split.</figcaption></figure>
 
 <h2>4. Discussion</h2>
-<p>The fine-tuned model (D) is the <b>only condition that is strong on both datasets</b>. On
-FireProt-test it beats both baselines at 30% and 50% identity and improves Spearman at all three
-thresholds; on Tsuboyama-test it is within ≤0.012 of the Tsuboyama-only model — no meaningful
-forgetting. The FireProt-only baseline (B) is instructive: it matches the transfer <i>on
-FireProt</i>, but its Tsuboyama-test correlation collapses from ~0.79 to ~0.68 — training on the
-small FireProt set alone discards the broad Tsuboyama signal. Fine-tuning therefore <i>combines</i>
-the two datasets rather than trading one for the other. The overall size of the gain is modest —
-the predictor's accuracy is set largely by the pair-track features, so adding FireProt labels
-refines rather than transforms it. At the strictest 90% split the FireProt-test set is smallest
-and noisiest (231 mutations), where Pearson dips while Spearman still rises — a calibration wobble,
-not a loss of ranking. Sequential fine-tuning is a safe, mild improvement when a second labelled
-dataset is available.</p>
+<p>On this ≤500 test set — 25–27 homology-held-out proteins, ~2× the earlier ≤200 set —
+<b>fine-tuning does not reliably beat plain transfer</b>. In Pearson, Tsuboyama-only (A) is the best
+FireProt-test model at 30 % and 50 % identity; fine-tuning (D) wins only at 90 %, and in Spearman
+the two are within noise (D marginally ahead at all three). An earlier, smaller ≤200 experiment
+had suggested a modest fine-tuning gain; on the larger, less noisy test set that gain washes out,
+which is the more trustworthy reading. The result is consistent with the published literature
+(ThermoMPNN reports that fine-tuning on FireProt does not reliably help and that training on
+FireProt alone degrades). The one robust effect here is exactly that: the <b>FireProt-only baseline
+(B) forgets Tsuboyama</b> — its Tsuboyama-test correlation drops from ~0.80 to ~0.66–0.72 —
+because training on the small target set alone discards the broad Tsuboyama signal. The practical
+conclusion is that the predictor's accuracy is set by the pair-track features and the coverage of
+the large pretraining corpus, not by exposure to FireProt labels; big-corpus pretraining followed
+by transfer is the recipe, and fine-tuning on the small target set adds little.</p>
 </body></html>"""
 
 (R / "report.html").write_text(HTML)

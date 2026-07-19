@@ -33,7 +33,7 @@ OUT = ROOT / "results/08_finetune_fireprot"
 Z, N_SEED = 128, 5
 FEAT = [f"{p}_{j}" for p in ("wtz", "mtz") for j in range(Z)]   # concat features
 TSU = pd.read_parquet(ROOT / "data/processed/tsuboyama_bench_fast/features_ablation.parquet")
-FP = pd.read_parquet(ROOT / "data/processed/fireprot_le200/features_ablation.parquet")
+FP = pd.read_parquet(ROOT / "data/processed/fireprot_le500/features_ablation.parquet")
 
 
 def xy(df, ids):

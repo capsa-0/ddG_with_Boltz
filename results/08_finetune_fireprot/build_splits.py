@@ -35,7 +35,8 @@ COVERAGE = 0.8
 THRESHOLDS = {30: 0.30, 50: 0.50, 90: 0.90}
 
 tsu = _read_fasta(ROOT / "data/processed/tsuboyama_bench_fast/wt_sequences.fasta")
-fp = _read_fasta(ROOT / "data/processed/fireprot_le200/wt_sequences.fasta")
+fp = {**_read_fasta(ROOT / "data/processed/fireprot_le200/wt_sequences.fasta"),
+      **_read_fasta(ROOT / "data/processed/fireprot_201to500/wt_sequences.fasta")}  # ≤500
 assert not (set(tsu) & set(fp)), "wt_id collision across datasets"
 dataset = {**{k: "tsu" for k in tsu}, **{k: "fp" for k in fp}}
 combined = OUT / "combined_wt.fasta"
