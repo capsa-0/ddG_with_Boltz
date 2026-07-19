@@ -45,11 +45,11 @@ def _stats():
         recovered=pp[pp["unit"].isin(["3PG0", "2IMM", "1YYX"])]
             [["unit", "n", "pearson", "spearman", "rmse"]].values.tolist(),
         # defaults if the processed parquets aren't present
-        slope=0.26, pred_sd=0.72, meas_sd=1.72,
+        slope=0.27, pred_sd=0.66, meas_sd=1.58,
         fp_min=-13.7, fp_max=12.0, tsu_min=-2.7, tsu_max=5.7,
     )
-    pred_p = PROC / "fireprot_le200/transfer_from_tsuboyama/predictions.parquet"
-    fp_p = PROC / "fireprot_le200/features_summary.parquet"
+    pred_p = PROC / "fireprot_le500/transfer_from_tsuboyama/predictions.parquet"
+    fp_p = PROC / "fireprot_le500/features_summary.parquet"
     tsu_p = PROC / "tsuboyama_bench_fast/rawz_features.parquet"
     if pred_p.exists():
         pred = pd.read_parquet(pred_p)
@@ -85,6 +85,8 @@ def prot_row(i, v):
 
 scatter = img(R / "figures/01_transfer_scatter.png")
 hist = img(R / "figures/02_per_protein_r_hist.png")
+err_fig = img(R / "figures/03_error_vs_ddg.png")
+dens_fig = img(R / "figures/04_density_vs_error.png")
 
 HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>
 @page {{ size: A4; margin: 20mm 18mm; }}
@@ -116,7 +118,7 @@ ul {{ margin: 4px 0; }} li {{ margin: 2px 0; }}
 
 <h1>Cross-dataset transfer of a Boltz raw-Δz ΔΔG predictor</h1>
 <p class="sub"><b>Experiment 05 — Tsuboyama → FireProt.</b> ddG_with_Boltz project ·
-Generated 2026-07-18 · raw-Δz features, MLP (5-seed ensemble) primary model.</p>
+Generated 2026-07-19 · raw-Δz features, MLP (5-seed ensemble) primary model.</p>
 
 <div class="headline">
 A ΔΔG predictor trained on the entire <b>Tsuboyama</b> mega-scale folding dataset
@@ -137,7 +139,7 @@ source — Tsuboyama is one high-throughput folding assay on mostly small/design
 domains. The decisive question for a usable predictor is whether the signal carries
 to an <b>independently curated</b> dataset: different proteins, a different assay, and
 a different label provenance. We test transfer to <b>FireProt</b> (literature-derived
-stability measurements, ≤200 aa here).</p>
+stability measurements, ≤500 aa).</p>
 
 <h2>2. Data &amp; methods</h2>
 <ul>
@@ -146,7 +148,7 @@ stability measurements, ≤200 aa here).</p>
 (mutant−WT difference of the Boltz-2 pair track <i>z</i>: <code>zdiag_*</code> 128 +
 <code>zpool_*</code> 128).</li>
 <li><b>Test:</b> all {S['n_test']:,} FireProt mutations / {mlp['n_test_proteins']} proteins
-(<code>fireprot_le200/features_summary.parquet</code>), the <i>same</i> 256 features.</li>
+(<code>fireprot_le500/features_summary.parquet</code>), the <i>same</i> 256 features.</li>
 <li><b>Model:</b> the benchmark pipeline <code>SimpleImputer(median) → StandardScaler
 → estimator</code>, fit once on Tsuboyama and applied unchanged to FireProt. Primary
 estimator: a <b>5-seed MLP ensemble</b> (project default since exp 06);
@@ -218,39 +220,31 @@ features/objective, not of the estimator. <b>Practical consequence:</b> use for
 ranking, prioritization, and triage — not for absolute ΔΔG on mutations outside the
 training range.</p>
 
-<h2>5. Corpus completeness (provenance note)</h2>
-<p>Reaching the full corpus required two fixes, both logged in <code>status.md</code>:</p>
-<ul>
-<li>The originally committed feature table held only <b>773 / 54 proteins</b> — the
-<code>slim</code> step had run on a half-finished predict array, and
-<code>delete_raw: true</code> had deleted the raw embeddings, preventing a cheap resume.
-A clean full predict re-run reached <b>1,514 / 82</b>.</li>
-<li>The remaining 29 mutations belonged to <b>3 proteins</b> (3PG0/ThreeFoil, 2IMM,
-1YYX) that FireProt lists with only a <code>pdb_id</code>, no <code>uniprot_id</code>;
-the adapter keyed <code>wt_id</code> on <code>uniprot_id</code> alone and dropped them.
-A <code>pdb_id</code> fallback recovered all 29 → <b>{S['n_test']:,} / {S['n_prot']}</b>
-(the corpus used here).</li>
-</ul>
-<table>
-<caption>Table 3. Transfer for the 3 recovered (UniProt-less) proteins.</caption>
-<tr><th>Protein</th><th>n</th><th>Pearson r</th><th>Spearman ρ</th><th>RMSE</th></tr>
-{rows(S['recovered'], prot_row)}
-</table>
+<h2>5. Where the error lives: training coverage of ΔΔG</h2>
+<p>Splitting the test by the Tsuboyama training range ([−1, 4] kcal/mol, its central
+~98%) makes the ceiling precise. <b>In-range</b> (n={mlp['in_n']}) the model is genuinely
+good: Pearson <b>{mlp['in_pearson']:.2f}</b>, RMSE <b>{mlp['in_rmse']:.2f}</b>. <b>Out-of-range</b>
+(n={mlp['out_n']}) the error explodes: RMSE <b>{mlp['out_rmse']:.2f}</b>, and the per-tail
+correlation collapses — the predictions cannot reach ΔΔG values absent from training.</p>
+<figure><img src="{err_fig}">
+<figcaption><b>Figure 3.</b> Prediction error vs measured ΔΔG. A regression-to-mean bias
+(over-predicts low ΔΔG, under-predicts high), with error minimized in the dense centre and
+rising toward both tails; the ±SD band is flat, so tail error is systematic bias.</figcaption></figure>
+<p>The cause is <b>training density</b>, not FireProt itself: relating per-bin error to how
+densely Tsuboyama sampled each ΔΔG value, error is almost perfectly anti-correlated with
+density (Spearman ρ = <b>{mlp['density_error_spearman_bins']:.2f}</b>). Accuracy at a given ΔΔG
+is set by how much training data covered it — a coverage effect, identical across model
+families (cf. experiments 02 and 06).</p>
+<figure><img src="{dens_fig}">
+<figcaption><b>Figure 4.</b> Test error vs Tsuboyama training density in ΔΔG space. Left:
+density and error are mirror images along ΔΔG. Right: error falls monotonically with
+training density.</figcaption></figure>
 
-<h2>6. Provenance</h2>
-<p class="small">
-Train config <code>experiment_configs/tsuboyama_bench_fast.yaml</code> ·
-train features <code>data/processed/tsuboyama_bench_fast/rawz_features.parquet</code> ·
-test config <code>experiment_configs/fireprot_le200.yaml</code> ·
-test raw <code>data/raw/fireprot_le200.csv</code> ·
-test features <code>data/processed/fireprot_le200/features_summary.parquet</code> ·
-transfer code <code>ddg/evaluation/transfer.py</code> (commit 5e55812) ·
-outputs <code>data/processed/fireprot_le200/transfer_from_tsuboyama{{,_hgb}}/</code>.
-Cluster feature extraction: SLURM jobs 212209 (prepare) → 212210 (predict, 8 shards,
-1,628 structures) → 212211 (slim) → 212212 (features), all COMPLETED.
-<code>data/processed/</code> is gitignored; only configs, raw data, and
-<code>results/</code> are committed.
-</p>
+<h2>6. Context</h2>
+<p>The pooled r ≈ 0.65 matches the published state of the art for this transfer: ThermoMPNN
+and the AFToolkit framework report ~0.65 Pearson transferring to FireProt from the same
+Megascale/Tsuboyama training data using AlphaFold2 / graph-neural-network backbones. The
+Boltz-2 raw-Δz pipeline reaches the same level with a simple downstream regressor.</p>
 
 </body></html>"""
 

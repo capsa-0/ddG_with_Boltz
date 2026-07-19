@@ -1,18 +1,17 @@
 # Status — 05_cross_dataset_fireprot
 
-**State:** ✅ Done — full FireProt corpus (1,543 muts / 85 proteins) extracted and the
-Tsuboyama→FireProt transfer eval run. Headline: pooled **r=0.62 / ρ=0.68** (MLP),
-per-protein median r=0.67. README/figures written.
-**Last updated:** 2026-07-18
+**State:** ✅ Done — redone on the full **≤500** FireProt corpus (3,205 muts / 138 proteins).
+Headline: pooled **r=0.648 / ρ=0.659** (MLP; HGB 0.616), per-protein median r=0.65.
+**Last updated:** 2026-07-19
 
 ## Current state
 Cross-dataset transfer test: does the **Tsuboyama-trained** raw-Δz ΔΔG predictor
 generalize to the independent **FireProt** dataset? **Yes** — trained on all 12,359
-Tsuboyama mutations, tested with no refitting on all 1,543 FireProt mutations (85
-proteins, zero `wt_id` overlap): pooled **r=0.621, ρ=0.684, RMSE=1.41** (MLP; HGB
-r=0.607). Per-protein **median r=0.67** (70 % of proteins r>0.5). Same magnitude
-ceiling as 02/06: fit slope 0.26 — ranks well, under-predicts the tails.
-See `README.md` for the full write-up.
+Tsuboyama mutations, tested with no refitting on all **3,205 FireProt ≤500 aa mutations
+(138 proteins, zero `wt_id` overlap)**: pooled **r=0.648, ρ=0.659, RMSE=1.28** (MLP;
+HGB r=0.616). Per-protein **median r=0.65** (114/138 scored). Magnitude ceiling (slope
+0.27); error anti-correlates with training density (ρ=−0.96). On par with
+ThermoMPNN/AFToolkit (~0.65). See `README.md`/`report.pdf`.
 
 **Correction (2026-07-18):** the earlier claim that the FireProt feature pipeline was
 "complete" was wrong. `features_summary.parquet` (built 2026-07-17 15:39) contained
@@ -52,6 +51,14 @@ re-run from scratch (all 1,597 query structures) → slim → features.
   cleared and MSAs are now on disk under `data/processed/fireprot_le200/msas/`.
 
 ## Log — newest first
+### 2026-07-19 — redone on the full ≤500 corpus
+- ≤500 FireProt features assembled: `fireprot_le200` (1,543/85) + `fireprot_201to500`
+  (1,662/53, run with incremental per-shard slim) → merged `fireprot_le500` (**3,205 / 138**).
+- Re-ran the transfer (Tsuboyama→FireProt≤500): **MLP r=0.648 ρ=0.659 RMSE=1.28**; HGB r=0.616.
+  Per-protein median 0.65 (114/138 scored). In-range[-1,4] r=0.69/RMSE0.94; out-of-range RMSE 3.4.
+  density-vs-error ρ=−0.96. On par with ThermoMPNN/AFToolkit FireProt transfer (~0.65).
+- Updated figures (01–04), README, report.pdf (now paper-facing: provenance sections removed),
+  top-level index. State stays ✅ Done.
 ### 2026-07-18 — ≤500 extension shelved (cancelled)
 - The `fireprot_201to500` chain never landed: repeated GPU starvation (≤2 concurrent
   shards on the large ≤500 proteins) plus a slim failure on 2 transient-corrupt NPZs
