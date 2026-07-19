@@ -86,6 +86,7 @@ def prot_row(i, v):
 scatter = img(R / "figures/01_transfer_scatter.png")
 hist = img(R / "figures/02_per_protein_r_hist.png")
 err_fig = img(R / "figures/03_error_vs_ddg.png")
+resid_fig = img(R / "figures/05_residual_vs_ddg.png")
 dens_fig = img(R / "figures/04_density_vs_error.png")
 
 HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>
@@ -219,6 +220,12 @@ training. This is the same regression-to-the-mean weakness isolated in experimen
 features/objective, not of the estimator. <b>Practical consequence:</b> use for
 ranking, prioritization, and triage — not for absolute ΔΔG on mutations outside the
 training range.</p>
+<figure><img src="{resid_fig}">
+<figcaption><b>Figure 3.</b> Per-mutation residual (predicted − experimental) vs experimental
+ΔΔG. The residual trends downward with a slope of ≈ {S['slope']-1:.2f} (dashed line): the model
+over-predicts strongly stabilizing mutations and under-predicts strongly destabilizing ones,
+crossing zero only near the dense training centre. In-range residuals cluster near zero
+(mean |residual| 0.69 kcal/mol); out-of-range residuals fan out (mean |residual| 2.8).</figcaption></figure>
 
 <h2>5. Where the error lives: training coverage of ΔΔG</h2>
 <p>Splitting the test by the Tsuboyama training range ([−1, 4] kcal/mol, its central
@@ -227,7 +234,7 @@ good: Pearson <b>{mlp['in_pearson']:.2f}</b>, RMSE <b>{mlp['in_rmse']:.2f}</b>. 
 (n={mlp['out_n']}) the error explodes: RMSE <b>{mlp['out_rmse']:.2f}</b>, and the per-tail
 correlation collapses — the predictions cannot reach ΔΔG values absent from training.</p>
 <figure><img src="{err_fig}">
-<figcaption><b>Figure 3.</b> Prediction error vs measured ΔΔG. A regression-to-mean bias
+<figcaption><b>Figure 4.</b> Prediction error vs measured ΔΔG. A regression-to-mean bias
 (over-predicts low ΔΔG, under-predicts high), with error minimized in the dense centre and
 rising toward both tails; the ±SD band is flat, so tail error is systematic bias.</figcaption></figure>
 <p>The cause is <b>training density</b>, not FireProt itself: relating per-bin error to how
@@ -236,7 +243,7 @@ density (Spearman ρ = <b>{mlp['density_error_spearman_bins']:.2f}</b>). Accurac
 is set by how much training data covered it — a coverage effect, identical across model
 families (cf. experiments 02 and 06).</p>
 <figure><img src="{dens_fig}">
-<figcaption><b>Figure 4.</b> Test error vs Tsuboyama training density in ΔΔG space. Left:
+<figcaption><b>Figure 5.</b> Test error vs Tsuboyama training density in ΔΔG space. Left:
 density and error are mirror images along ΔΔG. Right: error falls monotonically with
 training density.</figcaption></figure>
 

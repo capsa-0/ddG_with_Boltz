@@ -8,3 +8,6 @@ Tsuboyama-trained raw-Δz predictor (MLP) transferred to FireProt ≤500 (3,205 
 - **`03_error_vs_ddg.png`** — prediction error vs measured ΔΔG: regression-to-mean bias, error
   minimized in the dense centre, rising toward both tails.
 - **`04_density_vs_error.png`** — test error vs Tsuboyama training density; Spearman ρ=−0.96.
+- **`05_residual_vs_ddg.png`** — per-mutation residual (predicted − experimental) vs experimental
+  ΔΔG; trend slope ≈ −0.73 (systematic under-prediction of large effects). In-range near 0,
+  out-of-range fan out.
