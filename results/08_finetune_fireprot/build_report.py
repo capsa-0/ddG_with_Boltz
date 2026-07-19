@@ -38,16 +38,21 @@ figure img { max-width: 100%; } figcaption { font-size: 8.5pt; color: #555; marg
 """
 
 
-def frow(thr):
+def frow(thr):  # FireProt-test: A / B / D (Pearson, Spearman)
     return (f"<tr><td>{thr}%</td>"
-            f"<td>{v(thr,'A_tsu_only','fp_test'):.3f} → <b>{v(thr,'D_finetuned','fp_test'):.3f}</b></td>"
-            f"<td>{v(thr,'A_tsu_only','fp_test','spearman'):.3f} → <b>{v(thr,'D_finetuned','fp_test','spearman'):.3f}</b></td>"
-            f"<td>{v(thr,'A_tsu_only','fp_test','rmse'):.2f} → {v(thr,'D_finetuned','fp_test','rmse'):.2f}</td></tr>")
+            f"<td>{v(thr,'A_tsu_only','fp_test'):.3f}</td>"
+            f"<td>{v(thr,'B_fp_only','fp_test'):.3f}</td>"
+            f"<td><b>{v(thr,'D_finetuned','fp_test'):.3f}</b></td>"
+            f"<td>{v(thr,'A_tsu_only','fp_test','spearman'):.3f} / "
+            f"{v(thr,'B_fp_only','fp_test','spearman'):.3f} / "
+            f"<b>{v(thr,'D_finetuned','fp_test','spearman'):.3f}</b></td></tr>")
 
 
-def trow(thr):
+def trow(thr):  # Tsuboyama-test: A / B / D (Pearson)
     return (f"<tr><td>{thr}%</td>"
-            f"<td>{v(thr,'A_tsu_only','tsu_test'):.3f} → {v(thr,'D_finetuned','tsu_test'):.3f}</td></tr>")
+            f"<td>{v(thr,'A_tsu_only','tsu_test'):.3f}</td>"
+            f"<td>{v(thr,'B_fp_only','tsu_test'):.3f}</td>"
+            f"<td>{v(thr,'D_finetuned','tsu_test'):.3f}</td></tr>")
 
 
 HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
@@ -55,11 +60,12 @@ HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>{CSS}</style>
 <p class="sub">Experiment 08 · ddG_with_Boltz · concat features + antisymmetry · MLP · cross-dataset homology holdout.</p>
 
 <div class="headline">
-A ΔΔG regressor pretrained on Tsuboyama and then <b>sequentially fine-tuned on FireProt</b>
-improves FireProt accuracy — Spearman +0.03–0.05 across every homology threshold — while
-losing essentially nothing on Tsuboyama (≤0.012 Pearson). Fine-tuning transfers extra signal
-from the second dataset without catastrophic forgetting; the effect is modest, bounded by the
-same feature ceiling seen in the transfer study.
+A ΔΔG regressor pretrained on Tsuboyama and then <b>sequentially fine-tuned on FireProt</b> is
+the <b>only</b> configuration that is good on both datasets: it beats both a Tsuboyama-only and a
+FireProt-only baseline on FireProt-test (at 30/50 % identity, and on Spearman throughout) while
+losing essentially nothing on Tsuboyama (≤0.012 Pearson). Training on FireProt alone matches the
+transfer on FireProt but collapses on Tsuboyama — so fine-tuning genuinely combines the two
+datasets rather than trading one for the other. The gain is modest, bounded by the feature ceiling.
 </div>
 
 <h2>1. Motivation</h2>
@@ -76,35 +82,43 @@ or test, so no train/test pair — within or across datasets — exceeds the thr
 spanning both datasets go to train. This yields disjoint <i>Tsuboyama-train / Tsuboyama-test /
 FireProt-finetune / FireProt-test</i> sets.</p>
 <p><b>Model.</b> 5-seed MLP ensemble on concat pair-track features with antisymmetry
-augmentation (the defaults established in experiment 07). <b>A (Tsuboyama-only):</b> trained on
-Tsuboyama-train. <b>D (fine-tuned):</b> the same model, warm-start continued on
-FireProt-finetune at a lower learning rate; the input normalisation is fixed from pretraining.
-Both are evaluated on Tsuboyama-test and FireProt-test.</p>
+augmentation (the defaults established in experiment 07), evaluated in three conditions.
+<b>A (Tsuboyama-only):</b> trained on Tsuboyama-train. <b>B (FireProt-only):</b> a fresh model
+trained on FireProt-finetune alone, with its own input normalisation — the baseline for "how far
+does FireProt get on its own." <b>D (fine-tuned):</b> the pretrained model, warm-start continued
+on FireProt-finetune at a lower learning rate, reusing the Tsuboyama normalisation. All three are
+evaluated on Tsuboyama-test and FireProt-test.</p>
 
 <h2>3. Results</h2>
 <table>
-<caption>Table 1. FireProt-test — A (Tsuboyama-only) → D (fine-tuned). Bold where D improves.</caption>
-<tr><th>Identity</th><th>Pearson r</th><th>Spearman ρ</th><th>RMSE</th></tr>
+<caption>Table 1. FireProt-test pooled correlation, A / B / D. Bold = best (D).</caption>
+<tr><th>Identity</th><th>Pearson A</th><th>Pearson B</th><th>Pearson D</th><th>Spearman A / B / D</th></tr>
 {frow(30)}{frow(50)}{frow(90)}
 </table>
 <table>
-<caption>Table 2. Tsuboyama-test Pearson r — A → D (forgetting check).</caption>
-<tr><th>Identity</th><th>Pearson r (A → D)</th></tr>
+<caption>Table 2. Tsuboyama-test pooled Pearson r, A / B / D (forgetting check).</caption>
+<tr><th>Identity</th><th>A (Tsu-only)</th><th>B (FP-only)</th><th>D (fine-tuned)</th></tr>
 {trow(30)}{trow(50)}{trow(90)}
 </table>
 
 <figure><img src="{fig}">
-<figcaption><b>Figure 1.</b> A vs D pooled Pearson r. Left: FireProt-test (fine-tuning helps at
-30/50%). Right: Tsuboyama-test (unchanged — no forgetting).</figcaption></figure>
+<figcaption><b>Figure 1.</b> Pooled Pearson r for A / B / D. Left: FireProt-test (D best at
+30/50%). Right: Tsuboyama-test — FireProt-only (B) drops to ~0.68 while A and D stay ~0.79
+(D does not forget).</figcaption></figure>
 
 <h2>4. Discussion</h2>
-<p>Fine-tuning gives a <b>modest, consistent FireProt gain</b> — Spearman rises at all three
-thresholds and Pearson/RMSE improve at 30% and 50% — with <b>negligible Tsuboyama forgetting</b>
-(≤0.012 Pearson). At the strictest 90% split the FireProt-test set is smallest and noisiest;
-there Pearson dips slightly while Spearman still rises, a calibration wobble rather than a loss
-of ranking signal. The overall size of the effect is limited: the predictor's accuracy is set
-largely by the pair-track features, so adding FireProt labels refines rather than transforms it.
-Sequential fine-tuning is a safe, mild improvement when a second labelled dataset is available.</p>
+<p>The fine-tuned model (D) is the <b>only condition that is strong on both datasets</b>. On
+FireProt-test it beats both baselines at 30% and 50% identity and improves Spearman at all three
+thresholds; on Tsuboyama-test it is within ≤0.012 of the Tsuboyama-only model — no meaningful
+forgetting. The FireProt-only baseline (B) is instructive: it matches the transfer <i>on
+FireProt</i>, but its Tsuboyama-test correlation collapses from ~0.79 to ~0.68 — training on the
+small FireProt set alone discards the broad Tsuboyama signal. Fine-tuning therefore <i>combines</i>
+the two datasets rather than trading one for the other. The overall size of the gain is modest —
+the predictor's accuracy is set largely by the pair-track features, so adding FireProt labels
+refines rather than transforms it. At the strictest 90% split the FireProt-test set is smallest
+and noisiest (231 mutations), where Pearson dips while Spearman still rises — a calibration wobble,
+not a loss of ranking. Sequential fine-tuning is a safe, mild improvement when a second labelled
+dataset is available.</p>
 </body></html>"""
 
 (R / "report.html").write_text(HTML)

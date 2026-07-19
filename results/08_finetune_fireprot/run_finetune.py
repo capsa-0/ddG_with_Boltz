@@ -75,16 +75,28 @@ for NN in (30, 50, 90):
     Xtt, ytt = xy(TSU, S["tsu_test"])
     Xfe, yfe = xy(FP, S["fp_test"])
 
-    ft = copy.deepcopy(pre)
     Xft, yft = xy(FP, S["fp_finetune"])
     Xfa, yfa = augment(Xft, yft)
+
+    # D: fine-tune the Tsuboyama model on FireProt (reuse Tsuboyama imputer/scaler).
+    ft = copy.deepcopy(pre)
     for m in ft:
         m.set_params(learning_rate_init=1e-3, max_iter=400)
         m.fit(T(Xfa), yfa)
 
-    for cond, ms in (("A_tsu_only", pre), ("D_finetuned", ft)):
+    # B: FireProt-only baseline — a fresh model trained on FireProt alone, with its
+    # own imputer/scaler (how good is FireProt without any Tsuboyama pretraining?).
+    impB = SimpleImputer(strategy="median").fit(Xfa)
+    scaB = StandardScaler().fit(impB.transform(Xfa))
+    TB = lambda X: scaB.transform(impB.transform(X))
+    bms = members()
+    for m in bms:
+        m.fit(TB(Xfa), yfa)
+
+    for cond, ms, Tf in (("A_tsu_only", pre, T), ("B_fp_only", bms, TB),
+                         ("D_finetuned", ft, T)):
         for tag, X, y in (("tsu_test", Xtt, ytt), ("fp_test", Xfe, yfe)):
-            m = compute_metrics(y, predict(ms, T, X))
+            m = compute_metrics(y, predict(ms, Tf, X))
             rows.append({"thr": NN, "cond": cond, "test": tag, **m})
             print(f"thr={NN} {cond:11s} {tag:8s} r={m['pearson']:.3f} "
                   f"rho={m['spearman']:.3f} RMSE={m['rmse']:.3f} n={m['n']}", flush=True)

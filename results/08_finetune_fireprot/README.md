@@ -17,27 +17,30 @@ forgetting)?
   clusters → train; each dataset's own clusters 80/20. Four sets: `tsu_train`, `tsu_test`,
   `fp_finetune`, `fp_test`.
 - **Model (`run_finetune.py`):** 5-seed MLP, **concat** features (`wtz`+`mtz`), **antisymmetry**
-  aug on every training set. Condition **A** = Tsuboyama-only (pretrain, no FireProt);
-  **D** = fine-tuned (pretrain, then warm-start continue on `fp_finetune`). Imputer/scaler fit
-  on augmented `tsu_train` and reused across fine-tuning. Each condition tested on `tsu_test`
-  and `fp_test`.
+  aug on every training set. **A** = Tsuboyama-only (pretrain, no FireProt); **B** = FireProt-only
+  (a fresh model on `fp_finetune` alone, its own scaler); **D** = fine-tuned (pretrain on
+  Tsuboyama, then warm-start continue on `fp_finetune`, reusing the Tsuboyama scaler). Each
+  condition tested on `tsu_test` and `fp_test`.
 
-## Headline
+## Headline (pooled Pearson r; best per row bold)
 
-**FireProt-test — does fine-tuning help?**
-
-| Identity | A r → D r | A ρ → D ρ | A RMSE → D RMSE | n (proteins) |
+| Identity | \| | FireProt-test A / B / **D** | \| | Tsuboyama-test A / B / D |
 |---|---|---|---|---|
-| 30 % | 0.466 → **0.522** | 0.693 → **0.739** | 2.13 → 1.97 | 254 (13) |
-| 50 % | 0.507 → **0.528** | 0.672 → **0.716** | 1.93 → 1.80 | 287 (14) |
-| 90 % | 0.355 → 0.343 | 0.658 → **0.686** | 1.78 → 1.84 | 231 (17) |
+| 30 % | | 0.466 / 0.477 / **0.522** | | 0.794 / 0.680 / 0.790 |
+| 50 % | | 0.507 / 0.505 / **0.528** | | 0.787 / 0.692 / 0.784 |
+| 90 % | | 0.355 / 0.291 / 0.343 | | 0.790 / 0.678 / 0.778 |
 
-**Tsuboyama-test — forgetting?** 0.794→0.790, 0.787→0.784, 0.790→0.778 (≤0.012).
+(FireProt-test Spearman also improves under D: 0.69→**0.74**, 0.67→**0.72**, 0.66→**0.69**.
+fp_test is 254/287/231 muts = 13/14/17 proteins.)
 
-**Takeaway:** sequential fine-tuning on FireProt gives a **modest, consistent FireProt gain**
-— Spearman +0.03–0.05 at all three thresholds, Pearson/RMSE better at 30/50 % — with
-**negligible Tsuboyama forgetting** (≤0.012 r). Fine-tuning is worth it, mildly. (The 90 %
-Pearson dip, with Spearman still rising, is a calibration wobble on the smallest fp_test.)
+**Takeaway:** the fine-tuned model (**D**) is the **only condition that is good on both** — it
+**beats both baselines on FireProt-test** at 30/50 % (and Spearman at all three thresholds),
+*and* keeps Tsuboyama (≤0.012 drop). The **FireProt-only baseline (B)** is competitive with
+Tsuboyama-transfer *on FireProt* but **collapses on Tsuboyama** (0.79→~0.68) — training on the
+small FireProt set alone throws away the Tsuboyama signal (echoing ThermoMPNN, where FireProt-only
+training degrades sharply). So fine-tuning genuinely *combines* the two datasets rather than
+trading one for the other; the gain is modest but real. (The 90 % row is the smallest/noisiest
+fp_test — Pearson dips while Spearman still rises.)
 
 ## Data & provenance
 | Item | Path |
@@ -49,7 +52,7 @@ Pearson dip, with Spearman still rising, is a calibration wobble on the smallest
 
 ## Files
 - `report.pdf` — paper-facing write-up (regenerate: `python results/08_finetune_fireprot/build_report.py`).
-- `results.csv` — full A/D × {tsu_test, fp_test} × {30,50,90}.
+- `results.csv` — full A/B/D × {tsu_test, fp_test} × {30,50,90}.
 - `build_splits.py`, `run_finetune.py` — reproduce.
 - `status.md` — log + verdict.
 </content>

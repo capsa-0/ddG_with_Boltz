@@ -3,23 +3,24 @@
 **State:** ✅ Done — finetuning gives a modest FireProt gain, no Tsuboyama forgetting
 **Last updated:** 2026-07-18
 
-## Results (concat + antisymmetry; A = Tsuboyama-only, D = fine-tuned)
+## Results (concat + antisymmetry; A = Tsuboyama-only, B = FireProt-only, D = fine-tuned)
 
-**FireProt-test** — does finetuning help?
+Pooled Pearson r (best per row bold):
 
-| Identity | A r → D r | A ρ → D ρ | A RMSE → D RMSE | n (prot) |
-|---|---|---|---|---|
-| 30% | 0.466 → **0.522** | 0.693 → **0.739** | 2.13 → 1.97 | 254 (13) |
-| 50% | 0.507 → **0.528** | 0.672 → **0.716** | 1.93 → 1.80 | 287 (14) |
-| 90% | 0.355 → 0.343 | 0.658 → **0.686** | 1.78 → 1.84 | 231 (17) |
+| Identity | FireProt-test A / B / **D** | Tsuboyama-test A / B / D |
+|---|---|---|
+| 30% | 0.466 / 0.477 / **0.522** | 0.794 / 0.680 / 0.790 |
+| 50% | 0.507 / 0.505 / **0.528** | 0.787 / 0.692 / 0.784 |
+| 90% | 0.355 / 0.291 / 0.343 | 0.790 / 0.678 / 0.778 |
 
-**Tsuboyama-test** — forgetting? 0.794→0.790, 0.787→0.784, 0.790→0.778 (≤0.012, negligible).
+FireProt-test Spearman under D also rises: 0.69→0.74, 0.67→0.72, 0.66→0.69.
 
-**Verdict:** sequential fine-tuning on FireProt **helps FireProt** — Spearman up +0.03–0.05
-on all three thresholds, Pearson/RMSE better at 30/50 % — with **no meaningful Tsuboyama
-forgetting** (≤0.012). The 90 % Pearson dip (Spearman still rises) is a calibration wobble
-on the smallest/noisiest fp_test (231 muts / 17 prot). Clearer than the Δz prototype
-(FP-test 0.487→0.496); concat+antisymmetry lifted the whole thing.
+**Verdict:** fine-tuning (D) is the **only condition good on both** — it beats **both** baselines
+on FireProt-test at 30/50 % (and Spearman at all thresholds) while keeping Tsuboyama (≤0.012 drop).
+The **FireProt-only baseline (B)** matches the transfer on FireProt but **collapses on Tsuboyama**
+(0.79→~0.68) — training on the small FireProt set alone throws away the Tsuboyama signal
+(echoes ThermoMPNN). So fine-tuning *combines* the datasets rather than trading one for the other;
+gain is modest, feature-bounded. (90 % row = smallest/noisiest fp_test: Pearson dips, Spearman rises.)
 
 ## Current state
 **Question:** does *sequentially fine-tuning* a Tsuboyama-pretrained ΔΔG regressor on
@@ -106,6 +107,12 @@ Headline readouts, per identity threshold:
   on this workstation, no cluster GPU needed (features already extracted).
 
 ## Log — newest first
+### 2026-07-18 — added FireProt-only baseline (B); it strengthens the story
+- Added condition **B (FireProt-only)** to `run_finetune.py` (fresh model on `fp_finetune`
+  with its own scaler) — the missing baseline. FireProt-test: B 0.477/0.505/0.291 vs A
+  0.466/0.507/0.355 vs D 0.522/0.528/0.343. Tsuboyama-test: **B collapses to ~0.68** while
+  A/D stay ~0.79. So D beats *both* baselines on FireProt (30/50 %) and is the only condition
+  good on both datasets; B trades Tsuboyama away. Regenerated figure (A/B/D), README, report.
 ### 2026-07-18 — redone with concat+antisymmetry → finetuning helps FireProt
 - Renumbered 07→08. Re-ran (`run_finetune.py`, 5-seed MLP, concat features +
   antisymmetry aug on tsu_train and fp_finetune; imputer/scaler fit on augmented
