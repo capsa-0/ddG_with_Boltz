@@ -38,14 +38,15 @@ figure img { max-width: 100%; } figcaption { font-size: 8.5pt; color: #555; marg
 """
 
 
-def frow(thr):  # FireProt-test: A / B / D (Pearson, Spearman)
+def frow(thr):  # FireProt-test: A / B / D (Pearson, Spearman); bold the best Pearson
+    ps = {c: v(thr, c, "fp_test") for c in ("A_tsu_only", "B_fp_only", "D_finetuned")}
+    best = max(ps, key=ps.get)
+    cell = lambda c: (f"<b>{ps[c]:.3f}</b>" if c == best else f"{ps[c]:.3f}")
     return (f"<tr><td>{thr}%</td>"
-            f"<td>{v(thr,'A_tsu_only','fp_test'):.3f}</td>"
-            f"<td>{v(thr,'B_fp_only','fp_test'):.3f}</td>"
-            f"<td><b>{v(thr,'D_finetuned','fp_test'):.3f}</b></td>"
+            f"<td>{cell('A_tsu_only')}</td><td>{cell('B_fp_only')}</td><td>{cell('D_finetuned')}</td>"
             f"<td>{v(thr,'A_tsu_only','fp_test','spearman'):.3f} / "
             f"{v(thr,'B_fp_only','fp_test','spearman'):.3f} / "
-            f"<b>{v(thr,'D_finetuned','fp_test','spearman'):.3f}</b></td></tr>")
+            f"{v(thr,'D_finetuned','fp_test','spearman'):.3f}</td></tr>")
 
 
 def trow(thr):  # Tsuboyama-test: A / B / D (Pearson)
@@ -92,7 +93,7 @@ evaluated on Tsuboyama-test and FireProt-test.</p>
 
 <h2>3. Results</h2>
 <table>
-<caption>Table 1. FireProt-test pooled correlation, A / B / D. Bold = best (D).</caption>
+<caption>Table 1. FireProt-test pooled correlation, A / B / D. Bold = best Pearson per row.</caption>
 <tr><th>Identity</th><th>Pearson A</th><th>Pearson B</th><th>Pearson D</th><th>Spearman A / B / D</th></tr>
 {frow(30)}{frow(50)}{frow(90)}
 </table>
