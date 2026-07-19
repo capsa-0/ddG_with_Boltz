@@ -28,7 +28,7 @@ ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
 OUT = ROOT / "results/07_feature_symmetry_ablation"
 DATASETS = {
     "Tsuboyama": ROOT / "data/processed/tsuboyama_bench_fast/features_ablation.parquet",
-    "FireProt": ROOT / "data/processed/fireprot_le200/features_ablation.parquet",
+    "FireProt": ROOT / "data/processed/fireprot_le500/features_ablation.parquet",
 }
 FEATSETS = {"dz": ["zdiag", "zpool"], "concat": ["wtz", "mtz"]}
 K, Z = 5, 128

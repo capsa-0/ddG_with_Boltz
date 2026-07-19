@@ -1,6 +1,6 @@
 # Status — 07_feature_symmetry_ablation
 
-**State:** ✅ Done — verdict: adopt **concat + symmetry** (FP +0.03 Pearson, Tsu neutral)
+**State:** ✅ Done — redone on FireProt ≤500. Verdict holds: adopt **concat + symmetry** (best FP config, Tsu neutral)
 **Last updated:** 2026-07-18
 
 ## Current state
@@ -65,6 +65,13 @@ RMSE: Tsu dz-sym blows up to 0.961 vs ~0.61 elsewhere; FP concat-sym best at 1.3
   larger **≤500** corpus.
 
 ## Log — newest first
+### 2026-07-19 — redone with FireProt ≤500 (3,205 / 138)
+- FireProt part re-run on the full ≤500 corpus (merged le200+201to500 concat features).
+  FireProt: dz none 0.575 / dz sym 0.579 / **concat none 0.508 / concat sym 0.588**. Tsuboyama
+  unchanged. **concat+sym is still the best FireProt config and neutral on Tsuboyama** — but
+  on ≤500 concat *alone* underperforms Δz (0.508<0.575); symmetry is what makes concat win
+  (0.588, lowest RMSE). Conclusion (adopt concat+symmetry) unchanged. Regenerated figure,
+  README, report.
 ### 2026-07-18 — ablation complete → concat+symmetry wins (see Results)
 - Ran the 2×2×2 (`run_ablation.py`, ~40 min). Key numbers above; `results.csv` committed.
   Symmetry-on-Δz collapse (0.79→0.60 Pearson, Spearman intact) is a calibration artifact
