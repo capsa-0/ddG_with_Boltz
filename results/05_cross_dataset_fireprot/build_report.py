@@ -222,10 +222,11 @@ ranking, prioritization, and triage — not for absolute ΔΔG on mutations outs
 training range.</p>
 <figure><img src="{resid_fig}">
 <figcaption><b>Figure 3.</b> Per-mutation residual (predicted − experimental) vs experimental
-ΔΔG. The residual trends downward with a slope of ≈ {S['slope']-1:.2f} (dashed line): the model
-over-predicts strongly stabilizing mutations and under-predicts strongly destabilizing ones,
-crossing zero only near the dense training centre. In-range residuals cluster near zero
-(mean |residual| 0.69 kcal/mol); out-of-range residuals fan out (mean |residual| 2.8).</figcaption></figure>
+ΔΔG. The residual is strongly anti-correlated with the true value (<b>Pearson r = −0.92</b>,
+Spearman ρ = −0.88; trend slope ≈ {S['slope']-1:.2f}): the model over-predicts strongly
+stabilizing mutations and under-predicts strongly destabilizing ones, crossing zero only near
+the dense training centre. In-range residuals cluster near zero (mean |residual| 0.69 kcal/mol,
+r = −0.87); out-of-range residuals fan out (mean |residual| 2.8, r = −0.98).</figcaption></figure>
 
 <h2>5. Where the error lives: training coverage of ΔΔG</h2>
 <p>Splitting the test by the Tsuboyama training range ([−1, 4] kcal/mol, its central
