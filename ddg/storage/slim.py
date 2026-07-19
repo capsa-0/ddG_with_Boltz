@@ -25,6 +25,7 @@ key, so no pickling is needed to read them back.
 
 import logging
 import shutil
+import time
 import zipfile
 import zlib
 from pathlib import Path
@@ -34,6 +35,11 @@ import numpy as np
 logger = logging.getLogger(__name__)
 
 FIELDS = ("s", "zrow", "pdrow", "pos")
+
+# Transient NFS read failures ("Bad CRC-32") on this cluster usually clear on a
+# re-read, so retry before treating an NPZ as genuinely corrupt.
+_READ_RETRIES = 4
+_READ_RETRY_SLEEP = 3.0  # seconds between retries
 
 
 def _collapse_single(s: np.ndarray) -> np.ndarray:
@@ -136,16 +142,29 @@ def slim_predictions(
         if positions is None:
             logger.warning("slim: no known positions for structure '%s'; skipping", key)
             continue
-        try:
-            slims[key] = slim_structure(npz, positions, keep_s=keep_s, dtype=dtype)
-        except (zipfile.BadZipFile, EOFError, zlib.error) as e:
-            # Genuine corruption (e.g. a truncated write -> "Bad CRC-32"). The
-            # file is worthless, so delete the whole prediction folder: the
-            # resumable predict step will regenerate only what is missing. Keep
-            # going so every corrupt structure is found in this one pass.
-            logger.error("slim: corrupt embeddings for '%s' (%s): %s", key, npz, e)
-            shutil.rmtree(predictions_dir / key, ignore_errors=True)
-            corrupt.append(key)
+        # A "Bad CRC-32" / BadZipFile here is usually a *transient* NFS read on this
+        # cluster, not real corruption — the same file re-reads fine moments later.
+        # Retry a few times before giving up, so one flaky read doesn't abort the
+        # whole slim (and delete a structure that then has to be re-predicted).
+        slim = None
+        for attempt in range(_READ_RETRIES):
+            try:
+                slim = slim_structure(npz, positions, keep_s=keep_s, dtype=dtype)
+                break
+            except (zipfile.BadZipFile, EOFError, zlib.error, OSError) as e:
+                if attempt < _READ_RETRIES - 1:
+                    logger.warning("slim: read error for '%s' (attempt %d/%d): %s; retrying",
+                                   key, attempt + 1, _READ_RETRIES, e)
+                    time.sleep(_READ_RETRY_SLEEP)
+                    continue
+                # Still unreadable after retries -> treat as genuinely corrupt: delete
+                # the folder (predict regenerates it) and keep going to find them all.
+                logger.error("slim: corrupt embeddings for '%s' after %d reads (%s): %s",
+                             key, _READ_RETRIES, npz, e)
+                shutil.rmtree(predictions_dir / key, ignore_errors=True)
+                corrupt.append(key)
+        if slim is not None:
+            slims[key] = slim
 
     if corrupt:
         raise RuntimeError(
