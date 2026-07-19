@@ -49,6 +49,26 @@ def _is_done(dst_predictions: Path, key: str) -> bool:
     return d.is_dir() and any(d.glob("embeddings_*.npz"))
 
 
+def _slimmed_keys(config) -> set:
+    """Structure keys already compacted into the slim store.
+
+    With incremental slim, a shard deletes its raw NPZs right after slimming them,
+    so raw-NPZ existence alone would make predict regenerate them on a rerun. Skip
+    anything already in a slim shard as well.
+    """
+    import numpy as np
+    slim_dir = Path(config.exp_processed_dir) / "slim"
+    done: set = set()
+    if slim_dir.exists():
+        for f in slim_dir.glob("*.npz"):
+            try:
+                with np.load(f, allow_pickle=False) as d:
+                    done.update(str(k) for k in d["keys"])
+            except Exception:
+                pass
+    return done
+
+
 def _boltz_cmd(input_path, out_dir, boltz_flags):
     return [
         "boltz", "predict", str(input_path),
@@ -112,7 +132,9 @@ def run_boltz_predictions(config, shard=None) -> None:
     # Resumability: skip queries whose canonical prediction already exists, so a
     # resubmitted array only redoes leftover work. A node dying mid-shard then
     # costs at most one structure instead of the whole shard.
-    pending = [f for f in files if not _is_done(dst_predictions, f.stem)]
+    slimmed = _slimmed_keys(config)
+    pending = [f for f in files
+               if not _is_done(dst_predictions, f.stem) and f.stem not in slimmed]
     skipped = len(files) - len(pending)
     if skipped:
         logger.info("Skipping %d already-predicted queries in %s", skipped, label)

@@ -72,12 +72,12 @@ def _parse_shard(text):
 def cmd_run(args) -> int:
     shard = _parse_shard(args.shard) if getattr(args, "shard", None) else None
     if shard is not None:
-        if args.step != "predict":
-            raise SystemExit("--shard is only valid with --step predict")
+        if args.step not in ("predict", "slim"):
+            raise SystemExit("--shard is only valid with --step predict or slim")
         # Array tasks must not all write the shared manifest (race). Progress is
-        # still visible via `ddg status` (counted from prediction files on disk).
-        logger.info("=== predict shard %d/%d (no manifest write) ===", *shard)
-        pipeline.RUN_FUNCS["predict"](args.config, args.names_config, shard=shard)
+        # still visible via `ddg status` (counted from files on disk).
+        logger.info("=== %s shard %d/%d (no manifest write) ===", args.step, *shard)
+        pipeline.RUN_FUNCS[args.step](args.config, args.names_config, shard=shard)
         return 0
 
     steps = [args.step] if args.step else pipeline.RUNNABLE

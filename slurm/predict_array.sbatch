@@ -42,3 +42,10 @@ eval "$(conda shell.bash hook)"
 source activate ddG_with_Boltz
 
 srun python -m ddg run "$CONFIG" --step predict --shard "${SLURM_ARRAY_TASK_ID}/${NSHARDS}"
+
+# Incremental slim: compact THIS shard's raw predictions into s<i>.npz and delete
+# the raw NPZs right away (delete_raw), so full-size raw embeddings never pile up
+# across the whole array. Bounds peak disk — critical for large (>=300 aa) proteins
+# whose raw z is ~30 MB each. The final slim step (if any) is then just a safety net
+# for leftover raw; features reads all slim shards (s0000.npz, ...).
+srun python -m ddg run "$CONFIG" --step slim --shard "${SLURM_ARRAY_TASK_ID}/${NSHARDS}"

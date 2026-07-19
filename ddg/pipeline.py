@@ -40,16 +40,30 @@ def _run_predict(exp_cfg, names_cfg, shard=None):
     extract_features(exp_cfg, names_cfg, shard=shard)
 
 
-def _run_slim(exp_cfg, names_cfg):
+def _run_slim(exp_cfg, names_cfg, shard=None):
+    """Compact raw predictions into the slim store.
+
+    shard=None slims every prediction present into ``shard_0000.npz`` (the classic
+    predict-all-then-slim path). shard=(i, n) slims only this shard's structures
+    (the same round-robin split predict uses) into ``s<i>.npz`` — so predict and
+    slim can run per array task and reclaim raw disk incrementally instead of
+    letting all raw pile up first.
+    """
     from ddg.storage.slim import positions_by_structure, slim_predictions
     config = ProjectConfig(exp_cfg, names_cfg)
     df = pd.read_csv(config.mutations_df_path)
     pos_by_struct = positions_by_structure(df)
     predictions = Path(config.raw_features_dir) / "predictions"
-    out = slim_dir(config) / "shard_0000.npz"
     keep_s = bool(config.exp_config.get("slim", {}).get("keep_s", False))
     delete_raw = bool(config.exp_config.get("slim", {}).get("delete_raw", False))
-    slim_predictions(predictions, pos_by_struct, out,
+    if shard is None:
+        out, keys = slim_dir(config) / "shard_0000.npz", None
+    else:
+        i, n = shard
+        query_files = sorted(Path(config.queries_dir).glob("*.yaml"))
+        keys = [p.stem for p in query_files[i::n]]   # identical split to predict
+        out = slim_dir(config) / f"s{i:04d}.npz"
+    slim_predictions(predictions, pos_by_struct, out, keys=keys,
                      keep_s=keep_s, delete_raw=delete_raw)
 
 
