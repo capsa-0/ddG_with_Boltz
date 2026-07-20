@@ -85,14 +85,19 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - [x] **Configs** `experiment_configs/s669.yaml`, `experiment_configs/ssym.yaml`
       (`dataset_type: minimal`, `mutate_wt_msa`/`mutate_first_row`, `max_msa 1000`,
       `keep_s: false`, `delete_raw: true` — mirror `fireprot_le200.yaml`). Written.
-- [ ] **Cluster feature extraction** (GPU, sharded, exclude bad nodes): prepare→predict→
-      slim→features for each benchmark, then `build_ablation_features.py` → `features_ablation.parquet`.
-      Reuse existing MSAs where WT proteins overlap prior corpora.
-- [ ] **Homology map** — pool Tsuboyama+FireProt+benchmark WTs, MMseqs2 at 25 %/30 %,
-      emit per-benchmark-protein leaky flag.
-- [ ] **Scoring script** `results/09_external_benchmarks/run_benchmarks.py` — adapt
-      `run_finetune.py`: train A/B/D once, predict S669 & Ssym, score full + filtered,
-      write `results.csv` + figures.
+- [~] **Cluster feature extraction** (GPU, sharded, exclude bad nodes): SUBMITTED
+      2026-07-19 as `prepare → predict[self-slim] → features` chains (jobs below). Still
+      need `build_ablation_features.py` → `features_ablation.parquet` after each `features`.
+- [x] **Homology map** — `build_homology_map.py` (MMseqs2 `easy-cluster` -c 0.8 via the
+      project `cluster_wt_sequences`), pooled Tsuboyama+FireProt+benchmark WTs at 25 %/30 %.
+      Written to `homology/{s669,ssym}_leakage.csv`. **Result:** S669 & Ssym have **0**
+      proteins homologous to Tsuboyama; FireProt overlaps **S669 9 prot/181 var**,
+      **Ssym 9 prot/290 var** (at 25 %). So regime A is a clean external test; regime B/D
+      numbers are inflated by FireProt overlap — the filtered columns remove it.
+- [x] **Scoring script** `run_benchmarks.py` — trains A/B/D once (concat + antisymmetry,
+      5-seed MLP), predicts S669 & Ssym, scores full + filt25/filt30, Ssym antisymmetry
+      diagnostic, auto sign-flip. Ready; needs the benchmark `features_ablation.parquet`.
+      Local smoke test (train-only, benchmarks skipped) validates the training path.
 - [ ] README + report.pdf (paper-facing) once numbers land; per-benchmark table vs literature.
 
 ## Open items / risks
@@ -105,6 +110,21 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+### 2026-07-19 — homology map done; scoring script written; cluster jobs submitted
+- **Homology/leakage map** (`build_homology_map.py`, MMseqs2 easy-cluster -c 0.8):
+  S669 0 leaky vs Tsuboyama (both 25/30 %); 9 prot/181 var leaky vs FireProt (25 %),
+  8/175 (30 %). Ssym 0 leaky vs Tsuboyama; 9 prot/290 var leaky vs FireProt (both).
+  → `homology/{s669,ssym}_leakage.csv`. (First attempt used a Biopython identity/min(len)
+  metric with no coverage filter — flagged everything, wrong; switched to MMseqs2 -c 0.8.)
+- **`run_benchmarks.py`** written (A/B/D, full + filt25/filt30, Ssym antisymmetry, sign-flip).
+- **Cluster jobs submitted** (git synced to f9ed096; chains = prepare→predict[self-slim]→features,
+  `--exclude=nodo1,nodo3,nodo5`, %2 GPUs):
+  - **s669**: prepare **212491** → predict **212492** (array 0-31) → features **212493**
+  - **ssym**: prepare **212494** → predict **212495** (array 0-15) → features **212496**
+- **Next:** after each `features` completes, run `build_ablation_features.py` (→
+  `features_ablation.parquet`) on cluster, pull the two parquets locally, run `run_benchmarks.py`.
+  Watch for MSA-server rate limits in prepare (75 fresh WT MSAs) and bad-node predict crashes.
+
 ### 2026-07-19 — benchmark data acquired, normalized, validated; configs written
 - **S669** from DDGemb (S669 authors' UniProt mapping): all 669 validated, ≤500 →
   **541 variants / 62 proteins** → `data/raw/s669.csv`.
