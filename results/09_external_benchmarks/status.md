@@ -110,6 +110,20 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+### 2026-07-19 — first submission failed (MSA rate-limit + bad node); resubmitted
+- **First chains (212491–212496) died at `prepare`:**
+  - **s669** (212491): ColabFold MSA server **rate-limited** — `50/62 MSAs failed` (12
+    fetched). Documented failure mode; rerun prepare retries only the missing ones.
+  - **ssym** (212494): prepare **actually completed** ("pipeline completed... 350 MSA
+    files") but the job exited **127** because it landed on **nodo3** (ld.so teardown
+    crash). Lesson: **`--exclude=nodo1,nodo3,nodo5` on the CPU steps too**, not just predict
+    (submit_all.sh / cpu_step.sbatch don't exclude by default — I now pass it manually).
+  - Cancelled the DependencyNeverSatisfied predict/features zombies.
+- **Resubmitted with `--exclude` on every step:** ssym full chain prepare **212498** →
+  predict **212499** → features **212500** (prepare skips the 350 cached MSAs → fast exit);
+  s669 prepare-only retry **212501** (may need several passes until 0 MSAs fail, THEN chain
+  predict→features). ssym MSAs are cached so it won't compete for the server.
+
 ### 2026-07-19 — homology map done; scoring script written; cluster jobs submitted
 - **Homology/leakage map** (`build_homology_map.py`, MMseqs2 easy-cluster -c 0.8):
   S669 0 leaky vs Tsuboyama (both 25/30 %); 9 prot/181 var leaky vs FireProt (25 %),
