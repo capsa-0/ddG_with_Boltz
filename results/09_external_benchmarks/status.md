@@ -1,7 +1,7 @@
 # Status — 09_external_benchmarks
 
-**State:** 🟢 Features extracted (S669 541/62, Ssym 337/13, full coverage) and scored.
-Headline below; paper-facing README/report still to write.
+**State:** ✅ Done. Both benchmarks extracted (S669 541/62, Ssym 337/13, full coverage),
+scored (A/B/D × full/filtered/common), written up (README + figure). Optional: report.pdf.
 **Last updated:** 2026-07-20
 
 ## Results (pooled Pearson r; per-protein median in parens)
