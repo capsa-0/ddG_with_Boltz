@@ -174,7 +174,16 @@ def slim_predictions(
             f"then re-run slim."
         )
 
-    write_shard(slims, out_shard)
+    # Never clobber an existing shard with an empty one. On a *resumed* sharded run,
+    # predict skips structures already in the slim store, so this shard's slim set can
+    # come back empty even though a prior run wrote its real structures to out_shard.
+    # Overwriting with an empty npz would silently drop those structures (and, with
+    # delete_raw, they can't be cheaply regenerated). Leave the existing shard intact.
+    if slims:
+        write_shard(slims, out_shard)
+    else:
+        logger.info("slim: no new structures to write for %s; leaving any existing "
+                    "shard intact", out_shard)
 
     if delete_raw:
         for key in slims:
