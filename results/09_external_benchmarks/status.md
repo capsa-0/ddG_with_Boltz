@@ -110,6 +110,23 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+### 2026-07-20 — predict failed on cuequivariance kernel; fixed with --no_kernels; resubmitted
+- Both `prepare` steps eventually **COMPLETED** (s669 586 MSAs, ssym 350) after the retries.
+- **ssym predict (212499) failed:** 3/16 shards (0,5,10, all on **nodo8**) succeeded; the
+  rest (on **nodo11**) crashed with `ModuleNotFoundError: No module named 'cuequivariance_torch'`
+  inside Boltz's compiled `triangular_mult` kernel. Root cause: the package is **not installed**;
+  Boltz enables its optimized triangular-mult kernel by **GPU architecture**, so nodo11's GPU
+  takes the cuequivariance path (crash) while nodo8's falls back to pure torch (works). Not a
+  simple bad-node issue and not fixable by excluding one node (other kernel-capable nodes would
+  fail too).
+- **Fix:** added an opt-in `boltz_flags.no_kernels` → passes Boltz `--no_kernels` (forces the
+  pure-torch path on every node; `ddg/feature_extraction/extraction/run_boltz.py`, commit 40423fa).
+  Enabled in both configs. This matches how the Tsuboyama/FireProt training features were made
+  (cuequivariance was never installed, so those ran pure-torch too). Slight slowdown, negligible
+  for these small proteins; numerically the same operation.
+- **Resubmitted (git 40423fa):** ssym predict **212545** (resumable, skips slimmed 0/5/10) →
+  features **212546**; s669 predict **212547** → features **212548**. All `--exclude=nodo1,nodo3,nodo5`.
+
 ### 2026-07-19 — first submission failed (MSA rate-limit + bad node); resubmitted
 - **First chains (212491–212496) died at `prepare`:**
   - **s669** (212491): ColabFold MSA server **rate-limited** — `50/62 MSAs failed` (12
