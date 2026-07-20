@@ -70,7 +70,7 @@ def _slimmed_keys(config) -> set:
 
 
 def _boltz_cmd(input_path, out_dir, boltz_flags):
-    return [
+    cmd = [
         "boltz", "predict", str(input_path),
         "--out_dir", str(out_dir),
         "--cache", boltz_flags.get("cache", "~/.boltz"),
@@ -80,6 +80,13 @@ def _boltz_cmd(input_path, out_dir, boltz_flags):
         "--write_embeddings",
         "--embeddings_only",
     ]
+    # Opt-in: force Boltz's pure-torch path instead of the optimized triangular-mult
+    # kernel. The kernel imports cuequivariance_torch, which is not installed here;
+    # Boltz enables it based on GPU arch, so some nodes (e.g. nodo11) crash while
+    # others (nodo8) fall back silently. --no_kernels makes predict node-independent.
+    if boltz_flags.get("no_kernels"):
+        cmd.append("--no_kernels")
+    return cmd
 
 
 def _merge_predictions(src_predictions: Path, dst_predictions: Path) -> int:

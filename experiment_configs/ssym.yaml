@@ -18,6 +18,7 @@ feature_extraction:
     write_full_pde: false
     write_embeddings: true
     skip_run_structure: true
+    no_kernels: true
 slim:
   keep_s: false
   delete_raw: true
