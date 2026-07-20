@@ -110,6 +110,23 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+### 2026-07-20 — two more bugs: small-GPU OOM + slim resume-clobber; both fixed; resubmitted
+- **`--no_kernels` confirmed working** (ssym shards ran fine on nodo11, the node that crashed before).
+- **s669 predict OOM'd:** all its shards landed on **nodo12**, whose GPU is only **~1.94 GiB**
+  (nodo5 & nodo12 are the small 46900-RAM nodes; the rest are 62266). Fix: also exclude the
+  tiny-GPU nodes → `--exclude=nodo1,nodo3,nodo5,nodo12,sauron`. (Disk is tight — shared NAS at
+  100%, ~193 GB free — so keep `delete_raw: true`; can't afford to keep raw.)
+- **ssym came out incomplete (165/337 muts, 3 proteins gone) — a slim resume bug.** Shards
+  s0000/s0005/s0010 (the 3 that succeeded in run 1) had **0 structures**: on the run-2 resume,
+  predict skipped their already-slimmed structures, then slim wrote an **empty shard, clobbering
+  the good one**, erasing the WT structures of 1BNIA/1L63A/1OH0A + scattered mutants. The
+  NFS "Device or resource busy" tracebacks in the logs are unrelated noise from Boltz's
+  multiprocessing exit cleanup (non-fatal — shards wrote fine after them). **Fix (6b4acea):**
+  `slim` now never overwrites an existing shard with an empty one.
+- **Resubmitted (git 6b4acea, no_kernels + node excludes + slim fix):** ssym predict **212600**
+  (resume regenerates the 3 empty shards) → features **212601**; s669 predict **212602** (fresh)
+  → features **212603**.
+
 ### 2026-07-20 — predict failed on cuequivariance kernel; fixed with --no_kernels; resubmitted
 - Both `prepare` steps eventually **COMPLETED** (s669 586 MSAs, ssym 350) after the retries.
 - **ssym predict (212499) failed:** 3/16 shards (0,5,10, all on **nodo8**) succeeded; the
