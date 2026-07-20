@@ -145,17 +145,22 @@ def main():
             print(f"  {cond:11s} full     r={mfull['pearson']:.3f} rho={mfull['spearman']:.3f}"
                   f" RMSE={mfull['rmse']:.3f} n={mfull['n']} (per-prot med r={pm:.3f})"
                   f"{' [sign-flipped]' if mfull['sign_flipped'] else ''}")
+            # Two filtered views per threshold:
+            #  filt{thr}   : drop proteins homologous to THIS regime's training corpus.
+            #  common{thr} : drop proteins homologous to ANY training corpus (leaky_any),
+            #                identical mask for all regimes -> a fair cross-regime subset.
             for thr in THRESHOLDS:
-                col = f"{LEAK_COL[cond]}_{thr}"
-                keep = np.array([not bool(leak.loc[p, col]) if p in leak.index else True
-                                 for p in prot])
-                mf, pf = score(y[keep], pred0[keep])
-                pmf, _ = per_protein_median(y[keep], pf, prot[keep])
-                rows.append({"benchmark": bench, "regime": cond, "subset": f"filt{thr}",
-                             "n_prot": int(len(np.unique(prot[keep]))),
-                             "per_prot_median_r": pmf, **mf})
-                print(f"  {cond:11s} filt{thr}   r={mf['pearson']:.3f} rho={mf['spearman']:.3f}"
-                      f" RMSE={mf['rmse']:.3f} n={mf['n']} (per-prot med r={pmf:.3f})")
+                for tag, col in ((f"filt{thr}", f"{LEAK_COL[cond]}_{thr}"),
+                                 (f"common{thr}", f"leaky_any_{thr}")):
+                    keep = np.array([not bool(leak.loc[p, col]) if p in leak.index else True
+                                     for p in prot])
+                    mf, pf = score(y[keep], pred0[keep])
+                    pmf, _ = per_protein_median(y[keep], pf, prot[keep])
+                    rows.append({"benchmark": bench, "regime": cond, "subset": tag,
+                                 "n_prot": int(len(np.unique(prot[keep]))),
+                                 "per_prot_median_r": pmf, **mf})
+                    print(f"  {cond:11s} {tag:9s} r={mf['pearson']:.3f} rho={mf['spearman']:.3f}"
+                          f" RMSE={mf['rmse']:.3f} n={mf['n']} (per-prot med r={pmf:.3f})")
 
             if bench == "ssym":  # antisymmetry from the direct features
                 Xrev = np.concatenate([X[:, Z:], X[:, :Z]], axis=1)

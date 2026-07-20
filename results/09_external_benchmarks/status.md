@@ -1,10 +1,24 @@
 # Status — 09_external_benchmarks
 
-**State:** 🟡 Design locked, not yet run. Test the raw-Δz/concat ΔΔG predictor on the
-field-standard **external blind benchmarks S669 + Ssym**, under three training regimes
-(Tsuboyama-only, FireProt-only, Tsuboyama→fine-tuned-on-FireProt), each scored **full**
-and **homology-filtered** (leakage control).
-**Last updated:** 2026-07-19
+**State:** 🟢 Features extracted (S669 541/62, Ssym 337/13, full coverage) and scored.
+Headline below; paper-facing README/report still to write.
+**Last updated:** 2026-07-20
+
+## Results (pooled Pearson r; per-protein median in parens)
+| Benchmark | A Tsuboyama (leak-free) | B FireProt full → filt25 | D finetune full → filt25 |
+|---|---|---|---|
+| **S669** (541/62) | 0.255 (med 0.46) | 0.500 → 0.404 (med 0.58→0.56) | 0.462 → 0.408 (med **0.61**) |
+| **Ssym** (337/13) | 0.728 (med 0.73) | 0.891 → 0.871 [n=47] (med 0.89→0.72) | 0.797 → 0.864 [n=47] (med 0.71) |
+
+- **Leakage confirmed:** A (Tsuboyama) has 0 overlap → full==filtered on both. B/D drop when
+  homologs removed (S669 B 0.50→0.38–0.40; Ssym B per-prot med 0.89→0.72).
+- **S669 = the honest hard test** (diverse); pooled r modest (0.26–0.50). **Ssym = easy/narrow**
+  (lysozyme/barnase) → inflated for everyone.
+- **Distribution > size:** FireProt (natural proteins) beats Tsuboyama (designed domains) on
+  S669 even filtered. **Fine-tune (D)** has the best S669 per-protein median (0.61) and it holds
+  under filtering — contrasts exp 08's within-FireProt "washes out".
+- **Antisymmetry** (Ssym): corr(dir,-rev) 0.91/0.98/0.97 for A/B/D, bias ~0.05.
+- All benchmarks sign-flipped (opposite ΔΔG convention; auto-handled).
 
 ## Question
 How does our Boltz-embedding ΔΔG predictor compare to the published literature on the
@@ -110,6 +124,16 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+### 2026-07-20 — both benchmarks extracted (full coverage) and scored
+- **ssym predict (212600) recovered to 337/13** — the slim-clobber fix worked (was 165/10).
+- **s669 predict (212602) completed 541/541 var, 62/62 prot, 0 failures** across ~2.5 h with
+  no_kernels + small-GPU excludes. Pulled both slim stores, built `features_ablation.parquet`
+  (ssym 337, s669 541, 0 skipped), ran `run_benchmarks.py` → `results.csv` (18 rows) +
+  `ssym_antisymmetry.csv`. Headline in Results block above.
+- Added a `common{thr}` subset (all regimes on the leaky_any-clean variants) for a fair
+  cross-regime comparison; re-running scoring. **Next:** paper-facing README + report.pdf
+  (+ scatter/leakage figures), then commit results.
+
 ### 2026-07-20 — two more bugs: small-GPU OOM + slim resume-clobber; both fixed; resubmitted
 - **`--no_kernels` confirmed working** (ssym shards ran fine on nodo11, the node that crashed before).
 - **s669 predict OOM'd:** all its shards landed on **nodo12**, whose GPU is only **~1.94 GiB**
