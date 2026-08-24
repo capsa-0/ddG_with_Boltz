@@ -86,6 +86,11 @@ the incremental slim). Steady-state cost is ~3.4 GB of mutated MSAs + ~2 GB slim
   Prepare had already been submitted before the failure, so predict/features were
   chained onto job 943 by hand rather than re-running the script.
 
+**Prepare confirmed healthy (~2 h in):** the MMseqs2 server returned the single WT
+MSA on the first try (`COMPLETE 150/150`), `mutations.csv` validated on the cluster at
+7,562 rows, and the mutant-MSA loop is running at **165 MSA/min → ~43 min** for all
+7,562 (~3.7 GB, ~500 KB each). `/grupos` still at 317 GB avail.
+
 **Next:**
 1. Watch the prepare job — it needs **one** MSA from the ColabFold MMseqs2 server for
    the WT, then builds 7,562 mutated copies (~3.4 GB of a3m; the mutated-MSA loop is
