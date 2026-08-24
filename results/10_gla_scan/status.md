@@ -1,6 +1,6 @@
 # 10_gla_scan — status log
 
-**State:** feature extraction submitted to the cluster. No ΔΔG predictions yet.
+**State:** feature extraction **running on the cluster** (jobs 943 → 944 → 945). No ΔΔG predictions yet.
 
 ---
 
@@ -61,6 +61,30 @@ the FoldX table on `mutation`** (7,562 both / 0 left / 0 right), positions agree
 **Decisions taken with the user:** all three regimes reported (not just D), numbering
 follows the FoldX file (UniProt 32–429, revised from an initial scan-local choice once
 that file surfaced), protein id `GLA_human`.
+
+**Submitted (2026-08-24):**
+
+| Job | Step | Detail |
+|---|---|---|
+| **943** | prepare | RUNNING on nodo10 |
+| **944** | predict | array `0-255%2`, `afterok:943`, excl. `nodo[1,3,5,11-12],sauron` |
+| **945** | features | `afterok:944_*` |
+
+256 shards (~30 structures each) rather than the usual 128: `/grupos` is at **100 %
+(317 GB group-wide headroom)**, and halving the shard size halves peak raw-embedding
+disk to ~5 GB (raw z for a 398 aa protein is ~80 MB/structure, deleted per shard by
+the incremental slim). Steady-state cost is ~3.4 GB of mutated MSAs + ~2 GB slim store.
+
+**Two submission failures fixed along the way:**
+- `git pull` on the cluster was blocked by untracked `fireprot_le200.{csv,yaml}`;
+  verified byte-identical (md5) to the committed copies, removed, pulled.
+- The predict array was rejected with `Invalid node name specified`: the exclude list
+  named **nodo14/nodo15, which no longer exist** (cluster rebuilt — nodes are now
+  nodo1–12 + sauron, job IDs reset to 3 digits). Fixed in `predict_array.sbatch`
+  (which also now excludes nodo1/nodo5, previously missing), and `submit_scan.sh`
+  now filters its exclude list against live `sinfo` so this degrades gracefully.
+  Prepare had already been submitted before the failure, so predict/features were
+  chained onto job 943 by hand rather than re-running the script.
 
 **Next:**
 1. Watch the prepare job — it needs **one** MSA from the ColabFold MMseqs2 server for
