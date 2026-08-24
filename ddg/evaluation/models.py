@@ -21,15 +21,16 @@ from sklearn.svm import SVR
 from ddg.evaluation.labels import feature_columns
 
 
-def make_model(name: str = "hgb") -> Pipeline:
+def make_model(name: str = "mlp") -> Pipeline:
     """
     Return a fresh pipeline for the named estimator.
 
+    'mlp'   — seed-ensembled MLP (see below). Project default since experiment 06
+              showed it matches/beats HGB on the raw-Δz generalization holdouts.
     'hgb'   — HistGradientBoosting: fast, strong on tabular, scales to the wide
               corpus (SVR is O(n^2-3) and infeasible past ~10k samples/fold).
     'svr'   — RBF SVR (the project's original model; only tractable on small folds).
     'ridge' — fast linear baseline.
-    'mlp'   — seed-ensembled MLP (see below).
     """
     name = name.lower()
     if name == "hgb":

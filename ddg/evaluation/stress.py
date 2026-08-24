@@ -58,7 +58,7 @@ def _fit_slope(y_true: np.ndarray, y_pred: np.ndarray) -> float:
 # --------------------------------------------------------------------------- #
 # Test 1: extrapolation to the destabilizing tail
 # --------------------------------------------------------------------------- #
-def run_extrapolation(df: pd.DataFrame, out_dir: Path, model: str = "hgb",
+def run_extrapolation(df: pd.DataFrame, out_dir: Path, model: str = "mlp",
                       mild: float = 1.0, tail: float = 2.0,
                       in_dist_frac: float = 0.2, seed: int = 0) -> dict:
     """Train on mild mutations, test on the destabilizing tail + in-dist baseline."""
@@ -155,7 +155,7 @@ def _plot_extrapolation(y_in, p_in, y_tail, p_tail, m_in, m_tail,
 # --------------------------------------------------------------------------- #
 # Test 2: learning curve over number of training proteins
 # --------------------------------------------------------------------------- #
-def run_learning_curve(df: pd.DataFrame, out_dir: Path, model: str = "hgb",
+def run_learning_curve(df: pd.DataFrame, out_dir: Path, model: str = "mlp",
                        fractions=(0.1, 0.25, 0.5, 1.0), n_folds: int = 5,
                        n_seeds: int = 3, seed: int = 0) -> pd.DataFrame:
     """Pooled r vs. number of training proteins (test proteins held out)."""
@@ -251,7 +251,7 @@ def main() -> None:
     ap.add_argument("test", choices=["extrapolation", "learning_curve"])
     ap.add_argument("--parquet", required=True, help="raw-Δz feature table")
     ap.add_argument("--out", required=True, help="output directory")
-    ap.add_argument("--model", default="hgb")
+    ap.add_argument("--model", default="mlp")
     ap.add_argument("--mild", type=float, default=1.0)
     ap.add_argument("--tail", type=float, default=2.0)
     args = ap.parse_args()
