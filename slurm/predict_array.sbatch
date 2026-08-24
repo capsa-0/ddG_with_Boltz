@@ -17,9 +17,11 @@
 #SBATCH --gres=gpu:1
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
-# No --time (gpu partition is unlimited). Exclude too-small/old GPUs and
-# nodo3 (broken dynamic linker: boltz aborts with ld.so assertion / exit 127).
-#SBATCH --exclude=nodo3,nodo11,nodo12,nodo14,nodo15,sauron
+# No --time (gpu partition is unlimited). Exclude too-small/old GPUs and the
+# nodes that crash boltz at startup (nodo1 CUDA init, nodo3 ld.so, nodo5 bad GPU).
+# Keep this list to nodes that ACTUALLY EXIST -- sbatch rejects the whole job with
+# "Invalid node name specified" otherwise (nodo14/nodo15 were decommissioned).
+#SBATCH --exclude=nodo1,nodo3,nodo5,nodo11,nodo12,sauron
 # Auto-requeue if the node fails/preempts (predict is resumable: on rerun it
 # skips queries already predicted, so requeue only redoes leftover work).
 #SBATCH --requeue

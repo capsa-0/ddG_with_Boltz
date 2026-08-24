@@ -31,28 +31,46 @@ MAXPAR="${3:-2}"   # cap concurrent GPU shards (cluster courtesy); default 2
 
 cd "$(dirname "$0")/.."
 
-# Nodes that break boltz at startup (see CLAUDE.md): bad GPU / CUDA init / ld.so.
-EXCLUDE_CPU="nodo1,nodo3,nodo5"
-EXCLUDE_GPU="nodo1,nodo3,nodo5,nodo11,nodo12,nodo14,nodo15,sauron"
+# Nodes that break boltz at startup (see CLAUDE.md): bad GPU / CUDA init / ld.so,
+# plus GPUs too small for a large protein. Filtered against the live inventory:
+# sbatch rejects an ENTIRE submission with "Invalid node name specified" if the
+# list names a node that no longer exists (nodo14/nodo15 were decommissioned).
+WANT_CPU="nodo1 nodo3 nodo5"
+WANT_GPU="nodo1 nodo3 nodo5 nodo11 nodo12 sauron"
+
+existing_nodes() {
+    scontrol show hostnames "$(sinfo -h -o '%N' | paste -sd, -)" 2>/dev/null
+}
+filter_nodes() {   # keep only names the cluster actually has
+    local have keep=""
+    have=$(existing_nodes)
+    for n in $1; do
+        grep -qx "$n" <<<"$have" && keep="${keep:+$keep,}$n"
+    done
+    echo "$keep"
+}
+EXCLUDE_CPU=$(filter_nodes "$WANT_CPU")
+EXCLUDE_GPU=$(filter_nodes "$WANT_GPU")
+echo "exclude cpu=${EXCLUDE_CPU:-<none>}  gpu=${EXCLUDE_GPU:-<none>}"
 
 echo "config=${CONFIG}  shards=${NSHARDS}  max_parallel=${MAXPAR}"
 
 # 1) prepare (CPU): dataset -> MSAs -> mutated MSAs -> Boltz queries, and warm
 #    the Boltz cache serially so the GPU shards only ever read it.
-PREP=$(sbatch --parsable --job-name=ddg-prepare --exclude="$EXCLUDE_CPU" \
+PREP=$(sbatch --parsable --job-name=ddg-prepare ${EXCLUDE_CPU:+--exclude="$EXCLUDE_CPU"} \
         slurm/cpu_step.sbatch "$CONFIG" prepare)
 echo "prepare  : job  ${PREP}"
 
 # 2) predict (GPU array): each task predicts its shard, then slims it and drops raw.
 PRED=$(sbatch --parsable --job-name=ddg-predict \
-        --dependency=afterok:"${PREP}" --exclude="$EXCLUDE_GPU" \
+        --dependency=afterok:"${PREP}" ${EXCLUDE_GPU:+--exclude="$EXCLUDE_GPU"} \
         --array=0-$((NSHARDS-1))%"${MAXPAR}" \
         slurm/predict_array.sbatch "$CONFIG" "$NSHARDS")
 echo "predict  : array ${PRED}  (0-$((NSHARDS-1))%${MAXPAR})"
 
 # 3) features (CPU): slim store -> features_summary.parquet.
 FEAT=$(sbatch --parsable --job-name=ddg-features --dependency=afterok:"${PRED}" \
-        --exclude="$EXCLUDE_CPU" slurm/cpu_step.sbatch "$CONFIG" features)
+        ${EXCLUDE_CPU:+--exclude="$EXCLUDE_CPU"} slurm/cpu_step.sbatch "$CONFIG" features)
 echo "features : job  ${FEAT}"
 
 cat <<MSG
