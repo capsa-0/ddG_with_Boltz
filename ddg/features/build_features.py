@@ -4,10 +4,18 @@ Description: The pipeline's ``features`` step. Turns the slim embedding store in
 the decided **raw-Δz** feature table (optionally augmented with raw Δs).
 
 For each mutation at 0-based position ``i`` we read the wild-type and mutant slim
-slices (see ddg.storage.slim) and emit, from the pair track ``z``:
+slices (see ddg.storage.slim) and emit, from the pair track ``z``, the blocks named
+by ``feature.blocks`` in the experiment YAML (default ``[zdiag, zpool]``):
 
   - ``zdiag_0..127`` = ``mut_z[i, i] − wt_z[i, i]``            (the diagonal element)
   - ``zpool_0..127`` = mean over residues of ``mut_z[i, :] − wt_z[i, :]``
+  - ``wtz_0..127``   = mean over residues of ``wt_z[i, :]``    (WT pooled row)
+  - ``mtz_0..127``   = mean over residues of ``mut_z[i, :]``   (mutant pooled row)
+
+``zdiag``/``zpool`` are the *difference* representation; ``wtz``/``mtz`` are the
+*concat* representation adopted in results/07 (note ``zpool == mtz − wtz``, so Δz
+is recoverable from concat but not the other way round). Asking for all four
+reproduces ``results/07_feature_symmetry_ablation/build_ablation_features.py``.
 
 and, only when ``s`` was kept in the slim store (``slim.keep_s: true``), from the
 single track ``s``:
@@ -35,21 +43,47 @@ logger = logging.getLogger(__name__)
 
 Z_DIM = 128  # Boltz-2 pair-track (z) feature dimension
 
+# Every z-derived block this builder knows how to emit, in canonical column order.
+Z_BLOCKS = ("zdiag", "zpool", "wtz", "mtz")
+# What the pipeline emits when the experiment YAML says nothing: the raw-Δz pair
+# that every experiment up to 06 used. Kept as the default so existing configs
+# keep producing byte-identical feature tables.
+DEFAULT_Z_BLOCKS = ("zdiag", "zpool")
 
-def _raw_z_delta(wt: dict, mut: dict, pos: int) -> np.ndarray:
-    """Return [zdiag(128), zpool(128)] for one mutation at 0-based `pos`.
+
+def normalize_blocks(blocks) -> tuple[str, ...]:
+    """Validate a requested block list and return it in canonical order."""
+    if blocks is None:
+        return DEFAULT_Z_BLOCKS
+    if isinstance(blocks, str):
+        blocks = [b.strip() for b in blocks.split(",") if b.strip()]
+    unknown = [b for b in blocks if b not in Z_BLOCKS]
+    if unknown:
+        raise ValueError(f"unknown feature block(s) {unknown}; known: {list(Z_BLOCKS)}")
+    if not blocks:
+        raise ValueError("feature.blocks is empty; give at least one of "
+                         f"{list(Z_BLOCKS)}")
+    return tuple(b for b in Z_BLOCKS if b in set(blocks))
+
+
+def _raw_z_delta(wt: dict, mut: dict, pos: int,
+                 blocks: tuple[str, ...] = DEFAULT_Z_BLOCKS) -> np.ndarray:
+    """Return the requested z blocks, concatenated, for a mutation at 0-based `pos`.
 
     wt["zrow"] is (P, L, Dz) over the WT's kept positions; mut["zrow"] is
     (1, L, Dz) for the mutant's own position. We select the WT row matching
-    `pos`, take the diagonal difference at `pos` and the residue-mean of the row
-    difference.
+    `pos`, then build each block from that pair of rows.
     """
     wt_pos = [int(p) for p in wt["pos"]]
     wt_row = wt["zrow"][wt_pos.index(pos)].astype(np.float32)   # (L, Dz)
     mut_row = mut["zrow"][0].astype(np.float32)                 # (L, Dz)
-    zdiag = mut_row[pos] - wt_row[pos]                          # (Dz,)
-    zpool = (mut_row - wt_row).mean(axis=0)                     # (Dz,)
-    return np.concatenate([zdiag, zpool])
+    parts = {
+        "zdiag": lambda: mut_row[pos] - wt_row[pos],            # (Dz,)
+        "zpool": lambda: (mut_row - wt_row).mean(axis=0),       # (Dz,)
+        "wtz": lambda: wt_row.mean(axis=0),                     # (Dz,)
+        "mtz": lambda: mut_row.mean(axis=0),                    # (Dz,)
+    }
+    return np.concatenate([parts[b]() for b in blocks])
 
 
 def _raw_s_delta(wt: dict, mut: dict, pos: int) -> np.ndarray:
@@ -63,12 +97,30 @@ def _raw_s_delta(wt: dict, mut: dict, pos: int) -> np.ndarray:
     return mut_s[pos] - wt_s[pos]
 
 
+def _label(row) -> float:
+    """ΔΔG for one mutations.csv row, or NaN when the run is unlabelled.
+
+    A scan (``head.mode: inference``) has no measured ΔΔG at all, so the column is
+    either absent or entirely empty; the feature table still carries a ``ddg``
+    column so every downstream consumer sees the same schema.
+    """
+    value = getattr(row, "ddg", None)
+    if value is None:
+        return float("nan")
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return float("nan")
+
+
 def build_features_frame(config: ProjectConfig) -> pd.DataFrame:
     """Build the raw-Δz [+ Δs] feature table from the slim store."""
     keep_s = bool(config.exp_config.get("slim", {}).get("keep_s", False))
+    blocks = config.feature_blocks
     store = SlimStore(config.exp_processed_dir / "slim")
     mutations = pd.read_csv(config.mutations_df_path)
-    logger.info("build_features: %d mutations, keep_s=%s", len(mutations), keep_s)
+    logger.info("build_features: %d mutations, blocks=%s, keep_s=%s",
+                len(mutations), ",".join(blocks), keep_s)
 
     meta_rows: list[tuple] = []
     z_feats: list[np.ndarray] = []
@@ -80,7 +132,7 @@ def build_features_frame(config: ProjectConfig) -> pd.DataFrame:
         try:
             wt = store.get(row.wt_key)
             mut = store.get(row.sample_key)
-            z = _raw_z_delta(wt, mut, pos)
+            z = _raw_z_delta(wt, mut, pos, blocks)
             s = _raw_s_delta(wt, mut, pos) if keep_s else None
         except Exception as e:  # missing key / position / corrupt slice
             skipped += 1
@@ -88,7 +140,7 @@ def build_features_frame(config: ProjectConfig) -> pd.DataFrame:
                          row.wt_id, row.mutation, e)
             continue
 
-        meta_rows.append((row.wt_id, row.mutation, float(row.ddg)))
+        meta_rows.append((row.wt_id, row.mutation, _label(row)))
         z_feats.append(z)
         if keep_s:
             s_feats.append(s)
@@ -105,8 +157,8 @@ def build_features_frame(config: ProjectConfig) -> pd.DataFrame:
 
     Z = np.vstack(z_feats)
     Z = np.where(np.isfinite(Z), Z, np.nan).astype(np.float32)
-    z_cols = {f"zdiag_{j}": Z[:, j] for j in range(Z_DIM)}
-    z_cols.update({f"zpool_{j}": Z[:, Z_DIM + j] for j in range(Z_DIM)})
+    z_cols = {f"{block}_{j}": Z[:, k * Z_DIM + j]
+              for k, block in enumerate(blocks) for j in range(Z_DIM)}
     df = pd.concat([df, pd.DataFrame(z_cols)], axis=1)
 
     if keep_s:

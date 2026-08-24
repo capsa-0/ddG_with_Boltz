@@ -51,6 +51,17 @@ class ProjectConfig:
         self.boltz_flags = self.exp_config['feature_extraction']['boltz_flags']
         self.training_params = self.exp_config.get('training', {})
 
+    @property
+    def feature_blocks(self) -> tuple:
+        """Which z-derived feature blocks the `features` step should emit.
+
+        Set as `feature.blocks` in the experiment YAML, e.g.
+        `[zdiag, zpool, wtz, mtz]`. Omitting it keeps the historical raw-Δz pair
+        (`zdiag` + `zpool`), so existing configs are unaffected.
+        """
+        from ddg.features.build_features import normalize_blocks
+        return normalize_blocks(self.exp_config.get('feature', {}).get('blocks'))
+
     # ----- BASE PATHS (Dynamic based on names_config) -----
     
     @property
