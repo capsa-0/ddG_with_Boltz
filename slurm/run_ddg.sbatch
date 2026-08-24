@@ -34,8 +34,10 @@ date +"Start: %F - %T"
 echo "================================================================"
 
 cd "$PROJECT_ROOT"
-eval "$(conda shell.bash hook)"
-source activate ddG_with_Boltz
+# Cluster conda is loaded through the shared loader (admin-mandated 2026-08-24;
+# the old `conda shell.bash hook` / `source activate` pair no longer resolves).
+source /home/shared/load-conda
+conda activate ddG_with_Boltz
 
 # Runs all steps in order: prepare -> predict -> slim -> features.
 # (python -m ddg works without `pip install -e .`; the `ddg` command works after.)

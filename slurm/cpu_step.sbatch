@@ -27,7 +27,9 @@ STEP="${2:?provide a step: prepare | slim | features}"
 echo "CPU step '${STEP}'  job ${SLURM_JOB_ID}  node ${SLURM_JOB_NODELIST}  config ${CONFIG}"
 
 cd "$PROJECT_ROOT"
-eval "$(conda shell.bash hook)"
-source activate ddG_with_Boltz
+# Cluster conda is loaded through the shared loader (admin-mandated 2026-08-24;
+# the old `conda shell.bash hook` / `source activate` pair no longer resolves).
+source /home/shared/load-conda
+conda activate ddG_with_Boltz
 
 srun python -m ddg run "$CONFIG" --step "$STEP"

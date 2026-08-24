@@ -26,8 +26,10 @@ MODEL="${2:-hgb}"
 echo "EVAL  job ${SLURM_JOB_ID}  node ${SLURM_JOB_NODELIST}  config ${CONFIG}  model ${MODEL}"
 
 cd "$PROJECT_ROOT"
-eval "$(conda shell.bash hook)"
-source activate ddG_with_Boltz
+# Cluster conda is loaded through the shared loader (admin-mandated 2026-08-24;
+# the old `conda shell.bash hook` / `source activate` pair no longer resolves).
+source /home/shared/load-conda
+conda activate ddG_with_Boltz
 
 # Extra args after the model are forwarded (e.g. --drop-s for the s-ablation).
 srun python -m ddg.evaluation --config "$CONFIG" --model "$MODEL" "${@:3}"
