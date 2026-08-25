@@ -369,3 +369,36 @@ subset run. Raising `ArrayTaskThrottle` is the only lever that materially shorte
 
 Disk is not a constraint: the whole experiment is 5.5 GB and `/grupos` has 277 GB free;
 incremental per-shard slim keeps peak raw at ~one shard.
+
+### 2026-08-25 — shard 1031_25 failed on a SLURM credential error (data safe)
+
+**What happened.** `1031_25` (nodo4) exited 1. The Boltz prediction **succeeded** — 27
+structures written and merged into the canonical predictions dir. The failure was the
+*second* `srun` in `predict_array.sbatch`, the incremental slim step:
+
+```
+srun: error: Unable to create step for job 1166: Error generating job credential
+```
+
+A SLURM infrastructure error (job-step credential), not code, data, or a bad GPU.
+**One-off**: 1 of 26 finished tasks, 1 log affected, no recurrence.
+
+**Consequence.** The 27 predictions stayed raw (unslimmed) — harmless, disk is fine
+(7.1 GB used, 351 GB free) — but the FAILED task made `1032`'s `afterok:1031_*`
+permanently unsatisfiable. `scontrol requeue 1031_25` was **refused** ("Invalid job id")
+because the task had already left the queue.
+
+**Fix.** Cancelled 1032 and resubmitted a chain that tolerates the failure:
+- **slim 1399** with `--dependency=afterany:1031` (not `afterok`) — runs once the array
+  finishes regardless of the one failure. Shardless, so it sweeps up every leftover raw
+  folder including that shard's 27.
+- **features 1400** with `afterok:1399`.
+
+**Lesson for `submit_scan.sh`:** chaining the post-array steps with `afterok` on the
+array makes the whole run hostage to any single transient task failure, even when that
+task's *output* is complete. `afterany` + a shardless slim is the resilient pattern,
+since slim/features are both idempotent and skip-aware.
+
+**Progress at this point:** 25 COMPLETED (16 of them instant no-ops over pre-banked
+structures), 1 FAILED, 2 RUNNING, 228 PENDING. Real shards averaging ~29 min; two GPU
+slots active again. Remaining ~233 real shards → **~56 h** at two slots.
