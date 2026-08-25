@@ -6,6 +6,7 @@ Description: Modifies multiple sequence alignment files (trimming, mutations, et
 import logging
 from Bio import SeqIO
 from Bio.Seq import Seq
+from Bio.SeqRecord import SeqRecord
 import pandas as pd
 
 logger = logging.getLogger(__name__)
@@ -24,6 +25,26 @@ class MsaModifier:
         self.msa_path = msa_path
         self.records = list(SeqIO.parse(msa_path, "fasta"))
         logger.debug(f"Loaded {len(self.records)} sequences from {msa_path}")
+
+    @classmethod
+    def from_cache(cls, cached):
+        """Build a modifier from cached (id, description, sequence) triples.
+
+        Generating one mutant MSA per mutation otherwise re-parses the whole base
+        alignment every time — for a 400 aa protein with 1000 MSA rows and 7562
+        mutations that is ~45 min of pure re-parsing. The cache is built once per
+        base MSA and this rebuilds cheap records from it, so mutate/save logic
+        stays in one place.
+        """
+        obj = cls.__new__(cls)
+        obj.msa_path = None
+        obj.records = [SeqRecord(Seq(seq), id=rid, description=desc)
+                       for rid, desc, seq in cached]
+        return obj
+
+    def as_cache(self):
+        """(id, description, sequence) triples for from_cache()."""
+        return [(r.id, r.description, str(r.seq)) for r in self.records]
 
     def keep_first_n_sequences(self, n):
         """
@@ -132,26 +153,44 @@ class MSADirectoryModifier:
         """
         Apply each mutation to wild-type MSA and save separately.
         Each file becomes: wt_id_mutation.a3m
+
+        Existing mutant MSAs are left alone, so re-running prepare on an experiment
+        that already has them is fast. Without this a resumed run rebuilds every
+        mutant alignment from scratch (~1.8 h and ~3.4 GB rewritten for a 7562-mutation
+        scan) purely to reproduce files that are already on disk.
         """
         mutations = self.get_mutations()
-        logger.info(f"Applying mutations to MSA files")
-        
-        for msa_file in self.msa_dir.glob("*.a3m"):
-            wt_id = msa_file.stem  
-            if wt_id in mutations:
-                for mutation in mutations[wt_id]:
-                    modifier = MsaModifier(msa_file)
-                    
-                    # Parse mutation: e.g., "Y1A" -> position=0, old_aa="Y", new_aa="A"
-                    position = int(mutation[1:-1]) - 1
-                    old_aa = mutation[0]
-                    new_aa = mutation[-1]
-                    
-                    modifier.mutate_position(old_aa, position, new_aa, only_first_row=self.only_first_row)
-                    
-                    new_name = f"{wt_id}_{mutation}.a3m"
-                    new_path = msa_file.parent / new_name
-                    modifier.save(new_path)
+        logger.info("Applying mutations to MSA files")
+        written = skipped = 0
+
+        # Materialise the listing first: this loop writes .a3m files into the very
+        # directory it is iterating.
+        for msa_file in sorted(self.msa_dir.glob("*.a3m")):
+            wt_id = msa_file.stem
+            if wt_id not in mutations:
+                continue
+            cache = None
+            for mutation in mutations[wt_id]:
+                new_path = msa_file.parent / f"{wt_id}_{mutation}.a3m"
+                if new_path.exists() and new_path.stat().st_size > 0:
+                    skipped += 1
+                    continue
+                if cache is None:                     # parse the base MSA once
+                    cache = MsaModifier(msa_file).as_cache()
+                modifier = MsaModifier.from_cache(cache)
+
+                # Parse mutation: e.g., "Y1A" -> position=0, old_aa="Y", new_aa="A"
+                position = int(mutation[1:-1]) - 1
+                old_aa = mutation[0]
+                new_aa = mutation[-1]
+
+                modifier.mutate_position(old_aa, position, new_aa,
+                                         only_first_row=self.only_first_row)
+                modifier.save(new_path)
+                written += 1
+
+        logger.info("MSA mutants: %d written, %d already present (skipped)",
+                    written, skipped)
 
     def flatten_sequences(self):
         """Flatten all sequences in all MSA files to single lines."""

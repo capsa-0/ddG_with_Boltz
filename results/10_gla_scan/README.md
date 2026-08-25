@@ -83,7 +83,32 @@ python -m ddg.scan build --name GLA_human --first-residue 32 --sequence <SEQ>
 sbatch slurm/scan_predict.sbatch experiment_configs/scan_GLA_human.yaml
 ```
 
+## Runs
+
+| Experiment | Scope | State |
+|---|---|---|
+| `scan_GLA_human_hard` | 38 targeted positions (the 10 flagged + all 31 glycines), 722 mutations | **Scored** — 604/722 have features; results and figures in this folder |
+| `scan_GLA_human` | all 398 positions, 7,562 mutations | **Running** on the cluster (array 1031 → slim 1399 → features 1400) |
+
+## Headline so far (targeted subset, 604 mutations)
+
+- Predicted ΔΔG means: **A +0.28**, **B +1.24**, **D +0.91** kcal/mol; regimes agree at
+  Pearson 0.63–0.80, mean across-regime SD 0.52.
+- **vs FoldX: Spearman +0.504** — but **+0.379** once FoldX's clash tail (>10 kcal/mol)
+  is removed, and **+0.312** restricted further to exposed sites. Agreement *falls* as
+  FoldX becomes more trustworthy, so most of the headline number is both methods
+  agreeing that buried-glycine substitutions are bad.
+- **No measured ΔΔG exists for GLA** (ProThermDB / ThermoMutDB / FireProtDB / MaveDB all
+  checked; the one biophysical study reports urea C₀.₅, not ΔΔG). GLA is also absent from
+  every training corpus, so the predictions are leakage-free — but unvalidatable here.
+- **Neither the "glycines are worse" nor the "flagged positions are worse" hypothesis
+  separates from noise** at ~15 substitutions per position (p = 0.077 and p = 0.476;
+  bootstrap CI for a single position's ρ spans [+0.09, +0.83]).
+
+**The overestimation question is open.** It needs measured ΔΔG — i.e. S669/Ssym
+(results/09 corpora), not FoldX on this protein.
+
 ## Status
 
-Running — see [`status.md`](status.md). Results, figures and `report.pdf` land here
-once the feature extraction finishes.
+See [`status.md`](status.md) for the full work log. `report.pdf` follows once the
+398-position run lands and the comparison is redone without the glycine bias.
