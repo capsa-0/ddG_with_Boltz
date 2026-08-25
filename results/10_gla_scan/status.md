@@ -199,3 +199,39 @@ Regime agreement (Pearson): A–B 0.634, A–D 0.769, B–D 0.796; mean across-r
    at n≈15 nothing is separable.
 3. 5 shards' worth of structures remain unpredicted; the full 398-position scan is
    still resumable (`scan_GLA_human`, ~480 structures banked).
+
+### 2026-08-25 — searched for measured ΔΔG ground truth: none exists for GLA
+
+**Leakage check (good news):** GLA / P06280 / the exact WT sequence appears in **none**
+of the local corpora (`fireprot_*`, `tsuboyama_*`, `s669`, `ssym`). So regimes A/B/D
+have never seen this protein — the scan is a genuine blind prediction. It also means
+no free ground truth from the datasets already on disk.
+
+**External search — no ΔΔG dataset exists for α-galactosidase A:**
+- **ProThermDB / ThermoMutDB / FireProtDB:** no α-Gal A entries surfaced. Consistent
+  with the local check, since the project's FireProt corpus derives from that lineage.
+- **The one directly relevant biophysical study** — Andreotti et al., *A thermodynamic
+  assay to test pharmacological chaperones for Fabry disease* (PMC3909460) —
+  **explicitly declines to report ΔG/ΔΔG**, using urea **C₀.₅** (half-unfolding
+  concentration) instead, because ΔG would require m-values they did not measure.
+  Only ~4 mutants: **L300F, D244H, Q280K, R301P** (WT C₀.₅ = 1.8 ± 0.1 M urea, pH 7.4).
+- **No deep mutational scan / VAMP-seq for GLA** in MaveDB.
+
+**What does exist, all proxies rather than ΔΔG:**
+| Source | Measure | Overlap with our 38 positions |
+|---|---|---|
+| Andreotti et al. | urea C₀.₅ | **R301P** (pos 301) |
+| ER-stress/UPR study (PMC9636577) | ER retention, 7 variants | **G360D**, **R301Q** (pos 360, 301) |
+| Fabry variant literature | residual activity %WT (class I–IV) | many, but activity ≠ stability |
+| Sci Rep 2023 directed evolution | engineered thermostable variants | not systematic single-point |
+
+So the measurable overlap is **~3 mutations at 2 of the 38 positions** — far too few to
+validate anything, and none of it on a ΔΔG scale.
+
+**Conclusion:** FoldX remains the only comparator available for this protein, with the
+clash-inflation caveat already recorded. Testing the "overestimates at these positions"
+claim on a ΔΔG scale is **not possible with public data for GLA**. Options, in order of
+strength: (a) validate the claim on a protein that *does* have measured ΔΔG (S669/Ssym
+already done — results/09); (b) use ClinVar pathogenic-vs-benign GLA missense variants
+as an ordinal proxy (tests pathogenicity, not stability, and is confounded by catalytic
+residues); (c) treat residual-activity % as a weak proxy with the same confound.
