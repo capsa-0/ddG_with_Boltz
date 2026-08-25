@@ -2,15 +2,16 @@
 #==============================================================================
 # Submit a full mutational scan as a chained set of SLURM jobs.
 #
-#   prepare (CPU)  ->  predict array (GPU, N shards, each self-slimming)  ->  features (CPU)
+#   prepare (CPU) -> predict array (GPU, N shards, each self-slimming)
+#                  -> slim sweep (CPU, afterany) -> features (CPU)
 #
 # Differs from submit_all.sh in two ways that matter at scan scale (a 400 aa
 # protein is ~7.5k structures, raw z ~80 MB each):
 #
-#   * No separate `slim` step. Each predict task slims its OWN shard and deletes
-#     the raw NPZs immediately, so peak disk is ~one shard's raw, not the whole
-#     corpus. A monolithic slim over 7.5k structures would be a multi-hour job
-#     whose failure would strand the entire chain.
+#   * Each predict task slims its OWN shard and deletes the raw NPZs immediately, so
+#     peak disk is ~one shard's raw, not the whole corpus. The final `slim` is only a
+#     cheap sweep for leftovers (a task that died between predicting and slimming),
+#     not a monolithic pass over the corpus.
 #   * Bad nodes are excluded up front (nodo1/nodo3/nodo5 crash boltz at startup;
 #     a single shard landing there fails the array and leaves features stuck on
 #     DependencyNeverSatisfied).
@@ -68,8 +69,18 @@ PRED=$(sbatch --parsable --job-name=ddg-predict \
         slurm/predict_array.sbatch "$CONFIG" "$NSHARDS")
 echo "predict  : array ${PRED}  (0-$((NSHARDS-1))%${MAXPAR})"
 
-# 3) features (CPU): slim store -> features_summary.parquet.
-FEAT=$(sbatch --parsable --job-name=ddg-features --dependency=afterok:"${PRED}" \
+# 3) slim (CPU): shardless sweep, dependency afterANY the array.
+#    afterok would make the whole run hostage to a single transient task failure --
+#    even one whose PREDICTIONS completed and were merged (seen in practice: a task
+#    lost only its second srun to a SLURM "Error generating job credential", leaving
+#    27 good structures unslimmed and features permanently DependencyNeverSatisfied).
+#    A shardless slim sweeps up every leftover raw folder, so the run survives it.
+SLIM=$(sbatch --parsable --job-name=ddg-slim --dependency=afterany:"${PRED}" \
+        ${EXCLUDE_CPU:+--exclude="$EXCLUDE_CPU"} slurm/cpu_step.sbatch "$CONFIG" slim)
+echo "slim     : job  ${SLIM}  (afterany: survives an individual shard failure)"
+
+# 4) features (CPU): only if the slim sweep succeeded.
+FEAT=$(sbatch --parsable --job-name=ddg-features --dependency=afterok:"${SLIM}" \
         ${EXCLUDE_CPU:+--exclude="$EXCLUDE_CPU"} slurm/cpu_step.sbatch "$CONFIG" features)
 echo "features : job  ${FEAT}"
 
@@ -83,6 +94,10 @@ Predict is resumable (it skips structures already predicted or already in the
 slim store), so if the array fails, just re-run this script -- it only redoes
 leftover work. If features is left PENDING (DependencyNeverSatisfied), the array
 failed: scancel ${FEAT} first, then resubmit.
+
+If a single shard fails, the array still finishes and slim/features still run
+(afterany). Check that shard\'s predictions landed, then re-run this script to
+redo only what is missing.
 
 When features finishes, score the scan:
   sbatch slurm/scan_predict.sbatch ${CONFIG}
