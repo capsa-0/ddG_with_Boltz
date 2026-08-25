@@ -9,6 +9,14 @@ converted to a **percentile rank** over the scanned mutations, and the discrepan
     > 0  Boltz ranks it MORE destabilizing than FoldX does
     < 0  FoldX ranks it more destabilizing (its clash regime)
 
+This is a DISAGREEMENT measure between two predictors, not an accuracy measure: there
+is no measured ddG for this protein (see status.md), so neither method is arbitrated.
+Two limits of the metric are worth keeping in view: the percentiles are relative to
+THIS scanned set (31 of 38 positions are glycines, so it is not a neutral reference),
+and rank-normalising both methods removes any disagreement about distribution by
+construction -- including the large scale mismatch (regression slope Boltz~FoldX
+= 0.08), which this metric cannot see.
+
 Per position we report mean signed delta (direction of disagreement) and mean |delta|
 (magnitude), then relate them to structure: burial, secondary structure, and distance
 to the catalytic Asp pair (D170 nucleophile / D231 acid-base).
@@ -94,7 +102,11 @@ def main():
     per = per.sort_values("delta_mean")
 
     print("=== where the two methods disagree most (percentile points) ===")
-    print("  delta<0: FoldX calls it worse   delta>0: Boltz calls it worse\n")
+    print("  delta = pct(Boltz) - pct(FoldX), each ranked within ITS OWN spread over")
+    print("  these mutations. It measures DISAGREEMENT IN RELATIVE ORDERING between two")
+    print("  predictors -- with no ground truth, it says nothing about which is correct.")
+    print("  delta<0: FoldX ranks it more destabilizing")
+    print("  delta>0: Boltz ranks it more destabilizing\n")
     print(f"  {'pos':>4} {'wt':>2} {'ss':>2} {'nbr':>4} {'dAct':>6} "
           f"{'delta':>7} {'|delta|':>8} {'Boltz':>7} {'FoldX':>7}")
     for r in per.itertuples(index=False):
@@ -153,8 +165,9 @@ def _figure(m, per, path):
     a.bar(x, o.delta_mean, color=["#C44E52" if v < 0 else "#4C72B0" for v in o.delta_mean])
     a.axhline(0, color="0.3", lw=0.8)
     a.set_ylabel("Boltz − FoldX\n(percentile points)")
-    a.set_title("Where Boltz and FoldX disagree  "
-                "(blue = Boltz ranks worse · red = FoldX ranks worse)")
+    a.set_title("Disagreement in relative ordering (no ground truth: neither is 'right')\n"
+                "blue = Boltz ranks it more destabilizing · red = FoldX does",
+                fontsize=10)
     for i, r in enumerate(o.itertuples(index=False)):
         if r.flagged:
             a.axvspan(i-.5, i+.5, color="#DDAA33", alpha=.18, zorder=0)

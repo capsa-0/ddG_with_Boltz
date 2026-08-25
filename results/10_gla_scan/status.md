@@ -280,3 +280,25 @@ clean subset the scale mismatch is stark: **regression slope Boltz~FoldX = 0.08*
 Its reliable regime is where the two methods agree *least*, and its unreliable regime
 is where the apparent correlation comes from. Ground truth has to come from measured
 ΔΔG on other proteins (results/09 corpora), not from FoldX here.
+
+### 2026-08-25 — terminology correction on the discrepancy map
+
+The discrepancy metric was described as one method "ranking worse" than the other.
+**Corrected to "ranks more destabilizing"** in `map_discrepancy.py`, its printed output
+and the figure title. `delta = pct(Boltz) − pct(FoldX)` measures **disagreement in
+relative ordering between two predictors**; with no measured ΔΔG for GLA it cannot say
+which is correct, and "worse" invited reading it as an accuracy claim.
+
+Two limits of the metric, now documented in the script:
+- Percentiles are computed **within this scanned set**, of which 31/38 positions are
+  glycines — not a neutral reference population.
+- Rank-normalising both methods **removes disagreement about distribution by
+  construction**, concentrating everything into ordering. It therefore cannot see the
+  scale mismatch (regression slope Boltz~FoldX = 0.08), which is arguably the largest
+  real difference between them.
+
+The closest thing to arbitration available is the **asymmetric mechanistic prior**:
+where FoldX is in its clash regime (buried Gly + rigid backbone, established from the
+literature and confirmed on 1R46) there is independent reason to distrust it; where
+Boltz is the harsher one at exposed sites, there is no such argument and the
+disagreement is genuinely unresolved.
