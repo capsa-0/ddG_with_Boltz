@@ -402,3 +402,46 @@ since slim/features are both idempotent and skip-aware.
 **Progress at this point:** 25 COMPLETED (16 of them instant no-ops over pre-banked
 structures), 1 FAILED, 2 RUNNING, 228 PENDING. Real shards averaging ~29 min; two GPU
 slots active again. Remaining ~233 real shards → **~56 h** at two slots.
+
+### 2026-08-25 — CORRECTION: the ground-truth test already exists (results/12)
+
+Throughout this work I repeatedly proposed "test the glycine/overestimation hypothesis
+on S669/Ssym" as **future** work. It had already been done — **`results/12_error_anatomy`**,
+on held-out Tsuboyama (n = 12,359, 5-fold GroupKFold) and S669. Correcting the record:
+
+**1. The overestimation observation is CONFIRMED, with ground truth.** results/12 finds
+the model's one substantial deficit is the **stabilizing tail**: bias **+0.56** kcal/mol
+on held-out Tsuboyama (ρ 0.27, MAE 0.64 against a class spread of only 0.30 — error 2×
+the signal), and bias **+1.86** on S669 (ρ 0.11, n = 69). *The model calls stabilizing
+mutations destabilizing.* That is exactly "sobreestima", measured against real labels
+rather than against FoldX.
+
+**2. It shows up directly in this scan.** Of the 604 scored GLA mutations, only **2**
+are predicted below −0.5 kcal/mol (regime D: **1**; regime A: **1**), versus **4.3 %**
+of true Tsuboyama labels below that threshold. The scan is effectively incapable of
+proposing a stabilizing mutation — the documented blindness, visible in our own output.
+
+**3. Glycines: both results are right, because they measure different things.**
+results/12 finds **buried glycines** a genuine weak spot in *magnitude*
+(MAE ÷ sd **0.64**, n = 81, vs 0.48 for buried non-Gly). This scan found glycines
+*better* in *ranking* (per-mutation ρ +0.532 at G sites vs +0.445). Not a contradiction:
+ρ is not degraded at Gly sites in results/12 either. **Magnitude suffers at buried
+glycines; ordering does not.**
+
+**4. My burial framing was too generous to the literature.** I attributed FoldX's
+blow-ups to burial (correct, ρ = +0.52) and implied burial is hard in general.
+results/12 **refutes that for this model**: MAE ÷ sd is 0.49 / 0.48 / 0.48 across
+buried / mid / exposed — identical relative accuracy, with the *best* ranking when
+buried (ρ 0.79). Burial degrades FoldX, not Boltz.
+
+**5. The cheap fix has been tried and does not work.** `results/13_balanced_loss`:
+Balanced MSE removes only **19 %** of the stabilizing bias (0.58 → 0.47) and
+significantly *worsens* overall r and MAE; LDS is dominated outright.
+
+**Implication for this experiment.** The right framing for the GLA scan is not "does it
+agree with FoldX" but "it is a destabilization ranker with a known stabilizing blind
+spot". For Fabry-style work — hunting stabilizing/rescue mutations — that blind spot is
+the headline caveat, and it is quantified in results/12, not here.
+
+**Also noted:** results/12 lists `figures/02_*` (the Tsuboyama equivalent panel) as
+*pending; regenerating* — an open loose end in that folder, not this one.
