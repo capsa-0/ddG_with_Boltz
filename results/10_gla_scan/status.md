@@ -1,6 +1,6 @@
 # 10_gla_scan — status log
 
-**State:** feature extraction **running on the cluster** (jobs 943 → 944 → 945). No ΔΔG predictions yet.
+**State:** full scan **paused** (too slow); a targeted 722-mutation subset (`scan_GLA_human_hard`) is running instead — jobs 976 → 977 → 978. No ΔΔG predictions yet.
 
 ---
 
@@ -100,3 +100,48 @@ MSA on the first try (`COMPLETE 150/150`), `mutations.csv` validated on the clus
 3. When `features` finishes → `sbatch slurm/scan_predict.sbatch experiment_configs/scan_GLA_human.yaml`.
 4. Then: Boltz-vs-FoldX comparison (Spearman overall and per position), figures,
    `report.pdf`.
+
+
+### 2026-08-24 (later) — full scan too slow; pivoted to a targeted subset
+
+**Measured throughput killed the full scan.** Prepare (943) COMPLETED cleanly in
+**2 h 00 m** (all 7,563 MSAs + queries, Boltz cache warmed). The predict array then
+ran at **~37.6 min per 30-structure shard** (nodo2 ~35 min, nodo6 38–47 min) —
+about 65 s/structure plus ~3 min Boltz startup. At the `%2` courtesy throttle that
+put the remaining 241 shards at **~75 h (~3 days)**.
+
+Disk, the reason `%2`/256-shards was chosen, turned out to be a non-issue: the whole
+run was **5.9 GB**, incremental slim was reclaiming raw correctly (`raw pred: 0`),
+and `/grupos` free space actually *rose* to 322 GB. The binding constraint was GPU
+concurrency, not disk.
+
+**Decision (user):** rather than take more of the shared GPUs, cut the mutation set
+to what fits ~8 h. Full-scan chain 944/945 cancelled; **16 slim shards (~480
+structures) preserved** in `data/processed/scan_GLA_human/` — the full scan is
+resumable later, since predict skips anything already in the slim store.
+
+**Subset — `scan_GLA_human_hard`, 38 positions / 722 mutations:**
+- the **10 positions where the model reportedly overestimates**: 169, 80, 228, 360,
+  301, 409, 200, 137, 201, 325 (all in range; WT residues G/V/F/Y/S/N/R/G/G/P)
+- **all 31 glycine positions** (the reported weak spot). Note **3 of the 10 flagged
+  positions (80, 325, 360) are themselves glycines**, which corroborates the pattern.
+- all 19 substitutions at every selected position; 0 rows dropped by `prepare`.
+
+**New module capability** (`ddg/scan/build.py`): `--positions` (comma list + ranges,
+in reported numbering), `--wt-residues G`, and `--experiment` to decouple the
+experiment name from `--name`. That last one keeps `wt_id = GLA_human` identical
+across both scans, so the subset **reuses the full run's base MSA** (no MMseqs2
+server call) **and its 16 slim shards** (predict skips whatever is already done).
+The config's `scan` block records the selected positions and the header says
+PARTIAL, so a subset cannot be mistaken for a full scan.
+
+**Submitted:** prepare **976** → predict **977** (array `0-23%2`) → features **978**.
+Estimated ~7.6 h for the array. A monitor is armed on failures / dead dependencies /
+shard progress.
+
+**Next:**
+1. When 978 finishes → `sbatch slurm/scan_predict.sbatch experiment_configs/scan_GLA_human_hard.yaml`.
+2. Compare against FoldX **on the 38 shared positions** (rank correlation — FoldX's
+   +70 kcal/mol tail is clash artifact). Check specifically whether Boltz also
+   overestimates at the 10 flagged sites and at glycines.
+3. Optionally resume the full scan later; 480 structures of it are already banked.
