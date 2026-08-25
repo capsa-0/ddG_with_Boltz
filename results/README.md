@@ -29,6 +29,8 @@ experiments (why raw Δz, how generalization was proved, where it breaks).
 | [11_calibration_gap](11_calibration_gap/) | Is the missing cross-protein term a per-protein **offset**, and can it be predicted (from embeddings, descriptors, or ΔG(WT))? | **Closed as a direction.** Offset worth **+0.204 r** on S669 but only **+0.029** in-distribution; homologues share the mean ΔΔG (r **0.52**) but *not* the model's error on it (r 0.09) → it is **domain shift**, not a protein property. |
 | [12_error_anatomy](12_error_anatomy/) | Which mutations are hard? Class breakdown on S669 + **12,359 out-of-fold** Tsuboyama, with burial taken from Boltz's own distogram. | Burial effects are **effect-size artifacts** (MAE÷sd flat at 0.48–0.49). Real deficits: **stabilizing mutations** (bias +0.56, ρ 0.27), →Pro, buried Gly. |
 
+| [13_balanced_loss](13_balanced_loss/) | Does Balanced-MSE / LDS reweighting fix the stabilizing-tail deficit found in 12? Cluster-bootstrapped over 412 proteins. | **No.** BMC removes **19 %** of the stabilizing bias (0.58 → 0.47) but every tail *ranking* metric is unchanged, while r (−0.052) and MAE (+0.088) get worse. Loss reweighting cannot create discrimination a **frozen** representation lacks. |
+
 ### Archive
 - **`old/`** — pre-refactor exploratory artifacts kept for reference (e.g. the
   P03050 Ala-scanning embedding gallery). Not part of the numbered result series.
