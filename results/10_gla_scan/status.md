@@ -336,3 +336,36 @@ figure misleading:
    residue (`G328`, `V137`, …) and the axis says so explicitly.
 
 Both apply to any subset scan, not just this one.
+
+### 2026-08-25 — full 398-position scan resumed (jobs 1030/1031/1032)
+
+Resumed `scan_GLA_human` (all 398 positions / 7,562 mutations) at the user's request.
+
+**Banked first, so nothing is recomputed.** The subset run shares `wt_id = GLA_human`,
+so its structure keys are identical to the full scan's: copied all 36 of its slim
+shards into the full scan store as `hard_*.npz` (non-colliding names; the merge fix in
+`ddg/storage/slim.py` now also protects against collisions, but distinct names keep the
+provenance readable). Verified by job:
+
+| | |
+|---|---|
+| queries total | 7,563 |
+| in slim store | 1,050 |
+| raw not yet slimmed | 13 |
+| **already done** | **1,063 (14.1 %)** |
+| **remaining** | **6,500** |
+| wild-type slice present | yes |
+
+`prepare` re-runs but is a near no-op — all 7,563 MSAs and queries already exist on
+disk from the first attempt.
+
+**Submitted:** prepare **1030** → predict **1031** (array `0-255%2`) → features **1032**.
+
+**Honest ETA.** At the measured ~65 s/structure plus ~3 min startup per shard:
+~130 GPU-hours. At the polite `%2` throttle that is **~65 h (2.7 days)** with two slots,
+and **~130 h (5.4 days)** if cluster contention drops us to one, as happened during the
+subset run. Raising `ArrayTaskThrottle` is the only lever that materially shortens this
+(`scontrol update JobId=1031 ArrayTaskThrottle=N`) — left at 2 pending a decision.
+
+Disk is not a constraint: the whole experiment is 5.5 GB and `/grupos` has 277 GB free;
+incremental per-shard slim keeps peak raw at ~one shard.
