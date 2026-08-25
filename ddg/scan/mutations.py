@@ -37,7 +37,43 @@ def clean_sequence(sequence: str) -> str:
     return seq
 
 
-def all_point_mutations(sequence: str, wt_id: str) -> pd.DataFrame:
+def parse_positions(text: str, first_residue: int = 1, length: int | None = None):
+    """
+    Parse a position selection like ``"80,137,169-175"`` into 1-based sequence indices.
+
+    Numbers are given in the *reported* numbering (``first_residue``), which is how a
+    user refers to residues, and converted to the 1-based sequence index the pipeline
+    works in. Raises if anything falls outside the sequence, so a typo or a
+    wrong-numbering mistake fails loudly instead of silently scanning nothing.
+    """
+    offset = int(first_residue) - 1
+    wanted: set[int] = set()
+    for chunk in str(text).replace(" ", "").split(","):
+        if not chunk:
+            continue
+        if "-" in chunk.lstrip("-"):
+            lo, hi = chunk.split("-", 1)
+            span = range(int(lo), int(hi) + 1)
+        else:
+            span = [int(chunk)]
+        wanted.update(p - offset for p in span)
+    if length is not None:
+        bad = sorted(p + offset for p in wanted if not 1 <= p <= length)
+        if bad:
+            raise ValueError(
+                f"position(s) {bad} are outside the sequence "
+                f"({first_residue}-{first_residue + length - 1} in this numbering)")
+    return sorted(wanted)
+
+
+def positions_with_residue(sequence: str, residues: str) -> list[int]:
+    """1-based indices whose wild-type residue is one of ``residues`` (e.g. "G")."""
+    wanted = set(str(residues).upper())
+    return [i for i, aa in enumerate(clean_sequence(sequence), start=1) if aa in wanted]
+
+
+def all_point_mutations(sequence: str, wt_id: str,
+                        positions: list[int] | None = None) -> pd.DataFrame:
     """
     Every single point mutation of ``sequence``, as a ``minimal``-adapter frame.
 
@@ -46,18 +82,26 @@ def all_point_mutations(sequence: str, wt_id: str) -> pd.DataFrame:
     position, then by target residue alphabetically, so the table is stable across
     runs.
 
+    ``positions`` (1-based sequence indices) restricts the scan to those sites, all
+    19 substitutions each — for when the full L x 19 scan does not fit the compute
+    budget. Default None scans every position.
+
     Returns a frame with columns: uniprot, mutation, wt_sequence.
     """
     seq = clean_sequence(sequence)
+    sites = sorted(set(positions)) if positions is not None else range(1, len(seq) + 1)
+    bad = [p for p in sites if not 1 <= p <= len(seq)]
+    if bad:
+        raise ValueError(f"position(s) {bad} outside the sequence (1-{len(seq)})")
     rows = [
-        {"uniprot": wt_id, "mutation": f"{wt_aa}{pos}{mut_aa}", "wt_sequence": seq}
-        for pos, wt_aa in enumerate(seq, start=1)
+        {"uniprot": wt_id, "mutation": f"{seq[pos-1]}{pos}{mut_aa}", "wt_sequence": seq}
+        for pos in sites
         for mut_aa in STANDARD_AA
-        if mut_aa != wt_aa
+        if mut_aa != seq[pos - 1]
     ]
     df = pd.DataFrame(rows)
-    logger.info("scan: %d residues -> %d point mutations (+1 wild-type structure)",
-                len(seq), len(df))
+    logger.info("scan: %d of %d residues -> %d point mutations "
+                "(+1 wild-type structure)", len(list(sites)), len(seq), len(df))
     return df
 
 
