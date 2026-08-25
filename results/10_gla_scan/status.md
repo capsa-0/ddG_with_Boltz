@@ -323,3 +323,16 @@ single FoldX bar, so every bar just traces FoldX.
 Both figures are kept: **03 = scale mismatch** (the physically meaningful comparison),
 **02 = ordering disagreement** (the only comparison that is scale-free). Neither is an
 accuracy measure — there is still no measured ΔΔG for this protein.
+
+### 2026-08-25 — heatmap corrected (missing data was indistinguishable from neutral)
+
+Two defects fixed in `ddg/scan/plots.py::plot_heatmap`, both of which made the headline
+figure misleading:
+1. **Missing cells rendered white**, identical to a predicted ΔΔG of ~0 on a diverging
+   map — so "not computed" (the 118-mutation coverage gap) read as "predicted neutral".
+   Now drawn **grey** via `cmap.set_bad`, with the wild-type cell outlined separately.
+2. **The x-axis implied a contiguous stretch of sequence.** A subset scan's columns are
+   adjacent on screen but not in sequence; each column is now labelled with its own
+   residue (`G328`, `V137`, …) and the axis says so explicitly.
+
+Both apply to any subset scan, not just this one.

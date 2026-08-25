@@ -42,31 +42,59 @@ def _matrix_for(predictions, column, pos_col):
 
 def plot_heatmap(predictions, path, column="ddg_mean",
                  title="Predicted ΔΔG — every point mutation"):
-    """Position x residue heatmap, split into stacked bands of BAND positions."""
+    """Position x residue heatmap, split into stacked bands of BAND positions.
+
+    Cells with no value are drawn grey, never white: white is a real ΔΔG of ~0 on a
+    diverging map, so leaving gaps unpainted would make "not computed" look like
+    "predicted neutral". Grey cells are the wild-type residue's own row (no such
+    mutation) and any substitution whose structure was not predicted.
+    """
     positions, values = _matrix_for(predictions, column, POSITION)
     limit = float(np.nanmax(np.abs(values))) or 1.0
+    cmap = plt.get_cmap(CMAP).copy()
+    cmap.set_bad("#B0B0B0")
+    # A scan may cover non-contiguous sites (ddg.scan build --positions/--wt-residues);
+    # columns are then adjacent on screen but NOT adjacent in sequence, so every column
+    # gets its own label rather than a misleading evenly-spaced numeric axis.
+    contiguous = bool(np.all(np.diff(positions) == 1)) if len(positions) > 1 else True
 
     bands = [(i, min(i + BAND, len(positions))) for i in range(0, len(positions), BAND)]
     fig, axes = plt.subplots(len(bands), 1, figsize=(14, 2.6 * len(bands) + 1.2),
                              squeeze=False)
     image = None
     for ax, (start, stop) in zip(axes[:, 0], bands):
-        image = ax.imshow(values[:, start:stop], aspect="auto", cmap=CMAP,
-                          vmin=-limit, vmax=limit, interpolation="nearest")
+        image = ax.imshow(np.ma.masked_invalid(values[:, start:stop]), aspect="auto",
+                          cmap=cmap, vmin=-limit, vmax=limit, interpolation="nearest")
         ax.set_yticks(range(len(AA_ORDER)))
         ax.set_yticklabels(list(AA_ORDER), fontsize=7)
-        ticks = np.arange(start, stop, 10)
-        ax.set_xticks(ticks - start)
-        ax.set_xticklabels(positions[ticks], fontsize=7)
-        ax.set_ylabel("mutant residue", fontsize=8)
-        # Mark the wild-type residue of each column: no mutation exists there.
         wt = predictions.drop_duplicates(POSITION).set_index(POSITION)["wt_aa"]
+        if contiguous:
+            ticks = np.arange(start, stop, 10)
+            ax.set_xticks(ticks - start)
+            ax.set_xticklabels(positions[ticks], fontsize=7)
+        else:
+            ax.set_xticks(np.arange(stop - start))
+            ax.set_xticklabels(
+                [f"{wt.loc[p]}{p}" for p in positions[start:stop]],
+                fontsize=6, rotation=90)
+        ax.set_ylabel("mutant residue", fontsize=8)
+        # Outline the wild-type residue's own cell so it reads as "not a mutation"
+        # rather than as missing data.
         for offset, position in enumerate(positions[start:stop]):
             row = AA_ORDER.find(wt.loc[position])
             if row >= 0:
-                ax.plot(offset, row, marker=".", color="0.35", markersize=2.5)
-    axes[-1, 0].set_xlabel("residue", fontsize=9)
+                ax.add_patch(plt.Rectangle((offset - .5, row - .5), 1, 1, fill=False,
+                                           edgecolor="#404040", linewidth=.8))
+    axes[-1, 0].set_xlabel(
+        "residue" if contiguous else
+        "scanned residue  (NOT contiguous — 38 selected sites, adjacent on screen only)",
+        fontsize=9)
     fig.suptitle(title, fontsize=12)
+    from matplotlib.patches import Patch
+    axes[0, 0].legend(handles=[
+        Patch(facecolor="#B0B0B0", label="no value (wild-type cell, or not computed)"),
+        Patch(facecolor="white", edgecolor="#404040", label="wild-type residue"),
+    ], fontsize=7, loc="upper left", bbox_to_anchor=(0, 1.28), ncol=2, framealpha=.9)
     fig.colorbar(image, ax=axes[:, 0].tolist(), fraction=0.015, pad=0.012,
                  label="predicted ΔΔG (kcal/mol) — positive = destabilizing")
     fig.savefig(path, dpi=160, bbox_inches="tight")
