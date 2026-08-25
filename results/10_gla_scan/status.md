@@ -235,3 +235,48 @@ strength: (a) validate the claim on a protein that *does* have measured ΔΔG (S
 already done — results/09); (b) use ClinVar pathogenic-vs-benign GLA missense variants
 as an ordinal proxy (tests pathogenicity, not stability, and is confounded by catalytic
 residues); (c) treat residual-activity % as a weak proxy with the same confound.
+
+### 2026-08-25 — FoldX's known failure modes, tested against this structure
+
+**Literature.** FoldX's documented weaknesses land squarely on this position set:
+it uses a **rigid backbone**, so "a mutation that introduces a large Van der Waals
+clash in a hydrophobic core will either unfold the protein or result in large
+backbone conformational changes, but since FoldX does not incorporate backbone
+moves, those mutants cannot be predicted" — the clash is instead reported as a huge
+positive ΔΔG. Mutations **to Ala/Gly** and **from Pro** are named as the largest
+discrepancy classes; proline alone adds ~0.76 kcal/mol of uncertainty
+([Bioinformatics 2025](https://academic.oup.com/bioinformatics/article/41/2/btaf064/8003679),
+[BMC Bioinformatics 2023](https://pmc.ncbi.nlm.nih.gov/articles/PMC10642056/)).
+**31 of our 38 positions are glycines**, so this comparison is close to worst-case
+for FoldX.
+
+**Tested on 1R46** (chain A, residues 32–421; identity matches our sequence 390/390):
+- **Hypothesis that failed:** that positive-φ (left-handed, Gly-only) sites drive the
+  FoldX blow-ups. **The opposite is true** — positive-φ glycines have *median* FoldX
+  3.62 kcal/mol vs **15.14** for negative-φ ones. Recorded because it is a real
+  negative result, not a slip.
+- **What actually drives it: burial.** FoldX per-position mean vs neighbour count
+  **ρ = +0.523** (vs −0.227 for φ). Every extreme site is a buried glycine —
+  G328 (25 neighbours, +28.8), G147 (25, +26.4), G43 (24, +24.9), G138 (23, +22.7),
+  G373 (22, +21.9). Exactly the documented mechanism: buried Gly → any larger side
+  chain clashes → rigid backbone cannot relax → runaway ΔΔG.
+- **Boltz does not blow up at the same sites** (median +1.05 buried vs +0.55 exposed),
+  so the disagreement is FoldX's dynamic range, not a Boltz artifact.
+
+**Filtering to where FoldX should be trustworthy does not rescue agreement:**
+| Subset | ρ | n |
+|---|---|---|
+| all | +0.504 | 603 |
+| FoldX < 10 kcal/mol | +0.379 | 474 |
+| FoldX ≥ 10 (clash regime) | +0.171 | 129 |
+| FoldX < 10 **and** exposed (<22 neighbours) | +0.312 | 324 |
+
+Agreement *falls* as the clash cases are removed — i.e. much of the headline ρ = 0.50
+was both methods merely agreeing that buried-glycine substitutions are bad. On the
+clean subset the scale mismatch is stark: **regression slope Boltz~FoldX = 0.08**
+(Boltz [−0.71, +2.44] vs FoldX [−1.95, +9.66]).
+
+**Bottom line:** FoldX cannot arbitrate the overestimation question on this protein.
+Its reliable regime is where the two methods agree *least*, and its unreliable regime
+is where the apparent correlation comes from. Ground truth has to come from measured
+ΔΔG on other proteins (results/09 corpora), not from FoldX here.
