@@ -132,38 +132,58 @@ def main():
 
 
 def _plots(scored, per_pos, out, regime):
+    """Scatter + per-position comparison, with glycines and flagged positions marked.
+
+    The two annotations are orthogonal and overlap (3 of the 10 flagged positions are
+    glycines), so they use different channels: glycine = colour/outline, flagged =
+    shaded band + bold tick label.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
-    fig, (a, b) = plt.subplots(1, 2, figsize=(13, 5.2))
+    from matplotlib.patches import Patch
+    from matplotlib.lines import Line2D
+    fig, (a, b) = plt.subplots(1, 2, figsize=(14, 5.6))
 
-    gly = scored.wt_aa == "G"
-    a.scatter(scored.foldx[~gly], scored.boltz[~gly], s=12, alpha=0.45,
-              color="#4C72B0", edgecolors="none", label="non-glycine")
-    a.scatter(scored.foldx[gly], scored.boltz[gly], s=12, alpha=0.55,
-              color="#C44E52", edgecolors="none", label="WT glycine")
+    gly = (scored.wt_aa == "G").to_numpy()
+    flag = scored.position.isin(FLAGGED).to_numpy()
+    a.scatter(scored.foldx[~gly], scored.boltz[~gly], s=14, alpha=.45,
+              color="#4C72B0", edgecolors="none", label=f"non-glycine (n={(~gly).sum()})")
+    a.scatter(scored.foldx[gly], scored.boltz[gly], s=14, alpha=.5,
+              color="#C44E52", edgecolors="none", label=f"WT glycine (n={gly.sum()})")
+    # flagged mutations outlined on top, so they are visible in either colour
+    a.scatter(scored.foldx[flag], scored.boltz[flag], s=42, facecolors="none",
+              edgecolors="#B8860B", linewidths=.9,
+              label=f"flagged position (n={flag.sum()})")
     rho = spearmanr(scored.foldx, scored.boltz).statistic
     a.set_xscale("symlog", linthresh=5)
-    a.set_xlabel(f"FoldX ΔΔG (kcal/mol, symlog — clash tail runs to +70)")
+    a.set_xlabel("FoldX ΔΔG (kcal/mol, symlog — clash tail runs to +69)")
     a.set_ylabel(f"Boltz predicted ΔΔG ({regime})")
     a.set_title(f"Per mutation (n={len(scored)}), Spearman ρ={rho:+.3f}")
-    a.axhline(0, color="0.6", lw=0.8); a.axvline(0, color="0.6", lw=0.8)
-    a.legend(fontsize=8); a.grid(alpha=0.3)
+    a.axhline(0, color="0.6", lw=.8); a.axvline(0, color="0.6", lw=.8)
+    a.legend(fontsize=8, loc="upper left"); a.grid(alpha=.3)
 
-    order = per_pos.sort_values("position")
-    x = np.arange(len(order))
-    b.plot(x, order.mean_boltz, "o-", ms=4, lw=1.2, label="Boltz", color="#4C72B0")
-    b.plot(x, order.mean_foldx.clip(upper=15), "s-", ms=4, lw=1.2,
-           label="FoldX (clipped at 15)", color="#DD8452")
-    for i, r in enumerate(order.itertuples(index=False)):
+    o = per_pos.sort_values("position").reset_index(drop=True)
+    x = np.arange(len(o))
+    is_g = (o.wt_aa == "G").to_numpy()
+    for i, r in enumerate(o.itertuples(index=False)):
         if r.flagged:
-            b.axvspan(i-0.5, i+0.5, color="#C44E52", alpha=0.12)
+            b.axvspan(i - .5, i + .5, color="#DDAA33", alpha=.22, zorder=0)
+    b.plot(x, o.mean_boltz, "o-", ms=4, lw=1.2, label="Boltz", color="#4C72B0", zorder=3)
+    b.plot(x, o.mean_foldx.clip(upper=15), "s-", ms=4, lw=1.2, color="#DD8452",
+           label="FoldX (clipped at 15)", zorder=3)
+    # glycine positions get a filled marker along the baseline
+    b.scatter(x[is_g], np.full(is_g.sum(), -1.2), marker="^", s=22, color="#333333",
+              zorder=4, clip_on=False, label=f"WT glycine ({is_g.sum()} of {len(o)})")
     b.set_xticks(x)
-    b.set_xticklabels([f"{r.wt_aa}{r.position}" for r in order.itertuples(index=False)],
-                      rotation=90, fontsize=6)
-    b.set_ylabel("mean ΔΔG over the 19 substitutions")
-    b.set_title("Per position (shaded = flagged as overestimated)")
-    b.legend(fontsize=8); b.grid(alpha=0.3)
+    b.set_xticklabels([f"{r.wt_aa}{r.position}" + ("*" if r.flagged else "")
+                       for r in o.itertuples(index=False)], rotation=90, fontsize=6)
+    for tick, fl in zip(b.get_xticklabels(), o.flagged):
+        if fl:
+            tick.set_color("#B8860B"); tick.set_fontweight("bold")
+    b.set_ylabel("mean ΔΔG over the substitutions at that position")
+    b.set_title("Per position  (* / shaded = flagged · ▲ = wild-type glycine)", fontsize=10)
+    b.legend(fontsize=8); b.grid(alpha=.3)
 
     fig.tight_layout()
     p = out / f"figures/01_boltz_vs_foldx_{regime}.png"

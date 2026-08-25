@@ -153,39 +153,72 @@ def _paint(pdb_path, per, out_pdb):
 
 
 def _figure(m, per, path):
+    """Discrepancy along the sequence, with flagged positions and glycines marked.
+
+    Two orthogonal annotations, because they overlap (3 of the 10 flagged positions
+    are themselves glycines): flagged = shaded band + bold red tick label; glycine =
+    black-outlined bar + 'G' marker strip under the axis.
+    """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
     path.parent.mkdir(exist_ok=True)
-    o = per.sort_values("position")
+    o = per.sort_values("position").reset_index(drop=True)
     x = np.arange(len(o))
-    fig, (a, b, c) = plt.subplots(3, 1, figsize=(13, 9), sharex=True,
+    is_g = (o.wt_aa == "G").to_numpy()
+    fig, (a, b, c) = plt.subplots(3, 1, figsize=(14, 9.5), sharex=True,
                                   gridspec_kw=dict(height_ratios=[2, 2, 1.3]))
 
-    a.bar(x, o.delta_mean, color=["#C44E52" if v < 0 else "#4C72B0" for v in o.delta_mean])
+    for i, r in enumerate(o.itertuples(index=False)):
+        if r.flagged:
+            for ax in (a, b, c):
+                ax.axvspan(i - .5, i + .5, color="#DDAA33", alpha=.22, zorder=0)
+
+    a.bar(x, o.delta_mean,
+          color=["#C44E52" if v < 0 else "#4C72B0" for v in o.delta_mean],
+          edgecolor=["black" if g else "none" for g in is_g],
+          linewidth=[1.1 if g else 0 for g in is_g], zorder=2)
     a.axhline(0, color="0.3", lw=0.8)
     a.set_ylabel("Boltz − FoldX\n(percentile points)")
     a.set_title("Disagreement in relative ordering (no ground truth: neither is 'right')\n"
-                "blue = Boltz ranks it more destabilizing · red = FoldX does",
-                fontsize=10)
-    for i, r in enumerate(o.itertuples(index=False)):
-        if r.flagged:
-            a.axvspan(i-.5, i+.5, color="#DDAA33", alpha=.18, zorder=0)
+                "blue = Boltz ranks it more destabilizing · red = FoldX does", fontsize=10)
+    a.legend(handles=[
+        Patch(facecolor="#4C72B0", label="Boltz ranks more destabilizing"),
+        Patch(facecolor="#C44E52", label="FoldX ranks more destabilizing"),
+        Patch(facecolor="white", edgecolor="black", linewidth=1.1,
+              label="wild-type glycine (31 of 38)"),
+        Patch(facecolor="#DDAA33", alpha=.5, label="flagged position (10)"),
+    ], fontsize=8, ncol=2, loc="upper left", framealpha=.92)
 
-    b.plot(x, o.boltz.rank(pct=True)*100, "o-", ms=4, lw=1.2, label="Boltz (percentile)",
-           color="#4C72B0")
-    b.plot(x, o.foldx.rank(pct=True)*100, "s-", ms=4, lw=1.2, label="FoldX (percentile)",
-           color="#DD8452")
+    b.plot(x, o.boltz.rank(pct=True) * 100, "o-", ms=4, lw=1.2, color="#4C72B0",
+           label="Boltz (percentile)", zorder=2)
+    b.plot(x, o.foldx.rank(pct=True) * 100, "s-", ms=4, lw=1.2, color="#DD8452",
+           label="FoldX (percentile)", zorder=2)
     b.set_ylabel("per-position severity\n(percentile)")
     b.legend(fontsize=8); b.grid(alpha=.3)
 
-    c.bar(x, o.neighbors, color="#55A868")
+    c.bar(x, o.neighbors, color="#55A868",
+          edgecolor=["black" if g else "none" for g in is_g],
+          linewidth=[1.1 if g else 0 for g in is_g], zorder=2)
     c.set_ylabel("burial\n(neighbours)")
+    # 'G' strip marking every glycine position
+    for i, g in enumerate(is_g):
+        if g:
+            c.annotate("G", (i, 0), xytext=(0, -22), textcoords="offset points",
+                       ha="center", va="top", fontsize=6.5, color="#333333",
+                       annotation_clip=False, fontweight="bold")
     c.set_xticks(x)
-    c.set_xticklabels([f"{r.wt_aa}{r.position}" for r in o.itertuples(index=False)],
-                      rotation=90, fontsize=6)
+    c.set_xticklabels([f"{r.wt_aa}{r.position}" + ("*" if r.flagged else "")
+                       for r in o.itertuples(index=False)], rotation=90, fontsize=6)
+    for tick, fl in zip(c.get_xticklabels(), o.flagged):
+        if fl:
+            tick.set_color("#B8860B"); tick.set_fontweight("bold")
     c.grid(alpha=.3)
-    fig.tight_layout()
+    c.set_xlim(-0.8, len(o) - 0.2)
+    fig.text(0.5, 0.005, "* = flagged position (shaded) · outlined bars and the G strip "
+             "= wild-type glycine", ha="center", fontsize=8, color="0.3")
+    fig.tight_layout(rect=[0, 0.022, 1, 1])
     fig.savefig(path, dpi=150)
     plt.close(fig)
 
