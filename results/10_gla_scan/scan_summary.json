@@ -1,0 +1,590 @@
+{
+  "wt_id": "GLA_human",
+  "n_mutations": 604,
+  "n_positions": 38,
+  "sign_convention": "positive \u0394\u0394G = destabilizing",
+  "per_regime": {
+    "A_tsuboyama": {
+      "mean": 0.28344188598747144,
+      "sd": 0.39773175467774347,
+      "min": -0.5819802508412487,
+      "max": 1.6528955434842618
+    },
+    "B_fireprot": {
+      "mean": 1.2445357778960962,
+      "sd": 1.3606010334129444,
+      "min": -1.3147913614447102,
+      "max": 6.648159565042155
+    },
+    "D_finetuned": {
+      "mean": 0.9133020129022887,
+      "sd": 0.8911698346338585,
+      "min": -0.5180372454588259,
+      "max": 4.156598836728266
+    }
+  },
+  "regime_agreement_pearson": {
+    "A_tsuboyama_vs_B_fireprot": 0.6341971180232151,
+    "A_tsuboyama_vs_D_finetuned": 0.7691224351343146,
+    "B_fireprot_vs_D_finetuned": 0.7962037459445069
+  },
+  "mean_regime_sd": 0.515269764011093,
+  "most_destabilizing": [
+    {
+      "mutation": "G328R",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "R",
+      "ddg_A_tsuboyama": 1.154006841504064,
+      "ddg_B_fireprot": 6.648159565042155,
+      "ddg_D_finetuned": 4.156598836728266,
+      "ddg_mean": 3.9862550810914947,
+      "ddg_regime_sd": 2.246210332048713
+    },
+    {
+      "mutation": "G328K",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "K",
+      "ddg_A_tsuboyama": 1.4305367266266331,
+      "ddg_B_fireprot": 6.356960849555672,
+      "ddg_D_finetuned": 4.146312667528337,
+      "ddg_mean": 3.9779367479035472,
+      "ddg_regime_sd": 2.014725208306153
+    },
+    {
+      "mutation": "G328E",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": 1.4550894469804831,
+      "ddg_B_fireprot": 6.262052523789921,
+      "ddg_D_finetuned": 4.0780255176795155,
+      "ddg_mean": 3.9317224961499733,
+      "ddg_regime_sd": 1.9651593550369433
+    },
+    {
+      "mutation": "G328Q",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "Q",
+      "ddg_A_tsuboyama": 1.1612333357250468,
+      "ddg_B_fireprot": 6.569548196028893,
+      "ddg_D_finetuned": 3.858891262520051,
+      "ddg_mean": 3.863224264757997,
+      "ddg_regime_sd": 2.207937421852825
+    },
+    {
+      "mutation": "G328I",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "I",
+      "ddg_A_tsuboyama": 1.1082100734393323,
+      "ddg_B_fireprot": 6.280233858589149,
+      "ddg_D_finetuned": 3.9012100726877486,
+      "ddg_mean": 3.7632180015720764,
+      "ddg_regime_sd": 2.1137232343752976
+    },
+    {
+      "mutation": "G328H",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "H",
+      "ddg_A_tsuboyama": 0.9825950743998304,
+      "ddg_B_fireprot": 6.298779500572694,
+      "ddg_D_finetuned": 3.875541327773695,
+      "ddg_mean": 3.718971967582073,
+      "ddg_regime_sd": 2.1731451380712143
+    },
+    {
+      "mutation": "G328V",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "V",
+      "ddg_A_tsuboyama": 1.0892194058729068,
+      "ddg_B_fireprot": 6.239365851028147,
+      "ddg_D_finetuned": 3.6272321226467,
+      "ddg_mean": 3.651939126515918,
+      "ddg_regime_sd": 2.1026110638388698
+    },
+    {
+      "mutation": "G328T",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "T",
+      "ddg_A_tsuboyama": 0.9543515498322455,
+      "ddg_B_fireprot": 6.58139646090496,
+      "ddg_D_finetuned": 3.306878971586704,
+      "ddg_mean": 3.6142089941079703,
+      "ddg_regime_sd": 2.3074874380105195
+    },
+    {
+      "mutation": "G147E",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": 1.5833939609789627,
+      "ddg_B_fireprot": 5.2771938707943535,
+      "ddg_D_finetuned": 3.9307678271972364,
+      "ddg_mean": 3.597118552990184,
+      "ddg_regime_sd": 1.5263312925819255
+    },
+    {
+      "mutation": "G328D",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "D",
+      "ddg_A_tsuboyama": 1.3839038854768209,
+      "ddg_B_fireprot": 5.718140898252326,
+      "ddg_D_finetuned": 3.3945575446451834,
+      "ddg_mean": 3.4988674427914432,
+      "ddg_regime_sd": 1.7709814674104196
+    },
+    {
+      "mutation": "G147Q",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "Q",
+      "ddg_A_tsuboyama": 1.11073931232522,
+      "ddg_B_fireprot": 5.543472685640427,
+      "ddg_D_finetuned": 3.7105559696720136,
+      "ddg_mean": 3.4549226558792197,
+      "ddg_regime_sd": 1.818661152801902
+    },
+    {
+      "mutation": "G147L",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "L",
+      "ddg_A_tsuboyama": 1.0491815942284055,
+      "ddg_B_fireprot": 5.2280327256279255,
+      "ddg_D_finetuned": 4.05076098276598,
+      "ddg_mean": 3.4426584342074364,
+      "ddg_regime_sd": 1.7593636589730028
+    },
+    {
+      "mutation": "G147M",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "M",
+      "ddg_A_tsuboyama": 0.8877961507193375,
+      "ddg_B_fireprot": 5.387316648198985,
+      "ddg_D_finetuned": 3.737134784986862,
+      "ddg_mean": 3.337415861301728,
+      "ddg_regime_sd": 1.8585393171832325
+    },
+    {
+      "mutation": "G328F",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "F",
+      "ddg_A_tsuboyama": 0.8635695334602831,
+      "ddg_B_fireprot": 5.528718853633692,
+      "ddg_D_finetuned": 3.5898862270375758,
+      "ddg_mean": 3.3273915380438503,
+      "ddg_regime_sd": 1.913562496356127
+    },
+    {
+      "mutation": "G147D",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "D",
+      "ddg_A_tsuboyama": 1.5920266036608204,
+      "ddg_B_fireprot": 4.542834566796886,
+      "ddg_D_finetuned": 3.8183722923741086,
+      "ddg_mean": 3.317744487610605,
+      "ddg_regime_sd": 1.2555976154813153
+    },
+    {
+      "mutation": "G328Y",
+      "position": 328,
+      "wt_aa": "G",
+      "mut_aa": "Y",
+      "ddg_A_tsuboyama": 0.8563813341635079,
+      "ddg_B_fireprot": 5.402338715240475,
+      "ddg_D_finetuned": 3.606566700970197,
+      "ddg_mean": 3.288428916791393,
+      "ddg_regime_sd": 1.8694635353372884
+    },
+    {
+      "mutation": "G132N",
+      "position": 132,
+      "wt_aa": "G",
+      "mut_aa": "N",
+      "ddg_A_tsuboyama": 0.6945961662118689,
+      "ddg_B_fireprot": 5.553288012734024,
+      "ddg_D_finetuned": 2.9456407777059876,
+      "ddg_mean": 3.0645083188839606,
+      "ddg_regime_sd": 1.9853326730675793
+    },
+    {
+      "mutation": "G147N",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "N",
+      "ddg_A_tsuboyama": 0.877716596962733,
+      "ddg_B_fireprot": 4.891100074603479,
+      "ddg_D_finetuned": 3.4006528503140054,
+      "ddg_mean": 3.056489840626739,
+      "ddg_regime_sd": 1.6564314791296941
+    },
+    {
+      "mutation": "G147I",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "I",
+      "ddg_A_tsuboyama": 1.0408601374518869,
+      "ddg_B_fireprot": 4.618814381807542,
+      "ddg_D_finetuned": 3.358732983869147,
+      "ddg_mean": 3.0061358343761917,
+      "ddg_regime_sd": 1.4818193110831874
+    },
+    {
+      "mutation": "G147K",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "K",
+      "ddg_A_tsuboyama": 1.246648764521484,
+      "ddg_B_fireprot": 4.278165757462945,
+      "ddg_D_finetuned": 3.301166345882751,
+      "ddg_mean": 2.9419936226223933,
+      "ddg_regime_sd": 1.2634021802191906
+    },
+    {
+      "mutation": "G132P",
+      "position": 132,
+      "wt_aa": "G",
+      "mut_aa": "P",
+      "ddg_A_tsuboyama": 0.6447019687880037,
+      "ddg_B_fireprot": 5.403084548094329,
+      "ddg_D_finetuned": 2.709783650136952,
+      "ddg_mean": 2.919190055673095,
+      "ddg_regime_sd": 1.9482367198351702
+    },
+    {
+      "mutation": "G132L",
+      "position": 132,
+      "wt_aa": "G",
+      "mut_aa": "L",
+      "ddg_A_tsuboyama": 0.9167080734617212,
+      "ddg_B_fireprot": 4.626296849621236,
+      "ddg_D_finetuned": 2.9936354666175884,
+      "ddg_mean": 2.8455467965668486,
+      "ddg_regime_sd": 1.5180491675612728
+    },
+    {
+      "mutation": "G147R",
+      "position": 147,
+      "wt_aa": "G",
+      "mut_aa": "R",
+      "ddg_A_tsuboyama": 0.9364806255652361,
+      "ddg_B_fireprot": 4.365788599704326,
+      "ddg_D_finetuned": 3.1460364050005034,
+      "ddg_mean": 2.8161018767566888,
+      "ddg_regime_sd": 1.4193145975127313
+    },
+    {
+      "mutation": "G132H",
+      "position": 132,
+      "wt_aa": "G",
+      "mut_aa": "H",
+      "ddg_A_tsuboyama": 0.8827373747895286,
+      "ddg_B_fireprot": 4.511830655295366,
+      "ddg_D_finetuned": 2.9931398093939103,
+      "ddg_mean": 2.7959026131596016,
+      "ddg_regime_sd": 1.4881210509312146
+    },
+    {
+      "mutation": "G411P",
+      "position": 411,
+      "wt_aa": "G",
+      "mut_aa": "P",
+      "ddg_A_tsuboyama": 1.1003572125659158,
+      "ddg_B_fireprot": 3.711581494237257,
+      "ddg_D_finetuned": 3.3566217176180553,
+      "ddg_mean": 2.722853474807076,
+      "ddg_regime_sd": 1.1563937338393269
+    }
+  ],
+  "most_stabilizing": [
+    {
+      "mutation": "G334E",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": -0.3048609806067858,
+      "ddg_B_fireprot": -1.3147913614447102,
+      "ddg_D_finetuned": -0.5180372454588259,
+      "ddg_mean": -0.7125631958367739,
+      "ddg_regime_sd": 0.4346416934768927
+    },
+    {
+      "mutation": "G334Q",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "Q",
+      "ddg_A_tsuboyama": -0.2730004424687366,
+      "ddg_B_fireprot": -1.026132761288749,
+      "ddg_D_finetuned": -0.28133266091860065,
+      "ddg_mean": -0.5268219548920288,
+      "ddg_regime_sd": 0.3530824431625767
+    },
+    {
+      "mutation": "G334C",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "C",
+      "ddg_A_tsuboyama": -0.5819802508412487,
+      "ddg_B_fireprot": -0.6124453577008533,
+      "ddg_D_finetuned": -0.2753323038327843,
+      "ddg_mean": -0.4899193041249621,
+      "ddg_regime_sd": 0.15224479455751105
+    },
+    {
+      "mutation": "G150R",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "R",
+      "ddg_A_tsuboyama": -0.3436422460290148,
+      "ddg_B_fireprot": -0.7955273626619623,
+      "ddg_D_finetuned": -0.2212352046275557,
+      "ddg_mean": -0.45346827110617755,
+      "ddg_regime_sd": 0.2469806841747497
+    },
+    {
+      "mutation": "G375Y",
+      "position": 375,
+      "wt_aa": "G",
+      "mut_aa": "Y",
+      "ddg_A_tsuboyama": -0.32617737538834424,
+      "ddg_B_fireprot": -0.8376703646409831,
+      "ddg_D_finetuned": -0.1381258536804618,
+      "ddg_mean": -0.43399119790326296,
+      "ddg_regime_sd": 0.29558810976053324
+    },
+    {
+      "mutation": "G150K",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "K",
+      "ddg_A_tsuboyama": -0.34314750256665266,
+      "ddg_B_fireprot": -0.5597341321433985,
+      "ddg_D_finetuned": -0.36248922024821184,
+      "ddg_mean": -0.4217902849860877,
+      "ddg_regime_sd": 0.09786011866311334
+    },
+    {
+      "mutation": "G411L",
+      "position": 411,
+      "wt_aa": "G",
+      "mut_aa": "L",
+      "ddg_A_tsuboyama": -0.22205968617842214,
+      "ddg_B_fireprot": -1.190552142713394,
+      "ddg_D_finetuned": 0.1588579845923614,
+      "ddg_mean": -0.41791794809981825,
+      "ddg_regime_sd": 0.5680359536690065
+    },
+    {
+      "mutation": "G150E",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": -0.3585392453655846,
+      "ddg_B_fireprot": -0.5080801259780647,
+      "ddg_D_finetuned": -0.3486449915285946,
+      "ddg_mean": -0.4050881209574147,
+      "ddg_regime_sd": 0.07293827933432442
+    },
+    {
+      "mutation": "G334W",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "W",
+      "ddg_A_tsuboyama": -0.11343237667879177,
+      "ddg_B_fireprot": -1.1068651217674927,
+      "ddg_D_finetuned": 0.025188813196140903,
+      "ddg_mean": -0.39836956175004784,
+      "ddg_regime_sd": 0.5041682440706411
+    },
+    {
+      "mutation": "G104E",
+      "position": 104,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": 0.058397654251068465,
+      "ddg_B_fireprot": -0.9200667298080694,
+      "ddg_D_finetuned": -0.313997701245397,
+      "ddg_mean": -0.3918889256007993,
+      "ddg_regime_sd": 0.40323559684279253
+    },
+    {
+      "mutation": "G334K",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "K",
+      "ddg_A_tsuboyama": -0.21061921393602917,
+      "ddg_B_fireprot": -0.6634907458564986,
+      "ddg_D_finetuned": -0.297825399061388,
+      "ddg_mean": -0.3906451196179719,
+      "ddg_regime_sd": 0.19618831344595075
+    },
+    {
+      "mutation": "G334I",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "I",
+      "ddg_A_tsuboyama": -0.29210990363489453,
+      "ddg_B_fireprot": -0.6975555169093284,
+      "ddg_D_finetuned": -0.17690331647976165,
+      "ddg_mean": -0.38885624567466154,
+      "ddg_regime_sd": 0.22329288610342263
+    },
+    {
+      "mutation": "G334Y",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "Y",
+      "ddg_A_tsuboyama": -0.12046383377494885,
+      "ddg_B_fireprot": -0.9777421862623804,
+      "ddg_D_finetuned": -0.06283229267263926,
+      "ddg_mean": -0.38701277090332287,
+      "ddg_regime_sd": 0.41837087236111237
+    },
+    {
+      "mutation": "G104W",
+      "position": 104,
+      "wt_aa": "G",
+      "mut_aa": "W",
+      "ddg_A_tsuboyama": -0.04363574807986614,
+      "ddg_B_fireprot": -1.2729372114702378,
+      "ddg_D_finetuned": 0.1714749102260761,
+      "ddg_mean": -0.3816993497746759,
+      "ddg_regime_sd": 0.6362896842471265
+    },
+    {
+      "mutation": "G334H",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "H",
+      "ddg_A_tsuboyama": -0.2302067914078491,
+      "ddg_B_fireprot": -0.6689166556913761,
+      "ddg_D_finetuned": -0.1796690203783076,
+      "ddg_mean": -0.3595974891591776,
+      "ddg_regime_sd": 0.21969262870851944
+    },
+    {
+      "mutation": "G104Y",
+      "position": 104,
+      "wt_aa": "G",
+      "mut_aa": "Y",
+      "ddg_A_tsuboyama": -0.027442635733217147,
+      "ddg_B_fireprot": -1.0549176653649621,
+      "ddg_D_finetuned": 0.03044880821884761,
+      "ddg_mean": -0.35063716429311054,
+      "ddg_regime_sd": 0.49856201417224416
+    },
+    {
+      "mutation": "G150H",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "H",
+      "ddg_A_tsuboyama": -0.3439517869179318,
+      "ddg_B_fireprot": -0.42798792456956847,
+      "ddg_D_finetuned": -0.2625312381650482,
+      "ddg_mean": -0.3448236498841828,
+      "ddg_regime_sd": 0.06755022268783861
+    },
+    {
+      "mutation": "G334D",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "D",
+      "ddg_A_tsuboyama": -0.14867056349425428,
+      "ddg_B_fireprot": -0.5941684346217305,
+      "ddg_D_finetuned": -0.28888297930161,
+      "ddg_mean": -0.34390732580586497,
+      "ddg_regime_sd": 0.18598897337556258
+    },
+    {
+      "mutation": "G150Q",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "Q",
+      "ddg_A_tsuboyama": -0.3566172128767987,
+      "ddg_B_fireprot": -0.4204953452604322,
+      "ddg_D_finetuned": -0.23580196765472214,
+      "ddg_mean": -0.3376381752639843,
+      "ddg_regime_sd": 0.07658574207767752
+    },
+    {
+      "mutation": "G150Y",
+      "position": 150,
+      "wt_aa": "G",
+      "mut_aa": "Y",
+      "ddg_A_tsuboyama": -0.2888574965144871,
+      "ddg_B_fireprot": -0.6305268025933659,
+      "ddg_D_finetuned": -0.07655535545860925,
+      "ddg_mean": -0.3319798848554874,
+      "ddg_regime_sd": 0.2282042160614306
+    },
+    {
+      "mutation": "G375F",
+      "position": 375,
+      "wt_aa": "G",
+      "mut_aa": "F",
+      "ddg_A_tsuboyama": -0.3041873349943513,
+      "ddg_B_fireprot": -0.5931880820425334,
+      "ddg_D_finetuned": -0.038869694288052384,
+      "ddg_mean": -0.312081703774979,
+      "ddg_regime_sd": 0.2263683716784292
+    },
+    {
+      "mutation": "G346E",
+      "position": 346,
+      "wt_aa": "G",
+      "mut_aa": "E",
+      "ddg_A_tsuboyama": 0.06474597175022456,
+      "ddg_B_fireprot": -0.6501868043523554,
+      "ddg_D_finetuned": -0.29435435944124944,
+      "ddg_mean": -0.2932650640144601,
+      "ddg_regime_sd": 0.291871099985171
+    },
+    {
+      "mutation": "G334F",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "F",
+      "ddg_A_tsuboyama": -0.19048397363542172,
+      "ddg_B_fireprot": -0.738806069281705,
+      "ddg_D_finetuned": 0.05316982738059004,
+      "ddg_mean": -0.29204007184551223,
+      "ddg_regime_sd": 0.3312015358622347
+    },
+    {
+      "mutation": "G346D",
+      "position": 346,
+      "wt_aa": "G",
+      "mut_aa": "D",
+      "ddg_A_tsuboyama": -0.00092856078778909,
+      "ddg_B_fireprot": -0.5600026572168837,
+      "ddg_D_finetuned": -0.31456452190267103,
+      "ddg_mean": -0.29183191330244795,
+      "ddg_regime_sd": 0.22880638094952735
+    },
+    {
+      "mutation": "G334N",
+      "position": 334,
+      "wt_aa": "G",
+      "mut_aa": "N",
+      "ddg_A_tsuboyama": -0.2854335049509335,
+      "ddg_B_fireprot": -0.431056226088688,
+      "ddg_D_finetuned": -0.15845758987649058,
+      "ddg_mean": -0.29164910697203733,
+      "ddg_regime_sd": 0.11137468113699525
+    }
+  ],
+  "scan_features": "data/processed/scan_GLA_human_hard/features_summary.parquet",
+  "train_tsuboyama": "data/processed/tsuboyama_bench_fast/features_ablation.parquet",
+  "train_fireprot": "data/processed/fireprot_le500/features_ablation.parquet",
+  "first_residue": 32
+}

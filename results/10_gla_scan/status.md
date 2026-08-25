@@ -145,3 +145,57 @@ shard progress.
    +70 kcal/mol tail is clash artifact). Check specifically whether Boltz also
    overestimates at the 10 flagged sites and at glycines.
 3. Optionally resume the full scan later; 480 structures of it are already banked.
+
+### 2026-08-25 — run stopped early, scan scored, FoldX comparison done
+
+**Stopped at 19/24 shards** (user call — enough data). Before clearing temp dirs,
+**salvaged 27 finished structures** from the shard that was mid-flight. Shardless
+`slim` (1012) compacted them → `shard_0000.npz`; `features` (1013) then built the
+table. Array had slowed to **one** GPU slot (`PENDING (Priority)` — jprieto/jcuellar
+ahead of us), so the 8 h estimate was drifting to ~2.5 h more.
+
+**Coverage: 604 / 722 mutations (83.6 %)** over all 38 positions (14–19 substitutions
+each). The 118 missing are the queries in the 5 unfinished shards.
+
+**ΔΔG (regime means over the 604):**
+| Regime | mean | range |
+|---|---|---|
+| A — Tsuboyama | +0.28 | [−0.58, +1.65] |
+| B — FireProt | +1.24 | [−1.31, +6.65] |
+| D — fine-tuned | +0.91 | [−0.52, +4.16] |
+
+Regime agreement (Pearson): A–B 0.634, A–D 0.769, B–D 0.796; mean across-regime SD
+0.52 kcal/mol.
+
+**vs FoldX (n = 603 joined; `compare_foldx.py`):**
+- **Overall Spearman ρ = +0.504** (Pearson raw +0.514, clipped ±10 +0.523).
+- Dropping FoldX's clash tail (< 10 kcal/mol, n = 474) → **ρ = +0.379**: part of the
+  headline correlation comes from correctly ranking the extreme clashes as bad.
+- **Magnitude is compressed, in the opposite direction to "overestimates":** Boltz
+  spans [−0.71, +3.99], FoldX [−2.65, +68.73]. Per-position bias is −1.1 to −25.5
+  kcal/mol (Boltz lower). **This is not evidence against the user's observation** —
+  that was made against structural intuition, not FoldX, and FoldX is itself
+  clash-inflated here (**9/38 positions have mean FoldX > 10 kcal/mol**).
+
+**Neither hypothesis is resolvable at this n:**
+- *Flagged positions worse?* median ρ **+0.375** (10 sites) vs **+0.262** (28 others) —
+  the flagged sites look **better**, but Mann-Whitney **p = 0.476**.
+- *Glycines worse?* per-mutation ρ is higher at G sites (+0.532 vs +0.445), but
+  per-position median ρ is lower (+0.246 vs +0.467, **p = 0.077**, only 7 non-G sites).
+  The two framings disagree → not a real signal at this sample size.
+- **Per-position ρ is dominated by noise:** bootstrap 95 % CI for a single position
+  (G150, n = 19) is **[+0.09, +0.83]**. Spread across positions (−0.57 … +0.92,
+  SD 0.29) is consistent with sampling noise alone. Per-position rankings here should
+  not be interpreted.
+
+**Artifacts:** `scan_predictions_mean.csv`, `scan_summary.json`,
+`compare_foldx_{merged,per_position,summary}_mean.csv`,
+`figures/01_boltz_vs_foldx_mean.png`, `figures/01_heatmap_mean.png`.
+
+**Next (if pursued):**
+1. To test the overestimation claim properly, compare against **measured** ΔΔG or
+   structural annotations — not FoldX, which is unusable as ground truth at these sites.
+2. Per-position conclusions need the full 19 substitutions **and** more positions;
+   at n≈15 nothing is separable.
+3. 5 shards' worth of structures remain unpredicted; the full 398-position scan is
+   still resumable (`scan_GLA_human`, ~480 structures banked).
