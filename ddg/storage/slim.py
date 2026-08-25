@@ -104,6 +104,32 @@ def write_shard(structure_slims: dict, out_path) -> None:
     logger.info("Wrote slim shard %s (%d structures)", out_path, len(keys))
 
 
+def _existing_structures(shard_path, exclude=frozenset()) -> dict:
+    """Read back a shard's structures, skipping any key in ``exclude``.
+
+    Used to merge rather than clobber when re-writing a shard (see slim_predictions).
+    An unreadable/absent shard yields nothing -- the caller then simply writes the
+    fresh set, which is the old behaviour.
+    """
+    shard_path = Path(shard_path)
+    if not shard_path.exists():
+        return {}
+    out: dict[str, dict] = {}
+    try:
+        with np.load(shard_path, allow_pickle=False) as data:
+            for i, key in enumerate(str(k) for k in data["keys"]):
+                if key in exclude:
+                    continue
+                entry = {f: data[f"{f}_{i}"] for f in FIELDS if f"{f}_{i}" in data}
+                if entry:
+                    out[key] = entry
+    except Exception as e:  # corrupt/partial shard: fall back to overwriting it
+        logger.warning("slim: could not read existing shard %s (%s); it will be "
+                       "replaced rather than merged", shard_path, e)
+        return {}
+    return out
+
+
 def slim_predictions(
     predictions_dir,
     positions_by_struct: dict,
@@ -174,12 +200,21 @@ def slim_predictions(
             f"then re-run slim."
         )
 
-    # Never clobber an existing shard with an empty one. On a *resumed* sharded run,
-    # predict skips structures already in the slim store, so this shard's slim set can
-    # come back empty even though a prior run wrote its real structures to out_shard.
-    # Overwriting with an empty npz would silently drop those structures (and, with
-    # delete_raw, they can't be cheaply regenerated). Leave the existing shard intact.
+    # Never DROP structures an existing shard already holds. On a *resumed* sharded
+    # run, predict skips structures already in the slim store, so this pass only
+    # re-slims the leftovers -- writing just those would silently discard everything
+    # the earlier pass had put in out_shard (and, with delete_raw, the raw is gone, so
+    # they cannot be cheaply regenerated). The same applies when a store was seeded
+    # from another experiment that shares wt_id, where the seeded shard filenames can
+    # collide with this run's. So merge into whatever is already there: freshly
+    # slimmed structures win, previously stored ones are carried over.
     if slims:
+        keep = _existing_structures(out_shard, exclude=set(slims))
+        if keep:
+            logger.info("slim: merging %d newly slimmed structure(s) into %s, "
+                        "carrying over %d already stored", len(slims), out_shard,
+                        len(keep))
+            slims = {**keep, **slims}
         write_shard(slims, out_shard)
     else:
         logger.info("slim: no new structures to write for %s; leaving any existing "
