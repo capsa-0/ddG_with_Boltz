@@ -302,3 +302,24 @@ where FoldX is in its clash regime (buried Gly + rigid backbone, established fro
 literature and confirmed on 1R46) there is independent reason to distrust it; where
 Boltz is the harsher one at exposed sites, there is no such argument and the
 disagreement is genuinely unresolved.
+
+### 2026-08-25 — same map on the real kcal/mol scale (figure 03)
+
+Rebuilt the discrepancy map with **raw ΔΔG differences instead of percentile ranks**
+(`figures/03_discrepancy_map_raw.png`). Result, quantified:
+
+- **corr(Boltz − FoldX, FoldX) = −0.975.** The raw difference is essentially **−FoldX**;
+  it carries almost no independent information.
+- Per-position SD: **Boltz 0.74 vs FoldX 7.68 kcal/mol** — FoldX varies **10.3×** more.
+- Raw difference range **[−25.51, +0.15]**: on this scale the difference is negative
+  almost everywhere, and only one position is even marginally positive.
+
+So the raw-scale plot answers a different question than the rank version. It shows
+**how far apart the two scales are** (large, and driven entirely by FoldX's clash
+regime at buried glycines), but it cannot show **where they disagree about which
+mutations are relatively worse** — Boltz's entire per-position range is thinner than a
+single FoldX bar, so every bar just traces FoldX.
+
+Both figures are kept: **03 = scale mismatch** (the physically meaningful comparison),
+**02 = ordering disagreement** (the only comparison that is scale-free). Neither is an
+accuracy measure — there is still no measured ΔΔG for this protein.

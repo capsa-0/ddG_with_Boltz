@@ -128,10 +128,79 @@ def main():
             print(f"    {s:>2}  n={len(g):>2}  mean delta {g.delta_mean.mean():+6.1f}  "
                   f"mean |delta| {g.delta_absmean.mean():5.1f}")
 
+    # raw-scale difference, in kcal/mol, for comparison with the rank version
+    raw = m.assign(diff=m.boltz - m.foldx).groupby("position").agg(
+        diff_mean=("diff", "mean")).reset_index()
+    per = per.merge(raw, on="position", how="left")
+    _raw_diagnostics(per)
+
     per.to_csv(out / "discrepancy_by_position.csv", index=False)
     _paint(args.pdb, per, out / "boltz_minus_foldx.pdb")
     _figure(m, per, out / "figures" / "02_discrepancy_map.png")
+    _figure_raw(m, per, out / "figures" / "03_discrepancy_map_raw.png")
     print(f"\nwrote -> {out}")
+
+
+def _raw_diagnostics(per):
+    """How much of the raw difference is just -FoldX?"""
+    print("\n=== raw-scale difference (kcal/mol) vs each method ===")
+    for col, lab in (("foldx", "FoldX per-position mean"),
+                     ("boltz", "Boltz per-position mean")):
+        r = spearmanr(per[col], per.diff_mean).statistic
+        print(f"  corr(Boltz-FoldX difference, {lab:<26}) = {r:+.3f}")
+    sd_b, sd_f = per.boltz.std(), per.foldx.std()
+    print(f"  per-position SD: Boltz {sd_b:.2f} vs FoldX {sd_f:.2f} kcal/mol "
+          f"(FoldX varies {sd_f/sd_b:.1f}x more)")
+    print(f"  raw difference range: [{per.diff_mean.min():+.2f}, "
+          f"{per.diff_mean.max():+.2f}] kcal/mol")
+
+
+def _figure_raw(m, per, path):
+    """Same map on the REAL kcal/mol scale, with a broken axis for FoldX's tail."""
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+    from matplotlib.patches import Patch
+    path.parent.mkdir(exist_ok=True)
+    o = per.sort_values("position").reset_index(drop=True)
+    x = np.arange(len(o))
+    is_g = (o.wt_aa == "G").to_numpy()
+    fig, (a, b) = plt.subplots(2, 1, figsize=(14, 8),
+                               gridspec_kw=dict(height_ratios=[2, 2]), sharex=True)
+
+    for i, r in enumerate(o.itertuples(index=False)):
+        if r.flagged:
+            for ax in (a, b):
+                ax.axvspan(i - .5, i + .5, color="#DDAA33", alpha=.22, zorder=0)
+
+    a.bar(x, o.diff_mean, color="#C44E52",
+          edgecolor=["black" if g else "none" for g in is_g],
+          linewidth=[1.1 if g else 0 for g in is_g], zorder=2)
+    a.axhline(0, color="0.3", lw=.8)
+    a.set_ylabel("Boltz − FoldX\n(kcal/mol, REAL values)")
+    a.set_title("Same map on the real kcal/mol scale — the difference is essentially "
+                "−FoldX\n(Boltz's whole range is thinner than one FoldX bar)", fontsize=10)
+    a.legend(handles=[
+        Patch(facecolor="white", edgecolor="black", linewidth=1.1, label="wild-type glycine"),
+        Patch(facecolor="#DDAA33", alpha=.5, label="flagged position"),
+    ], fontsize=8, loc="lower left", framealpha=.92)
+
+    w = 0.4
+    b.bar(x - w/2, o.boltz, width=w, color="#4C72B0", label="Boltz", zorder=2)
+    b.bar(x + w/2, o.foldx, width=w, color="#DD8452", label="FoldX", zorder=2)
+    b.axhline(0, color="0.3", lw=.8)
+    b.set_ylabel("mean ΔΔG at that position\n(kcal/mol)")
+    b.set_xticks(x)
+    b.set_xticklabels([f"{r.wt_aa}{r.position}" + ("*" if r.flagged else "")
+                       for r in o.itertuples(index=False)], rotation=90, fontsize=6)
+    for tick, fl in zip(b.get_xticklabels(), o.flagged):
+        if fl:
+            tick.set_color("#B8860B"); tick.set_fontweight("bold")
+    b.legend(fontsize=8); b.grid(alpha=.3)
+    b.set_xlim(-0.8, len(o) - 0.2)
+    fig.tight_layout()
+    fig.savefig(path, dpi=150)
+    plt.close(fig)
 
 
 def _paint(pdb_path, per, out_pdb):
