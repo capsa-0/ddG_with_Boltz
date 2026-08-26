@@ -1,0 +1,12 @@
+protein,length,n_datasets,n_scored,leaky_tsu_25,leaky_fp_25,leaky_any_25,cluster_25,leaky_tsu_30,leaky_fp_30,leaky_any_30,cluster_30
+CALM1,149,1,1813,False,False,False,,False,False,False,
+GAL4,65,1,1196,False,False,False,,False,False,False,
+GmR,177,1,1929,False,False,False,,False,False,False,
+HRas,189,1,3135,False,False,False,,False,False,False,
+IF-1,72,1,1368,False,False,False,,False,False,False,
+NUDT15,164,2,5856,False,False,False,,False,False,False,
+PAB1,75,1,1188,False,False,False,,False,False,False,
+SUMO1,101,1,1700,False,False,False,,False,False,False,
+UBE2I,159,1,2563,False,False,False,,False,False,False,
+UBI4,75,2,2575,True,False,True,TSU__1SIF.pdb_F13S;TSU__1SIF.pdb_L3A;TSU__1UBQ.pdb_I3A;TSU__1UBQ.pdb_L15S;TSU__1UBQ.pdb_L43A;TSU__1UBQ.pdb_L67S;TSU__2MLB.pdb_L43D,True,False,True,TSU__1SIF.pdb_F13S;TSU__1SIF.pdb_L3A;TSU__1UBQ.pdb_I3A;TSU__1UBQ.pdb_L15S;TSU__1UBQ.pdb_L43A;TSU__1UBQ.pdb_L67S;TSU__2MLB.pdb_L43D
+ccdB,101,1,1176,False,False,False,,False,False,False,

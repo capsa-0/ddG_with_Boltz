@@ -78,3 +78,7 @@ docs/*
 ddg_datasets/
 # stray benchmark cluster map
 data/raw/tsuboyama_bench_clusters.csv
+# Høie et al. 2022 MAVE source tables (fetched by
+# results/15_mave_stability_transfer/fetch_hoie.py; ~87 MB)
+data/raw/mave_hoie/
+data/raw/mave_hoie_data.zip

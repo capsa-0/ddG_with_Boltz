@@ -1,0 +1,48 @@
+# Hoie et al. 2022 MAVE corpus -- Tier 1: the 11 proteins <= 200 aa
+# carrying 13 of their 39 MAVE datasets.
+#
+# Full L x 19 saturation of each protein: 25,213 mutants + 11 wild-types
+# = 25,224 Boltz structures. Full saturation (not just the measured variants)
+# because Hoie's best "position-context" model needs all 20 substitutions at a
+# position, and it costs only 3.8% more here.
+#
+# head.mode is INFERENCE on purpose: the label is MAVE fitness, not ddG, and must
+# never occupy the `ddg` column. Fitness is joined back in afterwards from
+# data/raw/mave_hoie_le200_labels.csv on (uniprot, mutation).
+#
+# slim.keep_s is TRUE (the scan template ships false): the single track `s` is the
+# only retained field the concat model does not read, but it is what sdim_* features
+# need, and dropping it would mean re-running Boltz to get it back. Cost 1.4 -> 4.1 GB.
+#
+# Generated from scan_GLA_human.yaml by results/15_mave_stability_transfer/.
+head:
+  mode: inference
+  experiment_name: mave_hoie_le200
+data_processing:
+  overwrite: false
+  raw_data_path: data/raw/mave_hoie_le200.csv
+  dataset_type: minimal
+  msa_strategy: mutate_wt_msa
+  msa_mutation_strategy: mutate_first_row
+  max_msa_sequences: 1000
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: gpu
+    model: boltz2
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    write_embeddings: true
+    skip_run_structure: true
+    no_kernels: true
+slim:
+  keep_s: true
+  delete_raw: true
+feature:
+  source: auto
+  blocks:
+  - zdiag
+  - zpool
+  - wtz
+  - mtz
