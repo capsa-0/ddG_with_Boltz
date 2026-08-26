@@ -24,6 +24,7 @@ error cannot masquerade as a result.
 """
 import argparse
 import sys
+import warnings
 from pathlib import Path
 
 import numpy as np
@@ -106,11 +107,16 @@ def build_frames(by_protein, preds, ddg_source, sub_matrix):
                 for a, j in idx.items():
                     out[f"{tag}_aa_p0_{a}"] = block[:, j]
                 out[f"{tag}_aa_wt_p"] = block[np.arange(len(pos)), mi]
-                with np.errstate(all="ignore"):
+                with warnings.catch_warnings():
+                    # A position with no value at all for any of the 20 substitutions
+                    # gives an all-NaN slice; NaN is the right answer and becomes the
+                    # -100 sentinel below, same as theirs.
+                    warnings.simplefilter("ignore", RuntimeWarning)
                     out[f"{tag}_M_p0"] = np.nanmedian(block, axis=1)
 
             out["mave_wt_to_mut"] = sub_matrix[wi, mi]
-            with np.errstate(all="ignore"):
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
                 out["mave_wt_to_any"] = np.nanmean(sub_matrix[wi, :], axis=1)
                 out["mave_any_to_mut"] = np.nanmean(sub_matrix[:, mi], axis=0)
 

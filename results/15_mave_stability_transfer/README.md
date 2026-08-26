@@ -70,6 +70,12 @@ All four baselines pinned by explicit feature regexes in their `train.sh` reprod
 within **±0.011**, and the position-context set comes out at exactly **47 features** —
 the count the paper states.
 
+`check_frames.py` separately verifies that `score.py`'s rebuild of those 47 features
+from the raw PRISM tables (needed to swap our ΔΔG in for Rosetta's) reproduces their
+feature semantics: median ρ +0.510 vs +0.502, **max |Δ| = 0.042** across the 13 Tier-1
+datasets. Both arms of the main comparison use this same rebuild, so the residual
+offset cancels in the paired difference.
+
 **Main result:** pending the Boltz run.
 
 ## Data & provenance

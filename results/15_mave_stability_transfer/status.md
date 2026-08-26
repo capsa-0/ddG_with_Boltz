@@ -22,7 +22,7 @@ Done so far, all CPU-only on the workstation:
       before letting the rest run (the failure mode that killed the results/10 full
       scan). Budget is extrapolated from 65 s/structure at 398 aa; the exponent for a
       65–189 aa protein is unverified.
-- [ ] `check_frames.py` — validate score.py's rebuild of the 47 features (running).
+- [x] `check_frames.py` — score.py's feature rebuild verified (max |Δ| 0.042, PASS).
 - [ ] `rsync` the slim store (~4.1 GB, `keep_s: true`) back here so different models
       and feature blocks can be tried without the cluster.
 - [ ] Phase 3: `predict_ddg.py` (regimes A/B/D) → `score.py` (direct + LOPO layers).
@@ -31,6 +31,32 @@ Done so far, all CPU-only on the workstation:
 - None.
 
 ## Log — newest first
+
+### 2026-08-26 — feature rebuild verified (check_frames.py): PASS
+
+The other half of the harness. Phase 0 validated the LOPO *using Høie's own feature
+tables*; Phase 3 needs `score.py` to rebuild those 47 features from the raw PRISM
+tables so our ΔΔG can take Rosetta's place. That rebuild is our code, and a divergence
+would corrupt the headline number in a way Phase 0 cannot see.
+
+Same LOPO (60 trees), same 13 Tier-1 datasets, run over both feature sources:
+
+| | median ρ |
+|---|---|
+| their `preprocessed.pkl` | +0.502 |
+| our rebuild from PRISM | +0.510 |
+
+**max \|Δ\| = 0.042, mean \|Δ\| = 0.019**, both feature sets exactly 47 columns.
+PASS (bar was 0.05). Deviations split 8 positive / 5 negative — the largest is UBI4
+dextrose (+0.042).
+
+The residual +0.008 median offset does not affect the result: **both arms of the Phase-3
+comparison go through this same rebuild** (Rosetta's ΔΔG and ours are swapped into
+identical frames), so any offset relative to their pkl cancels in the paired difference.
+
+Also fixed a benign `All-NaN slice` RuntimeWarning in `score.py` — positions with no
+value for any of the 20 substitutions correctly give NaN, which becomes their -100
+sentinel; the warning was noise, not a bug.
 
 ### 2026-08-26 — throughput measured: the budget was 2x pessimistic
 
