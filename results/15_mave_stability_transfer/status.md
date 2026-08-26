@@ -1,6 +1,6 @@
 # Status — 15_mave_stability_transfer
 
-**State:** 🚧 In progress — Phase 0 (harness reproduction) running; corpus + leakage map done. No GPU submitted yet.
+**State:** 🚧 In progress — GPU chain 1414→1415→1416→1417 submitted; Phase 0 harness reproduction running locally.
 **Last updated:** 2026-08-26
 
 ## Current state
@@ -18,17 +18,104 @@ Done so far, all CPU-only on the workstation:
 - Phase-0 harness reproduction of their published LOPO medians: in progress.
 
 ## Next steps
-- [ ] Finish Phase 0; check the four RF baselines against 0.25 / 0.42 / 0.47 / 0.52.
-- [ ] Push, `git pull` on cranex, submit
-      `./slurm/submit_scan.sh experiment_configs/mave_hoie_le200.yaml 256 3`.
-- [ ] After ~5 shards, measure real s/structure and re-derive the ETA before letting
-      the rest run (the failure mode that killed the results/10 full scan).
+- [ ] After ~5 predict shards land, measure real s/structure and re-derive the ETA
+      before letting the rest run (the failure mode that killed the results/10 full
+      scan). Budget is extrapolated from 65 s/structure at 398 aa; the exponent for a
+      65–189 aa protein is unverified.
+- [ ] Finish `position_context` (the 4th baseline, target 0.52), then run
+      `check_frames.py` to validate score.py's feature rebuild.
 - [ ] `rsync` the slim store (~4.1 GB, `keep_s: true`) back here so different models
       and feature blocks can be tried without the cluster.
 - [ ] Phase 3: `predict_ddg.py` (regimes A/B/D) → `score.py` (direct + LOPO layers).
 
 ## Blockers
 - None.
+
+## Log — newest first
+
+### 2026-08-26 — throughput measured: the budget was 2x pessimistic
+
+**prepare 1414 COMPLETED in 21 min** (not the 3–5 h estimated) and built all 25,224
+MSAs + queries. Small proteins make short alignments.
+
+**First predict shard: 99 structures in 9 min 52 s** on nodo4 — ~6.0 s/structure
+including ~3 min of Boltz startup, so ~4.2 s/structure marginal. The plan's 70–80 GPU-h
+came from scaling results/10's 65 s/structure at 398 aa with a 10 s/structure floor;
+the real floor is lower.
+
+| | planned | measured |
+|---|---|---|
+| total | 70–80 GPU-h | **~42 GPU-h** (256 × 9.9 min) |
+| wall clock at `%3` | ~1 day | **~14 h** |
+
+Disk on the cluster, projected from the first shard: MSAs 6.4 GB (the bulk), queries
+0.2 GB, slim 0.23 MB/structure → **~5.8 GB**, total **~12.4 GB**. `/grupos` has 347 GB
+free. `boltz_raw_output` is 16 KB — incremental per-shard slim is deleting raw
+correctly (`delete_raw`). 0 failed shards so far.
+
+The local slim store to sync back will be ~5.8 GB against 101 GB free here.
+
+### 2026-08-26 — Phase 0 gate PASSED: their LOPO baselines reproduce
+
+`rf4mave.py` on their own `preprocessed.pkl`, all 39 datasets / 29 proteins:
+
+| model | ours | published | Δ |
+|---|---|---|---|
+| null (s̃_exp) | 0.334 | 0.17 | **+0.164** |
+| ΔΔG only (Rosetta) | **0.249** | 0.25 | −0.001 |
+| ΔΔE only (GEMME) | **0.409** | 0.42 | −0.011 |
+| ΔΔG + ΔΔE | **0.466** | 0.47 | −0.004 |
+| position-context (47 feat) | *running* | 0.52 | |
+
+**The three baselines pinned by explicit `-f` regexes in their `train.sh` reproduce
+within ±0.011** — inside the ±0.02 gate. The harness is trustworthy.
+
+The null is the one outlier (+0.164). It is also the only one of the five that their
+`train.sh` does **not** define with an explicit feature regex, so what went into their
+Figure 2B green box is a guess on our side; the paper quotes it as a *mean*, not a
+median. Our 0.334 agrees closely with their own Table S1 "MAVE WT→Mut" column
+(median ≈ 0.33), i.e. with the substitution matrix used directly as a predictor. Read
+as a definitional difference, not a harness bug — but it is a guess, and is reported
+as one. It does not affect the ΔΔG comparison, which is what this experiment is for.
+
+Also worth recording, since the paper leaves these vague and their code settles them:
+RF is `n_estimators=150, max_features="sqrt", min_samples_leaf=15`; missing values are
+a **−100 sentinel**, not NaN; their `-x 2` drops rows whose own Rosetta *or* GEMME value
+is missing, from train and validation alike; and the 47 "position-context" features
+decode exactly as 20 + 1 + 1 Rosetta, 20 + 1 + 1 GEMME, and 3 s̃ terms.
+
+`check_frames.py` will verify the other half of the harness — that `score.py`'s rebuild
+of those 47 features from the raw PRISM tables (needed so our ΔΔG can be swapped in)
+reproduces their feature semantics, by running the same LOPO on both and comparing
+per-dataset ρ.
+
+### 2026-08-26 — GPU chain submitted (1414 → 1415 → 1416 → 1417)
+
+`./slurm/submit_scan.sh experiment_configs/mave_hoie_le200.yaml 256 3` on cranex:
+prepare **1414** (cpu) → predict array **1415** (`0-255%3`, gpu, self-slimming) →
+slim sweep **1416** (`afterany`) → features **1417**. Bad nodes excluded up front:
+cpu `nodo1,nodo3,nodo5`; gpu `nodo1,nodo3,nodo5,nodo11,nodo12,sauron`. Queue was
+empty and GPU nodes idle at submission, so `%3` costs other users nothing.
+
+256 shards ≈ 99 structures each. Expect prepare ~3–5 h (25k mutated MSAs; GLA's 7.5k
+took 2 h), then ~70–80 GPU-h of predict.
+
+**Deviation from the plan, stated deliberately:** the plan gated GPU submission on
+Phase 0 finishing. Phase 0's random forests are slower than expected (~70 s per fold
+for the single-feature models → ~4–6 h total), and Phase 0 validates the *scoring
+harness*, which is not needed until Phase 3. The corpus itself was validated
+independently through the real code path (`load_dataset` + `prepare_mutations_frame`:
+25,213 rows in, **0 dropped**, 11 proteins, exactly 19 mutations per position,
+25,224 structures). If Phase 0 turns out to need fixing, that changes `rf4mave.py`,
+not the embeddings — so overlapping the two wastes nothing and saves a day.
+
+**Cluster sync:** the cluster checkout is on `main` while this work is on branch
+`results/11-12-calibration-and-error-anatomy`. Rather than switch its branch, the two
+files the GPU run actually needs were written straight out of the pushed branch:
+`git show origin/<branch>:<path> > <path>` for
+`experiment_configs/mave_hoie_le200.yaml` and `data/raw/mave_hoie_le200.csv`. This
+touches neither the cluster's branch nor its index. The `results/15/` scripts run
+locally and are not needed there.
 
 ## Log — newest first
 
