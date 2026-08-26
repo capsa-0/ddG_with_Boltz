@@ -56,11 +56,20 @@ def _grid(values: dict, n_pos: int) -> np.ndarray:
     return g
 
 
-def build_frames(by_protein, preds, ddg_source, sub_matrix):
+def build_frames(by_protein, preds, ddg_source, sub_matrix, match_coverage=True):
     """One feature frame per dataset, with the column names rf4mave expects.
 
     `ddg_source` is either "rosetta" or a column of `preds` -- everything else in the
     frame is identical between the two arms, so the LOPO comparison is paired.
+
+    `match_coverage` masks our ddG to Rosetta's availability pattern. This matters:
+    our scan is FULL saturation, so it has a value for 100% of scored variants and
+    95.0% of position-grid cells (19/20 -- the WT cell has no mutation), where Rosetta
+    has 95.7% and 90.9%. Without masking, the Boltz arm would win partly on *coverage*
+    rather than on ddG quality, and the `-x 2` filter would even evaluate the two arms
+    on different row subsets. Masking makes the missingness identical, so the paired
+    difference isolates the thing under test. Pass False to measure what the extra
+    coverage is worth on its own.
     """
     frames, names, proteins = [], [], []
     idx = {a: i for i, a in enumerate(AA)}
@@ -81,11 +90,14 @@ def build_frames(by_protein, preds, ddg_source, sub_matrix):
             mut_all = d["variant"].str[-1]
 
             gemme_g = _grid(dict(zip(zip(pos_all, mut_all), d["gemme_score_01"])), L)
-            if src is None:
-                ddg_g = _grid(dict(zip(zip(pos_all, mut_all),
+            rosetta_g = _grid(dict(zip(zip(pos_all, mut_all),
                                        d["Rosetta_ddg_score_02"])), L)
+            if src is None:
+                ddg_g = rosetta_g
             else:
                 ddg_g = _grid(src, L)
+                if match_coverage:
+                    ddg_g = np.where(np.isfinite(rosetta_g), ddg_g, np.nan)
 
             scored = d[d["score_00"].notna()]
             if scored.empty:
@@ -159,6 +171,9 @@ def main(argv=None) -> int:
     ap.add_argument("--regime", default="mean", choices=REGIMES)
     ap.add_argument("--out", type=Path, default=HERE)
     ap.add_argument("--skip-lopo", action="store_true")
+    ap.add_argument("--no-match-coverage", action="store_true",
+                    help="do NOT mask our ddG to Rosetta's availability; measures "
+                         "what the full-saturation coverage advantage is worth")
     args = ap.parse_args(argv)
 
     if not args.preds.exists():
@@ -196,6 +211,11 @@ def main(argv=None) -> int:
     print("\n=== Layer 2: leave-one-protein-out RF ===")
     rows, per_ds = [], []
     arms = [("rosetta", "rosetta"), ("boltz", f"ddg_{args.regime}")]
+    print("  coverage matching: "
+          + ("OFF — the Boltz arm keeps its full-saturation advantage"
+             if args.no_match_coverage else
+             "ON — our ddG is masked to Rosetta's availability so both arms "
+             "see identical missingness"))
     for model in ("null_smave", "dde_only", "ddg_only", "ddg_dde",
                   "position_context"):
         for arm, source in arms:
@@ -203,8 +223,9 @@ def main(argv=None) -> int:
             shared = model in ("null_smave", "dde_only")
             if shared and arm != "rosetta":
                 continue
-            frames, names, proteins = build_frames(by_protein, preds, source,
-                                                   sub_matrix)
+            frames, names, proteins = build_frames(
+                by_protein, preds, source, sub_matrix,
+                match_coverage=not args.no_match_coverage)
             res, cols_used = run_lopo(frames, names, proteins,
                                       FEATURE_SETS[model], verbose=False)
             res.insert(0, "arm", "shared" if shared else arm)
@@ -212,6 +233,8 @@ def main(argv=None) -> int:
             per_ds.append(res)
             clean = res[res["protein"] != "UBI4"]["spearman"].median()
             rows.append(dict(model=model, arm=res["arm"].iloc[0],
+                             match_coverage=not args.no_match_coverage,
+                             n_rows=int(res["n"].sum()),
                              n_features=len(cols_used),
                              median_spearman=res["spearman"].median(),
                              median_spearman_no_ubi4=clean))

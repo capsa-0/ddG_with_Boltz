@@ -43,6 +43,13 @@ results/07 and used by 08/09.
 - *RF4Mave* (their Fig 2B): their leave-one-protein-out random forest, run once with
   Rosetta's ΔΔG and once with ours. The **paired difference** is the result.
 
+**Coverage matching.** Our full-saturation scan has a ΔΔG for 100 % of scored variants
+and 95 % of position-grid cells; Rosetta has 95.7 % and 90.9 %. By default our ΔΔG is
+masked to Rosetta's availability so both arms see identical missingness and identical
+row sets — otherwise the Boltz arm would win partly on coverage, and their `-x 2` filter
+would score the two arms on different subsets. `--no-match-coverage` reports what the
+coverage advantage is worth on its own.
+
 **Leakage.** UBI4 (ubiquitin) is the only Tier-1 protein homologous to Tsuboyama at
 25 %/30 % identity — it clusters with `1UBQ.pdb`. 2 of 13 datasets. Everything is
 reported full and UBI4-dropped. SUMO1 and UBE2I are clean: the ubiquitin *fold*

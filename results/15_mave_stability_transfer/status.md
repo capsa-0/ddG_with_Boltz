@@ -32,6 +32,38 @@ Done so far, all CPU-only on the workstation:
 
 ## Log — newest first
 
+### 2026-08-26 — dry-run of Phase 3 on synthetic predictions; found and fixed a fairness bug
+
+With the GPU run a third done, exercised the Phase-3 path that `check_frames.py` did
+not cover, using a synthetic predictions CSV with the exact schema `predict_ddg.py`
+emits (values meaningless — only the plumbing under test).
+
+**Layer 1 join verified.** All 13 datasets join cleanly on `(wt_id, mutation)` with the
+right row counts, and `rho_rosetta` comes out at median **−0.301** — exactly the direct
+Rosetta baseline computed independently from the PRISM tables, per dataset as well as in
+aggregate. Sign is negative as it must be (destabilizing → low fitness); the sign guard
+stays quiet.
+
+**Found: the two arms were not actually paired.** Our scan is *full saturation*, so it
+has a ΔΔG for **100 %** of scored variants and **95.0 %** of position-grid cells (19/20 —
+the WT cell has no mutation). Rosetta has **95.7 %** and **90.9 %**; their calculations
+have genuine gaps. Two consequences, both of which would have inflated our arm:
+
+1. The position-context model would have given the Boltz arm denser features — winning
+   partly on *coverage* rather than on ΔΔG quality.
+2. Worse, their `-x 2` filter drops rows whose own stability value is missing, and it
+   reads whichever column is in the ΔΔG slot. So the Boltz arm would have been scored on
+   ~4.3 % **more rows** than the Rosetta arm — and precisely the rows Rosetta could not
+   compute, which are unlikely to be a random sample.
+
+**Fix:** `build_frames(..., match_coverage=True)` (now the default) masks our ΔΔG to
+Rosetta's availability pattern, so both arms see identical missingness and identical row
+sets. Verified: both arms now report 95.7 % own-value and 90.9 % grid coverage. The
+paired difference now isolates ΔΔG *quality*, which is the thing under test.
+`--no-match-coverage` measures separately what the full-saturation advantage is worth —
+a real benefit of our method, but one that deserves to be reported as its own number
+rather than smuggled into the headline.
+
 ### 2026-08-26 — feature rebuild verified (check_frames.py): PASS
 
 The other half of the harness. Phase 0 validated the LOPO *using Høie's own feature
