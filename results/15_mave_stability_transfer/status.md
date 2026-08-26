@@ -18,8 +18,21 @@ Done so far, all CPU-only on the workstation:
 - Phase-0 harness reproduction of their published LOPO medians: in progress.
 
 ## Next steps
-- [ ] **After array 1415 finishes: re-run `submit_scan.sh` to fill the shard-98 gap**
-      (~99 structures) before trusting the feature table.
+- [ ] **After array 1415 finishes: backfill the 6 lost shards** (98 + 132–136,
+      ~594 structures, 2.4 % of the corpus) before trusting the feature table.
+      The cluster checkout is on `main` and does **not** yet have the nodo4 exclude,
+      so land the two updated files first, then re-submit:
+      ```bash
+      B=origin/results/11-12-calibration-and-error-anatomy
+      git fetch origin results/11-12-calibration-and-error-anatomy
+      git show $B:slurm/predict_array.sbatch > slurm/predict_array.sbatch
+      git show $B:slurm/submit_scan.sh      > slurm/submit_scan.sh
+      ./slurm/submit_scan.sh experiment_configs/mave_hoie_le200.yaml 256 3
+      ```
+      (These two are *tracked* on the cluster, unlike the config/CSV landed earlier,
+      so this leaves them showing as modified until the branch is merged.)
+      predict skips everything already in the slim store, so it redoes only the gap.
+      Verify afterwards: slim structure count should reach 25,224.
 - [ ] After ~5 predict shards land, measure real s/structure and re-derive the ETA
       before letting the rest run (the failure mode that killed the results/10 full
       scan). Budget is extrapolated from 65 s/structure at 398 aa; the exponent for a
