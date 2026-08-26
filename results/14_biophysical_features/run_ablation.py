@@ -40,6 +40,18 @@ RES_KEYS = ("vol", "hyd", "dgtrans", "charge", "polar", "aromatic",
 INTER_KEYS = ("x_vol", "x_hyd", "x_dgtrans", "x_charge", "x_is_gly", "x_is_pro")
 SITE_COLS = ["site_cn8", "site_cn10", "site_cn12", "site_cn_z",
              "site_relpos", "site_len", "site_termdist"]
+# The size-dependent site scalars do not transfer: Tsuboyama chains are 32-72 aa
+# (site_len mean 53), S669's are 50-493 (mean 281), so a Tsuboyama-trained model is
+# extrapolating far outside its observed range. site_cn_z (burial z-scored WITHIN the
+# protein) and site_relpos are dimensionless and matched across corpora by
+# construction; this is the transferable subset.
+SITE_COLS_T = ["site_cn_z", "site_relpos"]
+
+# item 3 — MSA conservation. msa_has_msa / msa_neff are what let the model discount
+# the block on de novo designed proteins, which have no natural homologues at all.
+MSA_SITE_COLS = ["msa_neff", "msa_depth", "msa_gapfrac", "msa_entropy",
+                 "msa_maxfreq", "msa_has_msa"]
+MSA_RES_KEYS = ("msafreq", "msalogodds", "is_consensus", "x_cons")
 
 
 def zblock(wt_prefix, mt_prefix):
@@ -58,6 +70,12 @@ BLOCKS = {
     "bio_nox": (SITE_COLS,                    # item 2 without the interaction terms
                 [f"wt_{k}" for k in RES_KEYS],
                 [f"mt_{k}" for k in RES_KEYS]),
+    "bio_t":   (SITE_COLS_T,                  # item 2 with only transferable site cols
+                [f"wt_{k}" for k in RES_KEYS] + [f"wt_{k}" for k in INTER_KEYS],
+                [f"mt_{k}" for k in RES_KEYS] + [f"mt_{k}" for k in INTER_KEYS]),
+    "cons":    (MSA_SITE_COLS,                # item 3: conservation / PSSM / consensus
+                [f"wt_{k}" for k in MSA_RES_KEYS],
+                [f"mt_{k}" for k in MSA_RES_KEYS]),
 }
 
 CONFIGS = {
@@ -69,6 +87,13 @@ CONFIGS = {
     "base+bio":      ["z", "bio"],
     "base+bio_nox":  ["z", "bio_nox"],        # is the gain the interactions?
     "base+cw+bio":   ["z", "cw", "bio"],
+    "cw+bio_t":      ["cw", "bio_t"],         # does bio still hurt once size is out?
+    "base+cw+bio_t": ["z", "cw", "bio_t"],
+    # item 3 (needs features_msa.parquet)
+    "cons":          ["cons"],                # how far does conservation get alone?
+    "base+cons":     ["z", "cons"],           # does it add to Boltz's implicit MSA use?
+    "cw+cons":       ["cw", "cons"],
+    "all":           ["z", "cw", "bio_t", "cons"],
 }
 
 
@@ -130,12 +155,18 @@ def load(exp):
     keeps both measurements as separate labelled rows sharing one feature vector.
     """
     proc = ROOT / "data/processed" / exp
-    a = pd.read_parquet(proc / "features_ablation.parquet")
-    b = (pd.read_parquet(proc / "features_bio.parquet")
-         .drop(columns=["ddg"])
-         .drop_duplicates(subset=["wt_id", "mutation"]))
-    df = a.merge(b, on=["wt_id", "mutation"], how="inner", validate="many_to_one")
-    assert len(df) == len(a), f"{exp}: join lost {len(a) - len(df)} rows"
+    df = pd.read_parquet(proc / "features_ablation.parquet")
+    n0 = len(df)
+    for name in ("features_bio.parquet", "features_msa.parquet"):
+        path = proc / name
+        if not path.exists():       # features_msa is absent until the MSAs are fetched
+            continue
+        side = (pd.read_parquet(path)
+                .drop(columns=["ddg"])
+                .drop_duplicates(subset=["wt_id", "mutation"]))
+        df = df.merge(side, on=["wt_id", "mutation"], how="inner",
+                      validate="many_to_one")
+        assert len(df) == n0, f"{exp}: {name} join lost {n0 - len(df)} rows"
     return df
 
 
@@ -183,9 +214,12 @@ def main():
               f"AUC={a['auc_stab']:.3f} | S669 r={b['r']:.3f} rho={b['rho']:.3f}\n", flush=True)
 
         pd.DataFrame(rows).to_csv(OUT / args.out, index=False)
+        # name the OOF dump after --out so separate invocations don't clobber
+        # each other's predictions (the class-breakdown analyses read these back)
+        stem = Path(args.out).stem
         pd.DataFrame({"wt_id": tsu.wt_id, "mutation": tsu.mutation, "ddg": y,
                       **preds}).to_csv(
-            ROOT / "data/processed/_analysis/exp14_oof.csv", index=False)
+            ROOT / f"data/processed/_analysis/exp14_oof_{stem}.csv", index=False)
 
     res = pd.DataFrame(rows)
     print("\n=== held-out Tsuboyama (GroupKFold on protein) ===")

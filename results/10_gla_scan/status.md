@@ -445,3 +445,30 @@ the headline caveat, and it is quantified in results/12, not here.
 
 **Also noted:** results/12 lists `figures/02_*` (the Tsuboyama equivalent panel) as
 *pending; regenerating* — an open loose end in that folder, not this one.
+
+### 2026-08-25 — full scan PAUSED at user request (resumable)
+
+Cancelled array **1031** and its downstream **1399**/**1400**. Final tally: **44
+COMPLETED** (16 instant no-ops + 28 real), 1 FAILED (`1031_25`, the credential error),
+211 CANCELLED.
+
+**Nothing was lost.** Before clearing the temp dirs I salvaged **15** finished
+structures from the two shards that were mid-flight — `run_boltz_predictions` wipes
+`_predict_shards/*` on restart, so anything left there would have been discarded.
+
+**Banked state:** 80 slim shards + **42 raw** prediction folders (predict skips both on
+resume, and each shard's own slim compacts its raw when it next runs). 8.3 GB used,
+355 GB free. Local monitor stopped.
+
+**To resume — one command, nothing else needed:**
+```bash
+./slurm/submit_scan.sh experiment_configs/scan_GLA_human.yaml 256 2
+```
+It re-runs `prepare` (now a fast skip, since the MSA fix in `14b46c2` stops it
+rebuilding the 7,562 mutant alignments), then only predicts what is missing. The chain
+now uses `afterany` for the slim sweep, so a single transient shard failure no longer
+strands the run.
+
+**Progress at pause:** roughly 2,000 of 7,562 mutations have structures (44 shards done
+of 256; ~28 shards' worth of real work beyond the 1,063 pre-banked). Remaining ≈ 212
+shards × ~33 min ÷ 2 slots ≈ **58 h**.
