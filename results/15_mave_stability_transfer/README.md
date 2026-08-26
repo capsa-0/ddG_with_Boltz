@@ -59,12 +59,16 @@ median Spearman). The gate this experiment rests on:
 | ΔΔG only (Rosetta) | **0.249** | 0.25 |
 | ΔΔE only (GEMME) | **0.409** | 0.42 |
 | ΔΔG + ΔΔE | **0.466** | 0.47 |
-| position-context (47 features) | *pending* | 0.52 |
+| position-context (47 features) | **0.519** | 0.52 |
 
 † The null is the one model their `train.sh` does not pin with an explicit feature
 regex, so its definition is inferred on our side. Our 0.334 matches their own Table S1
 "MAVE WT→Mut" column (median ≈ 0.33). Reported as an open discrepancy; it does not
 enter the ΔΔG comparison.
+
+All four baselines pinned by explicit feature regexes in their `train.sh` reproduce
+within **±0.011**, and the position-context set comes out at exactly **47 features** —
+the count the paper states.
 
 **Main result:** pending the Boltz run.
 

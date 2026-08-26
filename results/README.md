@@ -31,7 +31,7 @@ experiments (why raw Δz, how generalization was proved, where it breaks).
 
 | [13_balanced_loss](13_balanced_loss/) | Does Balanced-MSE / LDS reweighting fix the stabilizing-tail deficit found in 12? Cluster-bootstrapped over 412 proteins. | **No.** BMC removes **19 %** of the stabilizing bias (0.58 → 0.47) but every tail *ranking* metric is unchanged, while r (−0.052) and MAE (+0.088) get worse. Loss reweighting cannot create discrimination a **frozen** representation lacks. |
 
-| [15_mave_stability_transfer](15_mave_stability_transfer/) | 🚧 **In progress.** Does our ΔΔG predict **MAVE functional fitness** as well as Rosetta's? Reproduces Høie et al. 2022 (RF4Mave) with our ΔΔG swapped in. 11 proteins ≤200 aa / 13 MAVE datasets / 25,224 Boltz structures. | Harness reproduces their published LOPO baselines within **±0.011** (ΔΔG-only 0.249 vs 0.25, ΔΔE-only 0.409 vs 0.42, both 0.466 vs 0.47). Main comparison pending the Boltz run. |
+| [15_mave_stability_transfer](15_mave_stability_transfer/) | 🚧 **In progress.** Does our ΔΔG predict **MAVE functional fitness** as well as Rosetta's? Reproduces Høie et al. 2022 (RF4Mave) with our ΔΔG swapped in. 11 proteins ≤200 aa / 13 MAVE datasets / 25,224 Boltz structures. | Harness reproduces their published LOPO baselines within **±0.011** (ΔΔG-only 0.249 vs 0.25, ΔΔE-only 0.409 vs 0.42, both 0.466 vs 0.47, position-context 0.519 vs 0.52). Main comparison pending the Boltz run. |
 
 ### Archive
 - **`old/`** — pre-refactor exploratory artifacts kept for reference (e.g. the

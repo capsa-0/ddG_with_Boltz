@@ -22,8 +22,7 @@ Done so far, all CPU-only on the workstation:
       before letting the rest run (the failure mode that killed the results/10 full
       scan). Budget is extrapolated from 65 s/structure at 398 aa; the exponent for a
       65–189 aa protein is unverified.
-- [ ] Finish `position_context` (the 4th baseline, target 0.52), then run
-      `check_frames.py` to validate score.py's feature rebuild.
+- [ ] `check_frames.py` — validate score.py's rebuild of the 47 features (running).
 - [ ] `rsync` the slim store (~4.1 GB, `keep_s: true`) back here so different models
       and feature blocks can be tried without the cluster.
 - [ ] Phase 3: `predict_ddg.py` (regimes A/B/D) → `score.py` (direct + LOPO layers).
@@ -59,16 +58,18 @@ The local slim store to sync back will be ~5.8 GB against 101 GB free here.
 
 `rf4mave.py` on their own `preprocessed.pkl`, all 39 datasets / 29 proteins:
 
-| model | ours | published | Δ |
-|---|---|---|---|
-| null (s̃_exp) | 0.334 | 0.17 | **+0.164** |
-| ΔΔG only (Rosetta) | **0.249** | 0.25 | −0.001 |
-| ΔΔE only (GEMME) | **0.409** | 0.42 | −0.011 |
-| ΔΔG + ΔΔE | **0.466** | 0.47 | −0.004 |
-| position-context (47 feat) | *running* | 0.52 | |
+| model | features | ours | published | Δ |
+|---|---|---|---|---|
+| null (s̃_exp) | 3 | 0.334 | 0.17 | **+0.164** |
+| ΔΔG only (Rosetta) | 1 | **0.249** | 0.25 | −0.001 |
+| ΔΔE only (GEMME) | 1 | **0.409** | 0.42 | −0.011 |
+| ΔΔG + ΔΔE | 2 | **0.466** | 0.47 | −0.004 |
+| position-context | **47** | **0.519** | 0.52 | −0.001 |
 
-**The three baselines pinned by explicit `-f` regexes in their `train.sh` reproduce
-within ±0.011** — inside the ±0.02 gate. The harness is trustworthy.
+**All four baselines pinned by explicit `-f` regexes in their `train.sh` reproduce
+within ±0.011** — inside the ±0.02 gate. The harness is trustworthy. The
+position-context set came out at exactly **47 features**, matching the paper's stated
+count, which independently confirms the decoding (20+1+1 Rosetta, 20+1+1 GEMME, 3 s̃).
 
 The null is the one outlier (+0.164). It is also the only one of the five that their
 `train.sh` does **not** define with an explicit feature regex, so what went into their
