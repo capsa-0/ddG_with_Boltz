@@ -18,6 +18,8 @@ Done so far, all CPU-only on the workstation:
 - Phase-0 harness reproduction of their published LOPO medians: in progress.
 
 ## Next steps
+- [ ] **After array 1415 finishes: re-run `submit_scan.sh` to fill the shard-98 gap**
+      (~99 structures) before trusting the feature table.
 - [ ] After ~5 predict shards land, measure real s/structure and re-derive the ETA
       before letting the rest run (the failure mode that killed the results/10 full
       scan). Budget is extrapolated from 65 s/structure at 398 aa; the exponent for a
@@ -31,6 +33,35 @@ Done so far, all CPU-only on the workstation:
 - None.
 
 ## Log — newest first
+
+### 2026-08-26 — shard 1415_98 hung on nodo4; cancelled, throughput restored
+
+At the halfway mark (128/256) the rate had dropped from 0.246 to 0.129 shards/min.
+Cause: **shard `1415_98` had been RUNNING 4 h 06 m on nodo4** against a normal 13–20 min,
+holding one of the three concurrent slots.
+
+It was hung, not slow: its logs stopped at **10:23** and it was then **14:30** — four
+hours with no output, progress bar frozen at structure 85/99, ~7:48 into prediction.
+No traceback, no CUDA error; it simply stopped. nodo4 is not obviously a bad node — it
+ran shard `1415_1` in 9 m 52 s earlier — so this reads as a one-off stall (NFS or GPU
+wedge) rather than a node to add to the exclude list. Watching for a repeat.
+
+`scancel 1415_98`. Verified afterwards: shard gone from the queue, slots refilling
+(`1415_130`, `1415_131` picked up immediately), and **the chain is intact** — 1416/1417
+are still plain `PENDING`, not `DependencyNeverSatisfied`, because `submit_scan.sh`
+attaches the slim sweep with `afterany` precisely so one dead shard cannot strand the
+run.
+
+**Shard 98's ~99 structures are simply missing** — no raw NPZs were left behind (Boltz
+appears to write its outputs at the end of a run, not per structure). Recovery is the
+documented one: after the array finishes, re-run
+`./slurm/submit_scan.sh experiment_configs/mave_hoie_le200.yaml 256 3`, which skips
+everything already in the slim store and redoes only the gap. **Do not skip this step** —
+without it the corpus is short ~99 of 25,224 structures (0.4 %), which would silently
+shrink the feature table rather than fail loudly.
+
+Revised ETA with three slots restored: ~127 shards × ~15 min ÷ 3 ≈ **10.5 h**, so around
+01:00 on 2026-08-27, plus a short gap-filling run.
 
 ### 2026-08-26 — dry-run of Phase 3 on synthetic predictions; found and fixed a fairness bug
 
