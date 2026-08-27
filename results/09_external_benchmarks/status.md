@@ -124,6 +124,52 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+
+### 2026-08-27 — regime A is overfit; its S669 number is understated (found in results/14)
+
+`run_benchmarks.py:65` builds the MLP members with **`early_stopping=False, max_iter=250`**,
+unlike the project default `make_model("mlp")` (`early_stopping=True, max_iter=1000,
+n_iter_no_change=25, validation_fraction=0.1`). Isolating that single change — same data,
+same concat features, same antisymmetry, same 5-seed ensemble, same 541-variant S669:
+
+| estimator | S669 pooled r | ρ |
+|---|---|---|
+| `early_stopping=False, max_iter=250` (as published here) | **0.255** | 0.262 |
+| `early_stopping=True, max_iter=1000` (project default) | **0.415** | 0.440 |
+
+The first reproduces this folder's published 0.255 / 0.262 exactly, so the difference is
+purely the estimator. **Regime A's S669 result is understated by ~0.16 Pearson.**
+
+**This may affect the study's central comparison.** `max_iter` is epochs, so at a fixed 250
+with no early stopping, regime A (12,359 muts → 24,718 augmented) received ~4x the gradient
+updates of regime B (3,205 → 6,410): the regime with the most data was overfit hardest. The
+reported ordering on the homology-controlled subset (A 0.214 vs B 0.404, D 0.408) is
+therefore confounded and should not be read as "Tsuboyama-only transfers worse to S669"
+until re-run.
+
+**FIXED the same day.** `members()` now uses the project-default estimator
+(`early_stopping=True, max_iter=1000, n_iter_no_change=25, validation_fraction=0.1`;
+`warm_start` retained for regime D's fine-tune, which now early-stops too). All three
+regimes re-run on CPU locally, ~25 min — no GPU and no re-prediction needed, since every
+feature table was already on disk. Originals archived as `results_pre-correction.csv` and
+`ssym_antisymmetry_pre-correction.csv`; `results.csv`, README and
+`figures/01_pooled_r_full_vs_filtered.png` regenerated.
+
+| benchmark | subset | A Tsuboyama | B FireProt | D fine-tuned |
+|---|---|---|---|---|
+| S669 | full | 0.255 → **0.415** | 0.500 → 0.546 | 0.462 → 0.506 |
+| S669 | common25 | 0.214 → **0.361** | 0.404 → 0.460 | 0.408 → 0.453 |
+| Ssym | full | 0.728 → 0.759 | 0.891 → 0.850 | 0.797 → 0.780 |
+
+Regime A gains +0.15/+0.16, B and D only +0.04/+0.06 — the asymmetry the epoch-count
+argument predicts. **The ordering survives**: FireProt-trained still leads pooled r on the
+honest common-25 subset. **But two things changed materially.** (i) The corpus effect on
+S669 roughly halves (common-25 gap B−A: 0.190 → 0.099). (ii) **The per-protein median r is
+now tied, A 0.594 vs B 0.594** — Tsuboyama-only ranks within-protein as well as
+FireProt-only, and lags only on the cross-protein offset, i.e. the domain-shift term from
+results/11. The README's "distribution > size" claim has been rewritten accordingly: it is
+a calibration advantage, not a ranking one.
+
 ### 2026-07-20 — both benchmarks extracted (full coverage) and scored
 - **ssym predict (212600) recovered to 337/13** — the slim-clobber fix worked (was 165/10).
 - **s669 predict (212602) completed 541/541 var, 62/62 prot, 0 failures** across ~2.5 h with

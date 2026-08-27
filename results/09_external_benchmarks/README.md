@@ -1,5 +1,14 @@
 # External blind benchmarks: S669 & Ssym
 
+> ✅ **Corrected 2026-08-27** (defect found in results/14). `run_benchmarks.py::members()`
+> used `early_stopping=False, max_iter=250` instead of the project-default estimator.
+> Because `max_iter` counts epochs, regime A (24,718 augmented samples) took ~4x regime B's
+> gradient updates and was overfit hardest — confounding the A-vs-B-vs-D comparison. All
+> three regimes have been re-run with `make_model("mlp")`'s estimator. **Every number below
+> is the corrected one**; the originals are kept in `results_pre-correction.csv`.
+> Regime A gains most (S669 common-25: 0.214 → **0.361**), but the ordering holds — see
+> "What the correction changed".
+
 We test the Boltz-2 embedding ΔΔG predictor on the two most widely used blind
 stability benchmarks, under three training regimes, and separate genuine
 generalization from train↔test sequence-identity leakage.
@@ -93,3 +102,19 @@ python results/07_feature_symmetry_ablation/build_ablation_features.py data/proc
 MMSEQS_BIN=/path/to/mmseqs python results/09_external_benchmarks/build_homology_map.py
 python results/09_external_benchmarks/run_benchmarks.py        # -> results.csv, figures/
 ```
+
+## What the correction changed
+
+Pooled Pearson r, before → after the estimator fix (originals in `results_pre-correction.csv`):
+
+| benchmark | subset | A Tsuboyama | B FireProt | D fine-tuned |
+|---|---|---|---|---|
+| S669 | full | 0.255 → **0.415** | 0.500 → 0.546 | 0.462 → 0.506 |
+| S669 | common25 | 0.214 → **0.361** | 0.404 → 0.460 | 0.408 → 0.453 |
+| Ssym | full | 0.728 → 0.759 | 0.891 → 0.850 | 0.797 → 0.780 |
+
+Regime A gains **+0.15 to +0.16**, the others **+0.04 to +0.06** — exactly the asymmetry
+predicted by the epoch-count argument, since A had the most data and therefore the most
+over-training at a fixed 250 epochs. The regime ordering is unchanged, but the *size* of
+the corpus effect on S669 roughly halves (common-25 gap B−A: 0.190 → 0.099), and the
+per-protein ranking advantage disappears entirely.

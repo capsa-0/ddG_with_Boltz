@@ -63,8 +63,18 @@ def augment(X, y):
 
 
 def members():
+    """The project-default estimator (as in ddg.evaluation.models.make_model('mlp')).
+
+    CORRECTED 2026-08-27. This previously used `max_iter=250, early_stopping=False`,
+    which overfits: `max_iter` counts EPOCHS, so regime A (24,718 augmented samples)
+    took ~4x the gradient updates of regime B (6,410) and was penalised hardest —
+    confounding the very A-vs-B-vs-D comparison this study makes. Isolating the change
+    on S669 raised regime A from r 0.255 to 0.415. `warm_start` is retained because
+    regime D fine-tunes from regime A's fitted weights.
+    """
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=s, warm_start=True) for s in range(N_SEED)]
 
 
@@ -118,7 +128,7 @@ def main():
 
     D = copy.deepcopy(A)  # fine-tune: warm-start A on FireProt, reuse Tsuboyama transform
     for m in D:
-        m.set_params(learning_rate_init=1e-3, max_iter=400)
+        m.set_params(learning_rate_init=1e-3, max_iter=400)  # early stopping still applies
         m.fit(TA(Xfa), yfa)
 
     regimes = [("A_tsu_only", A, TA), ("B_fp_only", B, TB), ("D_finetuned", D, TA)]
