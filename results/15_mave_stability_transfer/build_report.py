@@ -67,7 +67,7 @@ vros, vgem = vrow("boltz_minus_rosetta"), vrow("boltz_minus_gemme")
 ABU, FUN = "abundance (VAMP-seq)", "drug sensitivity"
 
 CSS = """
-@page { size: A4 landscape; margin: 14mm 14mm; }
+@page { size: A4; margin: 15mm 16mm; }
 body { font-family: "DejaVu Sans", Arial, sans-serif; font-size: 10pt; color: #1a1a1a; line-height: 1.45; }
 h1 { font-size: 17pt; margin: 0 0 2px; color: #14493c; }
 h2 { font-size: 12.5pt; color: #14493c; border-bottom: 1.5px solid #d0d7d4; padding-bottom: 3px; margin-top: 18px; }
@@ -82,7 +82,6 @@ caption { caption-side: bottom; font-size: 8.5pt; color: #666; padding-top: 4px;
 figure { margin: 12px 0; text-align: center; page-break-inside: avoid; }
 figure img { max-width: 100%; } figcaption { font-size: 8.5pt; color: #555; margin-top: 4px; text-align: left; }
 code { background: #f2f4f3; padding: 0 3px; font-size: 8.8pt; }
-.pb { page-break-before: always; }
 """
 
 HTML = f"""<!doctype html><html><head><meta charset="utf-8"><style>{CSS}</style></head><body>
@@ -160,7 +159,6 @@ conservation correlates positively. Direct comparisons are reported as |ρ| so t
 predictors are comparable in magnitude; the random forest predicts fitness, so its ρ is
 positive for every arm.</p>
 
-<div class="pb"></div>
 <h2>3. Results</h2>
 
 <h3>3.1 The substitution is worth a real but modest gain, and only standalone</h3>
@@ -195,7 +193,6 @@ therefore arm-agnostic. Only ΔΔG-only clears zero.</figcaption></figure>
 Median |ρ| is {med_abs('rho_rosetta'):.3f} for Rosetta, {med_abs('rho_boltz_mean'):.3f} for ours
 and {med_abs('rho_gemme'):.3f} for GEMME conservation.</figcaption></figure>
 
-<div class="pb"></div>
 <h3>3.2 Our ΔΔG places variants in the same mechanistic picture, on a compressed axis</h3>
 
 <p>Correlation alone does not establish that a predictor participates in the stability–conservation
@@ -243,7 +240,6 @@ reflects the power available from eleven proteins rather than an established abs
 <figcaption><b>Figure 4.</b> Loss-of-function detection by conservation quartile, and the pooled
 versus conditional advantage over Rosetta with paired protein-bootstrap intervals.</figcaption></figure>
 
-<div class="pb"></div>
 <h3>3.4 Where a stability predictor should win, it wins — and the assay decides, not the protein</h3>
 
 <p>NUDT15 contributes two of the thirteen datasets: a VAMP-seq abundance assay, which reports
@@ -284,7 +280,6 @@ model outperforms every richer one.</p>
 VAMP-seq contrasts with within-protein bootstrap intervals. The position-clustered interval answers
 whether this dataset's gap is real, not whether it generalises across proteins.</figcaption></figure>
 
-<div class="pb"></div>
 <h2>4. Interpretation</h2>
 
 <p>A ΔΔG predictor built by regressing on frozen internal representations of a structure-prediction

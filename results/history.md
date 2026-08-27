@@ -232,8 +232,12 @@ the deficit 12 found and 13 failed to fix remains this project's open problem.
 - `08_finetune_fireprot/` — sequentially fine-tune on FireProt (concat+antisymmetry).
 - `15_mave_stability_transfer/` — first test against a *different question*: does the
   ΔΔG predict cellular fitness (MAVE) as well as Rosetta's? Yes standalone
-  (0.354 vs 0.279), but the gain is absorbed by conservation — plausibly because Boltz
-  is MSA-conditioned and Rosetta is not.
+  (0.354 vs 0.279), but the gain is absorbed by conservation. Reproducing the source
+  paper's own stability–conservation landscape with our ΔΔG substituted in, and
+  stratifying by conservation, bounds that absorption: **57 % of the advantage is
+  conservation** — while the one assay that reads out stability directly (VAMP-seq,
+  where conservation is weak) is where we win by the widest margin, so the MSA confound
+  explains part of the result and not all of it.
 - `14_biophysical_features/` — all three biology additions rejected; the pair-track
   diagonal alone (128d) beats the current default on transfer; in-distribution holdout
   shown to mis-rank readouts for cross-corpus use.

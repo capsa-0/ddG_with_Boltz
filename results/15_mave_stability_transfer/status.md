@@ -1,6 +1,6 @@
 # Status — 15_mave_stability_transfer
 
-**State:** ✅ Done. Full corpus (25,224 structures, 0 gaps), both comparison layers scored, bootstrap CIs in, figures rendered.
+**State:** ✅ Done. Full corpus (25,224 structures, 0 gaps), both comparison layers scored, bootstrap CIs in, 5 figures rendered, `report.pdf` built.
 **Last updated:** 2026-08-27
 
 ## Current state
@@ -151,8 +151,35 @@ el ensayo de estabilidad más puro del corpus, **nuestro modelo de ΔΔG solo le
 modelos más ricos**. Con Rosetta no pasa (0,427 → 0,446). Consistente con que el RF se
 distraiga con una feature que no sirve para este ensayo.
 
-Números en `layer1_direct.csv` y `layer2_lopo_per_dataset.csv`; el bootstrap por posiciones fue
-ad hoc en esta sesión y **no está guardado como script** — si se promueve, hay que fijarlo.
+Números en `layer1_direct.csv` y `layer2_lopo_per_dataset.csv`.
+
+**Cerrado el mismo día:** el bootstrap por posiciones dejó de ser ad hoc — está en
+`paper_figures.py` (`vampseq_stats`), con salidas `vampseq_dissociation.csv` y
+`vampseq_bootstrap.csv`, y figura `05_vampseq_dissociation.png`.
+
+### 2026-08-27 (más tarde) — report.pdf, que faltaba, y las figuras al inglés
+
+**El folder estaba marcado ✅ Done sin `report.pdf`**, que `results/guidelines.md` exige
+"once the result is settled". Construido: `build_report.py` → `report.pdf`, 5 páginas, las
+cinco figuras embebidas en base64, wkhtmltopdf — mismo patrón que `results/14`. **Todos los
+números se leen de las tablas comprometidas** (`layer1_direct`, `layer2_lopo_summary`,
+`bootstrap_protein{,_noubi4}`, `conservation_strata_auc`, `vampseq_*`), así que el PDF no
+puede desincronizarse de ellas. Paper-facing: sin rutas, sin job IDs, sin historia de corridas.
+
+Dos correcciones de forma respecto del template del exp 14: el CSS declaraba
+`@page { size: A4 landscape }` que **wkhtmltopdf ignora** (el exp 14 también sale portrait);
+ahora declara `A4` a secas. Y los `page-break-before` forzados peleaban con el
+`page-break-inside: avoid` de las figuras y dejaban tres páginas medio vacías — sacados,
+de 7 páginas a 5 sin espacio muerto.
+
+**Figuras 03/04/05 pasadas al inglés** (decisión del usuario). Estaban en español porque
+nacieron de una conversación para explicarle el resultado a su director; 01/02, el README y
+todos los demás reportes del repo están en inglés, así que el folder quedaba mezclado. El
+material en español vive en un artifact aparte.
+
+README del folder ampliado con las dos secciones nuevas (reproducción de la Fig 1 + el control
+intra-proteína de VAMP-seq), `results/README.md` y `results/history.md` actualizados para
+reflejar que el confundidor del MSA ya está parcialmente acotado.
 
 ### 2026-08-27 — FINAL: corpus complete, result stands, one confound left open
 

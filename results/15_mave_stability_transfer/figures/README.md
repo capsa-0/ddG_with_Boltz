@@ -8,13 +8,19 @@ Regenerate `01`/`02` with `make_figures.py`, `03`/`04` with `paper_figures.py`.
 | `02_per_dataset_direct.png` | The same comparison without any model: direct \|Spearman ρ\| per dataset for Rosetta ΔΔG, our Boltz ΔΔG and GEMME ΔΔE. Sorted by Rosetta. The grey segment is the Rosetta→Boltz move; the right-hand column is Δ\|ρ\|. Our ΔΔG is ahead on 11 of 13 — the two exceptions are both UBI4 datasets, the one protein homologous to our training corpus. |
 | `03_landscape_reproduction.png` | **Their Figure 1, with our ΔΔG in Rosetta's place.** Top: the stability–conservation landscape (ΔΔG × GEMME ΔΔE, coloured by fitness), both arms. Bottom: their Fig 1B sector grid — % loss-of-function per sector, Rosetta / ours / difference. The Rosetta arm reproduces the two corners the paper quotes (84 % / 96 % against their published 81 % / 93 %), which is what licenses reading the other two panels. Our arm is drawn at **quantile-matched** cuts because our ΔΔG is amplitude-compressed (sd 0.97 vs 2.14 kcal/mol) and the paper's absolute cuts would leave its top column nearly empty. Cells with n < 50 are greyed — the loudest number on the difference panel (+32) sits on n = 4. |
 | `04_conservation_strata.png` | **Where the advantage over Rosetta comes from.** AUC for detecting loss-of-function, per conservation quartile and pooled. Pooled we beat Rosetta by +0.048 [+0.014, +0.079]; holding conservation fixed, by +0.021 [−0.010, +0.052] — more than half the advantage is explained by our ΔΔG carrying conservation signal, which is the MSA confound `../README.md` flags as the open question, bounded here with no GPU. The residual is positive in all four strata, so it is underpowered rather than absent. |
+| `05_vampseq_dissociation.png` | **The within-protein control.** NUDT15 contributes both a VAMP-seq abundance assay (cellular protein level — the closest readout of stability in the corpus) and a drug-sensitivity assay (enzyme function). Sequence, structure, alignment and our ΔΔG predictions are identical across the two; only the measured quantity changes, and the ordering of the three predictors **inverts**: conservation wins on function (0.557 vs our 0.438), both ΔΔG predictors win on abundance (ours 0.675, Rosetta 0.531, GEMME 0.333). Right panel: +0.144 [+0.076, +0.213] over Rosetta and +0.340 [+0.247, +0.434] over GEMME, from a cluster bootstrap over the protein's 156 positions — the position is the unit of independence inside one protein. That interval answers whether **this dataset's** gap is real, NOT whether it generalises across proteins; the 11-protein interval in `bootstrap.py` is the one that speaks to generalisation, and this must never be quoted in its place. |
 
-Colour: categorical slots 1–3 of the project's validated default palette
+Colour: `01`/`02` use categorical slots 1–3 of the project's validated default palette
 (blue / orange / aqua), assigned by identity in fixed order and checked with the
 dataviz six-checks validator at `--pairs all` — worst all-pairs CVD ΔE 9.2, worst
 normal-vision ΔE 24.0, both passing. Aqua's sub-3:1 contrast against the surface
 raises a WARN, discharged as the rule requires: every value is directly labelled and
 the source CSVs sit beside the figures.
+
+`03`–`05` use their own three-slot set assigned by identity in fixed order — Rosetta `#C25A12`,
+ours `#00966F`, GEMME `#6A51A3` — validated with the same six checks at `--pairs all`: worst
+all-pairs CVD ΔE 15.7 (tritan) / 10.2 (deutan), worst normal-vision ΔE 23.8, chroma and
+contrast passing.
 
 Sign convention: ΔΔG **anti**-correlates with fitness (destabilizing → low fitness),
 GEMME correlates positively. `01` plots signed ρ from the random forest (which predicts
