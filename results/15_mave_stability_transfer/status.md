@@ -1,6 +1,6 @@
 # Status — 15_mave_stability_transfer
 
-**State:** 🚧 In progress — Boltz run done (250/256 shards); **preliminary result in hand**; backfill 1809→1810 running to close a 395-structure gap before the numbers are final.
+**State:** ✅ Done. Full corpus (25,224 structures, 0 gaps), both comparison layers scored, bootstrap CIs in, figures rendered.
 **Last updated:** 2026-08-26
 
 ## Current state
@@ -18,7 +18,12 @@ Done so far, all CPU-only on the workstation:
 - Phase-0 harness reproduction of their published LOPO medians: in progress.
 
 ## Next steps
-- [ ] **After array 1415 finishes: backfill the 6 lost shards** (98 + 132–136,
+- [ ] **The MSA-confound test** (the one open scientific question): rebuild this corpus
+      with `no_msa: true` and re-run. Separates "our ΔΔG is a better stability term"
+      from "our ΔΔG smuggles in conservation Rosetta cannot have".
+- [ ] Optional Tier 2 (≤250 aa) to add TPMT + HSP82 and tighten a CI whose lower
+      bound is +0.008.
+- [x] ~~After array 1415 finishes: backfill the 6 lost shards~~ (98 + 132–136,
       ~594 structures, 2.4 % of the corpus) before trusting the feature table.
       The cluster checkout is on `main` and does **not** yet have the nodo4 exclude,
       so land the two updated files first, then re-submit:
@@ -46,6 +51,59 @@ Done so far, all CPU-only on the workstation:
 - None.
 
 ## Log — newest first
+
+### 2026-08-27 — FINAL: corpus complete, result stands, one confound left open
+
+Backfill 1809 (shards 4–8 of 16 = old 133–136) + features 1810 completed. Store is
+**25,224 / 25,224 structures, deficit 0**; features table **25,213 rows × 899 columns**;
+`dataset_report.json` shows 25,213 in, 25,213 out, **0 drops of any kind**.
+
+**Final numbers moved almost nothing from the preliminary 24,620-row run** (ΔΔG-only Δ
++0.071 → +0.075, every figure within 0.004), so the 593 missing structures were not a
+biased slice. Worth having verified rather than assumed.
+
+**Layer 1 — direct, no model** (median signed ρ): Rosetta −0.301 / −0.301 UBI4-dropped;
+**Boltz −0.373 / −0.417**; GEMME +0.497 / +0.500.
+
+**Layer 2 — LOPO, with 95 % protein-bootstrap CI on the paired difference:**
+
+| feature set | Rosetta | Boltz | Δ | 95 % CI | verdict |
+|---|---|---|---|---|---|
+| null (s̃) | 0.352 | — | — | — | — |
+| ΔΔE only | 0.430 | — | — | — | — |
+| **ΔΔG only** | 0.279 | **0.354** | **+0.075** | [+0.008, +0.117] | **excludes 0** |
+| ΔΔG + ΔΔE | 0.469 | 0.470 | +0.000 | [−0.036, +0.038] | null |
+| position-context | 0.510 | 0.503 | −0.007 | [−0.011, +0.007] | null |
+
+UBI4-dropped is the same story: ΔΔG-only Δ +0.075 [+0.007, +0.123]; the other two span
+zero. We are *worse* than Rosetta on both UBI4 datasets — the only two of thirteen we
+lose — which is the opposite of what leakage would produce.
+
+**Correction to an earlier entry.** On the preliminary (row-short) data the
+position-context arm looked *significantly* worse (Δ −0.007, CI [−0.023, −0.002]).
+On the complete data that CI is [−0.011, +0.007] and spans zero. There is **no**
+position-context deficit; it is a null. The preliminary interval was an artifact of the
+585 rows missing from the Boltz arm only.
+
+**The open confound.** The pattern — a clear ΔΔG-only gain that vanishes once GEMME is
+present — is what you would expect if our ΔΔG is partly an *evolutionary* predictor.
+Boltz's trunk is conditioned on the MSA; Rosetta's calculation is not. results/04 put
+the MSA's worth to this model at ~0.08–0.10 r, close to the +0.075 gap. That is a
+hypothesis and is written up as one. The `no_msa` config from results/04 tests it
+directly and is the single most valuable follow-up.
+
+**Figures.** `01_lopo_paired.png` (bars + forest of the paired difference),
+`02_per_dataset_direct.png` (dumbbell, 13 datasets × 3 predictors). Palette validated
+with the dataviz six-checks at `--pairs all` (worst CVD ΔE 9.2, normal-vision 24.0).
+Both re-rendered once after inspection to fix a legend/marker collision, a
+mid-word-truncated axis label, and a forest panel floating in empty space.
+
+**Ops note.** Two background jobs (the first final-analysis run and the 5.8 GB slim
+sync) were killed simultaneously mid-run with no OOM trace — a session-level interrupt.
+Restarted **sequentially** rather than concurrently: fitting 15 MLPs alongside a 5.8 GB
+rsync on a 6.8 GB box was poor sequencing regardless of what stopped them.
+
+
 
 ### 2026-08-27 — PRELIMINARY RESULT (24,620 of 25,213 rows) + a shard-collision scare
 

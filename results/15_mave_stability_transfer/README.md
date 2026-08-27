@@ -1,7 +1,7 @@
 # 15 — MAVE stability→function transfer (RF4Mave)
 
-**Status:** 🚧 in progress. Harness validated; Boltz run on the cluster. No ΔΔG
-predictions yet — see [`status.md`](status.md).
+**Status:** ✅ Done. 25,224 structures, full corpus, no gaps. See [`status.md`](status.md)
+for the run log.
 
 ## What
 
@@ -57,33 +57,65 @@ similarity falls below 25 % sequence identity.
 
 ## Headline numbers
 
-**Phase 0 — harness reproduction** (their `preprocessed.pkl`, all 39 datasets, LOPO
-median Spearman). The gate this experiment rests on:
+**Our ΔΔG is a better standalone stability predictor of MAVE fitness than Rosetta's —
+and that advantage disappears the moment conservation is in the model.**
 
-| model | ours | published |
-|---|---|---|
-| null (s̃_exp) | 0.334 | 0.17 † |
-| ΔΔG only (Rosetta) | **0.249** | 0.25 |
-| ΔΔE only (GEMME) | **0.409** | 0.42 |
-| ΔΔG + ΔΔE | **0.466** | 0.47 |
-| position-context (47 features) | **0.519** | 0.52 |
+Leave-one-protein-out, median Spearman ρ across the 13 MAVE datasets. Both arms scored
+on identical rows with identical missingness; the only difference is which ΔΔG occupies
+the stability slot. CI is a 95 % bootstrap over the 11 proteins, paired within each
+resample.
 
-† The null is the one model their `train.sh` does not pin with an explicit feature
-regex, so its definition is inferred on our side. Our 0.334 matches their own Table S1
-"MAVE WT→Mut" column (median ≈ 0.33). Reported as an open discrepancy; it does not
-enter the ΔΔG comparison.
+| feature set | Rosetta | **Boltz (ours)** | Δ | 95 % CI |
+|---|---|---|---|---|
+| null (s̃ substitution matrix) | 0.352 | — | — | — |
+| ΔΔE only (GEMME) | 0.430 | — | — | — |
+| **ΔΔG only** | 0.279 | **0.354** | **+0.075** | **[+0.008, +0.117]** ✔ |
+| ΔΔG + ΔΔE | 0.469 | 0.470 | +0.000 | [−0.036, +0.038] |
+| position-context (47 feat) | 0.510 | 0.503 | −0.007 | [−0.011, +0.007] |
 
-All four baselines pinned by explicit feature regexes in their `train.sh` reproduce
-within **±0.011**, and the position-context set comes out at exactly **47 features** —
-the count the paper states.
+Direct per-dataset correlation, no model (median |ρ|): Rosetta **0.301**, ours
+**0.373**, GEMME **0.497**.
 
-`check_frames.py` separately verifies that `score.py`'s rebuild of those 47 features
-from the raw PRISM tables (needed to swap our ΔΔG in for Rosetta's) reproduces their
-feature semantics: median ρ +0.510 vs +0.502, **max |Δ| = 0.042** across the 13 Tier-1
-datasets. Both arms of the main comparison use this same rebuild, so the residual
-offset cancels in the paired difference.
+**What it means.** The ΔΔG-only gain is real but modest — the CI clears zero, with a
+lower bound of +0.008. The combined and position-context results are *tight nulls*,
+not merely unproven: [−0.036, +0.038] rules out a meaningful combined-model advantage.
 
-**Main result:** pending the Boltz run.
+The most likely explanation for that pattern is that **Boltz sees the MSA**. Our ΔΔG
+carries evolutionary signal that Rosetta's pure-physics calculation structurally cannot,
+so it wins where conservation is absent and adds nothing once GEMME supplies it
+explicitly. results/04 measured MSA as worth ~0.08–0.10 r to this model — close to the
++0.075 gap. **This is a hypothesis, not a demonstration**; the `no_msa` config from
+results/04 would settle it (see Next).
+
+**Not leakage.** UBI4 (ubiquitin) is the one protein homologous to Tsuboyama, and the
+result is unchanged when it is dropped (Δ +0.075, CI [+0.007, +0.123]). We are in fact
+*worse* than Rosetta on both UBI4 datasets — the only two of thirteen where we lose.
+
+**Where the gain lives.** Concentrated in stability-dominated assays. On NUDT15
+VAMP-seq abundance — the purest stability readout in the set — Rosetta reaches |ρ| 0.53
+and we reach **0.67**. On CALM1, the ΔΔG-blind control, both stay near zero
+(0.08 vs 0.11): no false signal.
+
+**Perspective.** GEMME alone (0.430) still beats both ΔΔG predictors, and the full
+model reaches 0.51. Stability is not the dominant term in fitness — this experiment
+improves one input to that model, it does not overturn its ordering.
+
+## Figures
+
+![paired LOPO](figures/01_lopo_paired.png)
+
+See [`figures/README.md`](figures/README.md).
+
+## Next
+
+- **The MSA-confound test.** Rebuild this corpus with `no_msa: true` (results/04's
+  config) and re-run. If single-sequence Boltz ΔΔG still beats Rosetta on ΔΔG-only, the
+  gain is structural; if it collapses to parity, the gain is evolutionary signal and the
+  honest framing is that Boltz-ΔΔG is a partly-conservation predictor.
+- **Tier 2** (≤250 aa: +HSP82, TPK1, TPMT, Src; ~145–200 GPU-h) would add a second
+  VAMP-seq abundance set and HSP82, the sharpest ΔΔG-blind control in the paper
+  (Rosetta 0.039 vs GEMME 0.522), and would tighten a CI whose lower bound is currently
+  +0.008.
 
 ## Data & provenance
 
@@ -101,6 +133,8 @@ offset cancels in the paired difference.
 | Training corpora | `data/processed/{tsuboyama_bench_fast,fireprot_le500}/features_ablation.parquet` (**local only** — the cluster has neither) |
 | Leakage map | `homology/mave_le200_leakage.csv` |
 | Phase-0 tables | `phase0/lopo_summary.csv`, `phase0/lopo_per_dataset.csv` |
+| Result tables | `layer1_direct.csv`, `layer2_lopo_summary.csv`, `layer2_lopo_per_dataset.csv`, `bootstrap_protein{,_noubi4}.csv` |
+| Preliminary (2.4 % short) | `preliminary/` — kept only to show the gap did not move the numbers |
 
 ## Reproduce
 
@@ -117,6 +151,9 @@ python results/15_mave_stability_transfer/rf4mave.py          # Phase 0 gate (~1
 python results/15_mave_stability_transfer/check_frames.py     # verify the feature rebuild
 python results/15_mave_stability_transfer/predict_ddg.py      # regimes A/B/D
 python results/15_mave_stability_transfer/score.py            # both comparison layers
+python results/15_mave_stability_transfer/bootstrap.py        # CI on the paired gap
+python results/15_mave_stability_transfer/bootstrap.py --drop-ubi4
+python results/15_mave_stability_transfer/make_figures.py
 ```
 
 ## Notes for whoever picks this up

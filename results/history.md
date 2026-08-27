@@ -174,6 +174,47 @@ density-limited picture: accuracy is set by the features and the coverage of the
 pretraining corpus, not by exposure to the small target set. **Big-corpus pretraining +
 transfer is the recipe.**
 
+## 14 — the readout, not the feature list
+
+Experiments 11–13 had each closed a direction: the per-protein offset is domain shift, not a
+predictable protein property (11); the model's one real deficit is the stabilizing tail (12);
+and no loss reweighting can fix that on a frozen representation (13). Experiment 14 asked the
+obvious remaining question — add *biology* — and got a sharper answer than expected.
+
+Three additions were tested. Two were the ones a structural biologist would reach for first:
+explicit **burial and biophysics** (volume, hydropathy, transfer free energy, backbone class,
+and their interactions with burial), and explicit **evolutionary conservation** (column entropy,
+Neff, PSSM log-odds, consensus). Both add **nothing**. Biophysics is redundant with what the
+pair track already encodes, and — instructively — its raw chain-size features actively *destroy*
+transfer by importing corpus-specific scale. Conservation is redundant with what Boltz already
+extracts from the alignment it was given (which experiment 04 had measured at +0.08–0.10 r);
+tested on 138 natural proteins with median alignment depth 9,474, it moves nothing.
+
+The addition that worked adds **no new information at all**. The pipeline had been pooling the
+pair-track row *uniformly over the whole chain*, so a residue 60 Å away weighed as much as a
+contacting one — the same aggregation the closest published method (AFToolkit) uses and that
+Boltz-2's own affinity head uses. Weighting that pool by the model's own predicted contact
+probabilities gains, at **identical dimensionality**, FireProt r +0.067 [+0.006, +0.126],
+ρ +0.079, MAE −0.139 kcal/mol.
+
+The interpretation is the interesting part: this is a **domain-shift defence, not an information
+gain**. In-distribution the same change is marginally *harmful* (ρ −0.010, MAE +0.012) — it
+genuinely discards signal. What it discards is whole-chain context, which is exactly the
+corpus-specific term experiment 11 identified as domain shift. The far-shell control confirms
+the mechanism, and the per-protein view sharpens the claim: the gain is concentrated in the
+proteins the baseline handles *worst* (−0.125 kcal/mol on the hard half, +0.121 on the easy
+half) — a variance-reduction signature.
+
+Experiment 14 also tightened the project's statistics. Its first S669 headline did not survive a
+cluster bootstrap over proteins: with 62 clusters, five of which hold half the variants, a
++0.08 correlation gain cannot be separated from zero. Repeating on FireProt (138 clusters) made
+the same effect significant with nearly the same point estimate. Two metrics were retired in the
+process — top-k detection precision returned opposite signs on different corpora and supports no
+claim.
+
+**Unmoved by all of it:** ranking *within* the stabilizing tail, on every evaluation set —
+the deficit 12 found and 13 failed to fix remains this project's open problem.
+
 ---
 
 ### Result folders
@@ -185,5 +226,10 @@ transfer is the recipe.**
 - `06_mlp_generalization/` — 01's suite with an MLP (representation vs model check).
 - `07_feature_symmetry_ablation/` — concat features + antisymmetry adopted as default.
 - `08_finetune_fireprot/` — sequentially fine-tune on FireProt (concat+antisymmetry).
+- `15_mave_stability_transfer/` — first test against a *different question*: does the
+  ΔΔG predict cellular fitness (MAVE) as well as Rosetta's? Yes standalone
+  (0.354 vs 0.279), but the gain is absorbed by conservation — plausibly because Boltz
+  is MSA-conditioned and Rosetta is not.
+- `14_biophysical_features/` — contact-weighted pooling adopted; biophysics and conservation rejected as redundant.
 
 See each folder's `README.md` for exact configs, data paths, and numbers.
