@@ -1,6 +1,6 @@
 # Status — 15_mave_stability_transfer
 
-**State:** 🚧 In progress — GPU chain 1414→1415→1416→1417 submitted; Phase 0 harness reproduction running locally.
+**State:** 🚧 In progress — Boltz run done (250/256 shards); **preliminary result in hand**; backfill 1809→1810 running to close a 395-structure gap before the numbers are final.
 **Last updated:** 2026-08-26
 
 ## Current state
@@ -46,6 +46,74 @@ Done so far, all CPU-only on the workstation:
 - None.
 
 ## Log — newest first
+
+### 2026-08-27 — PRELIMINARY RESULT (24,620 of 25,213 rows) + a shard-collision scare
+
+Chain 1414→1417 finished: slim sweep 1416 was an 8 s no-op (every shard had
+self-slimmed; 0 raw leftovers), features 1417 took 21 min → a 105 MB parquet with
+**899 columns** = 512 concat/Δz + **384 `sdim`** + 3 keys. `slim.keep_s: true` did what
+it was for: the `s` track is banked and future models can use it with no GPU.
+
+Ran Phase 3 on the incomplete table (24,620 rows) to validate the path end to end.
+
+**Layer 1 — direct per-dataset Spearman (median, signed):**
+
+| predictor | full | UBI4-dropped |
+|---|---|---|
+| Rosetta ΔΔG | −0.305 | −0.305 |
+| **Boltz ΔΔG (ours)** | **−0.375** | **−0.412** |
+| GEMME ΔΔE | +0.495 | +0.498 |
+
+**Layer 2 — leave-one-protein-out RF (median ρ over 13 datasets):**
+
+| model | Rosetta | Boltz | Δ | Δ (UBI4-dropped) |
+|---|---|---|---|---|
+| null (s̃) | +0.352 | — | — | — |
+| ΔΔE only | +0.430 | — | — | — |
+| **ΔΔG only** | +0.279 | **+0.350** | **+0.071** | **+0.071** |
+| ΔΔG + ΔΔE | +0.469 | +0.469 | 0.000 | +0.020 |
+| position-context | +0.510 | +0.504 | −0.006 | −0.011 |
+
+Note Rosetta's ΔΔG-only is **+0.279** on our 13 datasets, not the published 0.249 over
+39 — which is exactly why the plan re-runs both arms through the same harness instead of
+comparing against the paper's number.
+
+**Reading it.** A substantial ΔΔG-only gain that is **fully absorbed once GEMME enters**.
+The leading explanation is that **Boltz sees the MSA**: our ΔΔG carries evolutionary
+signal that Rosetta's pure-physics calculation structurally cannot, and that signal is
+redundant once conservation is supplied explicitly. results/04 measured MSA as worth
+~0.08–0.10 r to this model — close to the +0.071 gap. Testable with the existing
+`no_msa` config: if single-sequence Boltz ΔΔG still beats Rosetta on ΔΔG-only, the gain
+is genuinely structural.
+
+Per-dataset detail supports a real signal rather than leakage:
+- **NUDT15 VAMP-seq abundance** (the purest stability assay): Rosetta −0.529, ours
+  **−0.660** — our biggest win, where stability should matter most.
+- **CALM1** (the ΔΔG-blind control): −0.079 vs −0.114, both ≈ 0. No false signal.
+- **UBI4** (the one leaky protein): Rosetta −0.297/−0.440, ours −0.205/−0.346 — **we are
+  worse on the leaked protein**, and the ΔΔG-only gap is identical with UBI4 dropped.
+
+**Still preliminary, two reasons.** (1) The arms are not yet on identical rows —
+Rosetta 23,415 vs Boltz 22,830; coverage matching handles Rosetta's gaps but not the 585
+rows missing from ours. (2) No confidence interval yet; a median over 13 datasets moves
+easily and +0.071 needs the protein-clustered bootstrap before it is defensible.
+
+**Shard-collision scare (resolved, no data lost).** The backfill was submitted with
+N=16 while the original run used N=256, so `slim --shard i/16` writes the same
+`s000i.npz` as `slim --shard i/256`. `s0002.npz` jumped to 48 MB and I cancelled jobs
+1800/1801 on the spot, fearing 16 shards of banked embeddings were being clobbered.
+They were not: **`slim` merges into an existing shard file rather than overwriting it** —
+s0002 went 99 → **198** structures (its own 99 plus the 99 recovered from old shard 98),
+and neighbours stayed at 99. The cancel cost time and was not needed; it was still the
+right call under uncertainty, since risking ~1,600 structures to save a delay is a bad
+trade.
+
+Useful fact that fell out: 256 = 16 × 16, so **N=256 shard *k* maps entirely into N=16
+shard *k* mod 16**. The six lost shards (98, 132–136) land in N=16 shards {2, 4, 5, 6, 7,
+8}; 2 is already recovered. Resubmitted as **1809** (`--array=4-8%3`, only the shards with
+work) → features **1810**. Store is at 24,829 / 25,224; deficit **395**.
+
+
 
 ### 2026-08-26 — shard 1415_98 hung on nodo4; cancelled, throughput restored
 
