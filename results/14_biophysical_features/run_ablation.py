@@ -54,6 +54,14 @@ MSA_SITE_COLS = ["msa_neff", "msa_depth", "msa_gapfrac", "msa_entropy",
 MSA_RES_KEYS = ("msafreq", "msalogodds", "is_consensus", "x_cons")
 
 
+# Blind corpora we can transfer onto. S669 stores ddG with the opposite sign
+# convention to Tsuboyama/FireProt (results/13), so it alone needs the flip.
+TRANSFER = {
+    "s669":           {"flip": True},    # 541 variants / 62 proteins
+    "fireprot_le500": {"flip": False},   # 3,205 variants / 138 proteins
+}
+
+
 def zblock(wt_prefix, mt_prefix):
     return ([], [f"{wt_prefix}_{j}" for j in range(Z)],
             [f"{mt_prefix}_{j}" for j in range(Z)])
@@ -73,6 +81,20 @@ BLOCKS = {
     "bio_t":   (SITE_COLS_T,                  # item 2 with only transferable site cols
                 [f"wt_{k}" for k in RES_KEYS] + [f"wt_{k}" for k in INTER_KEYS],
                 [f"mt_{k}" for k in RES_KEYS] + [f"mt_{k}" for k in INTER_KEYS]),
+    # the pre-results/07 feature form (raw Δz). Its antisymmetry transform is a
+    # NEGATION, not a half-swap, so it is only run with --no-augment here; results/07
+    # showed Δz + symmetry collapses Tsuboyama calibration.
+    "dz":      ([f"zdiag_{j}" for j in range(Z)] + [f"zpool_{j}" for j in range(Z)], [], []),
+    # DIFFERENCE-form blocks: their antisymmetry transform is a negation, not a
+    # half-swap, so they are placed in the invariant segment and are only valid with
+    # --no-augment. `diag` is the un-pooled diagonal z[i,i]; `cwpool` is the
+    # contact-weighted row difference (mtcw - wtcw), i.e. zpool with contact weights.
+    "diag":    ([f"zdiag_{j}" for j in range(Z)], [], []),
+    "cwpool":  ([f"cwd_{j}" for j in range(Z)], [], []),
+    # THE control that matters: is the diagonal just an amino-acid lookup table?
+    # 40 one-hot dims for (wt_aa, mut_aa), no structural information whatsoever.
+    "onehot":  ([], [f"oh_wt_{a}" for a in "ACDEFGHIKLMNPQRSTVWY"],
+                    [f"oh_mt_{a}" for a in "ACDEFGHIKLMNPQRSTVWY"]),
     "cons":    (MSA_SITE_COLS,                # item 3: conservation / PSSM / consensus
                 [f"wt_{k}" for k in MSA_RES_KEYS],
                 [f"mt_{k}" for k in MSA_RES_KEYS]),
@@ -83,6 +105,8 @@ CONFIGS = {
     "cw":            ["cw"],                  # does contact weighting REPLACE uniform?
     "base+cw":       ["z", "cw"],             # is it complementary?
     "cw+far":        ["cw", "far"],           # capacity control for base+cw (512 dims)
+    "far":           ["far"],                 # THE negative control: far-shell pooling
+                                              # alone, matched 256 dims against cw
     "bio":           ["bio"],                 # 40 hand-made numbers, alone
     "base+bio":      ["z", "bio"],
     "base+bio_nox":  ["z", "bio_nox"],        # is the gain the interactions?
@@ -94,7 +118,28 @@ CONFIGS = {
     "base+cons":     ["z", "cons"],           # does it add to Boltz's implicit MSA use?
     "cw+cons":       ["cw", "cons"],
     "all":           ["z", "cw", "bio_t", "cons"],
+    # head-to-head against the project's prior best (results/05 used dz, no augmentation)
+    "dz":            ["dz"],
+    "onehot":        ["onehot"],             # substitution identity alone
+    # does the gain need contact weighting, or just ANY local term?
+    "base+diag":     ["z", "diag"],          # concat + the un-pooled diagonal
+    "diag":          ["diag"],               # the diagonal alone
+    "dz_cw":         ["diag", "cwpool"],     # Δz form, contact-weighted pool
 }
+
+
+# Which antisymmetry transform a block obeys. concat: ΔΔG(B→A) swaps the wt/mt
+# halves. diff: the feature vector NEGATES. Mixing the two in one augmented run is
+# not well defined, so it is refused.
+BLOCK_FORM = {"z": "concat", "cw": "concat", "far": "concat", "bio": "concat",
+              "onehot": "concat",
+              "bio_nox": "concat", "bio_t": "concat", "cons": "concat",
+              "dz": "diff", "diag": "diff", "cwpool": "diff"}
+
+
+def config_form(names):
+    forms = {BLOCK_FORM[n] for n in names}
+    return forms.pop() if len(forms) == 1 else "mixed"
 
 
 def assemble(names):
@@ -109,8 +154,17 @@ def assemble(names):
     return inv + wt + mt, len(inv), len(wt)
 
 
-def augment(X, y, n_inv, n_side):
-    """Antisymmetry: swap the wt/mt halves, negate ddG. Site block is untouched."""
+def augment(X, y, n_inv, n_side, form="concat"):
+    """Antisymmetry augmentation, dispatched on the config's feature form.
+
+    concat: the reverse mutation swaps the wt/mt halves (site block untouched).
+    diff:   the reverse mutation negates the whole difference vector.
+    """
+    if form == "diff":
+        return np.vstack([X, -X]), np.concatenate([y, -y])
+    if form != "concat":
+        raise ValueError(f"cannot antisymmetry-augment a '{form}' config; "
+                         f"rerun it with --no-augment")
     inv = X[:, :n_inv]
     wt = X[:, n_inv:n_inv + n_side]
     mt = X[:, n_inv + n_side:]
@@ -174,27 +228,35 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--configs", nargs="+", default=list(CONFIGS))
     ap.add_argument("--out", default="results.csv")
+    ap.add_argument("--no-augment", action="store_true",
+                    help="skip antisymmetry augmentation (results/05 protocol)")
+    ap.add_argument("--transfer", default="s669", choices=list(TRANSFER),
+                    help="blind corpus to transfer onto (trained on Tsuboyama)")
     args = ap.parse_args()
 
     tsu = load("tsuboyama_bench_fast")
     y = tsu["ddg"].to_numpy(float)
     groups = tsu["wt_id"].to_numpy()
-    s669 = load("s669")
-    ys = -s669["ddg"].to_numpy(float)     # S669 sign convention is inverted (results/13)
+    tname, flip = args.transfer, TRANSFER[args.transfer]["flip"]
+    tf = load(tname)
+    ys = (-1.0 if flip else 1.0) * tf["ddg"].to_numpy(float)
     print(f"Tsuboyama {len(tsu)} muts / {tsu.wt_id.nunique()} proteins; "
           f"stabilizing {(y < STAB).sum()} ({(y < STAB).mean():.1%})")
-    print(f"S669 {len(s669)} variants; stabilizing {(ys < STAB).sum()}\n", flush=True)
+    print(f"transfer={tname} {len(tf)} variants / {tf.wt_id.nunique()} proteins; "
+          f"sign_flip={flip}; stabilizing {(ys < STAB).sum()}\n", flush=True)
 
-    rows, preds = [], {}
+    rows, preds, s_preds = [], {}, {}
     for cfg in args.configs:
         cols, n_inv, n_side = assemble(CONFIGS[cfg])
+        form = config_form(CONFIGS[cfg])
         X = tsu[cols].replace([np.inf, -np.inf], np.nan).to_numpy(float)
-        Xs = s669[cols].replace([np.inf, -np.inf], np.nan).to_numpy(float)
+        Xs = tf[cols].replace([np.inf, -np.inf], np.nan).to_numpy(float)
         t0 = time.time()
         oof = np.full(len(y), np.nan)
         s_pred = []
         for fi, (tr, te) in enumerate(GroupKFold(n_splits=K).split(X, y, groups), 1):
-            Xa, ya = augment(X[tr], y[tr], n_inv, n_side)
+            Xa, ya = ((X[tr], y[tr]) if args.no_augment
+                      else augment(X[tr], y[tr], n_inv, n_side, form))
             model = make_model("mlp")
             model.named_steps["est"].n_jobs = N_JOBS
             model.fit(Xa, ya)
@@ -203,7 +265,8 @@ def main():
             print(f"  [{cfg}] fold {fi}/{K} done ({time.time() - t0:.0f}s)", flush=True)
         s_mean = np.mean(s_pred, axis=0)
         preds[cfg] = oof
-        for tag, yy, pp in (("tsu_oof", y, oof), ("s669", ys, s_mean)):
+        s_preds[cfg] = s_mean
+        for tag, yy, pp in (("tsu_oof", y, oof), (tname, ys, s_mean)):
             m = metrics(yy, pp, tag, cfg)
             m["dims"] = len(cols)
             m["secs"] = round(time.time() - t0)
@@ -211,7 +274,7 @@ def main():
         a, b = rows[-2], rows[-1]
         print(f"{cfg:14s} dims={len(cols):4d}  OOF r={a['r']:.3f} rho={a['rho']:.3f} "
               f"MAE={a['mae']:.3f} | stab rho={a['stab_rho']:.3f} bias={a['stab_bias']:+.3f} "
-              f"AUC={a['auc_stab']:.3f} | S669 r={b['r']:.3f} rho={b['rho']:.3f}\n", flush=True)
+              f"AUC={a['auc_stab']:.3f} | {tname} r={b['r']:.3f} rho={b['rho']:.3f}\n", flush=True)
 
         pd.DataFrame(rows).to_csv(OUT / args.out, index=False)
         # name the OOF dump after --out so separate invocations don't clobber
@@ -220,14 +283,19 @@ def main():
         pd.DataFrame({"wt_id": tsu.wt_id, "mutation": tsu.mutation, "ddg": y,
                       **preds}).to_csv(
             ROOT / f"data/processed/_analysis/exp14_oof_{stem}.csv", index=False)
+        # S669 predictions too: the transfer claim is the headline, and it needs its
+        # own cluster bootstrap over S669's 62 proteins
+        pd.DataFrame({"wt_id": tf.wt_id, "mutation": tf.mutation, "ddg": ys,
+                      **s_preds}).to_csv(
+            ROOT / f"data/processed/_analysis/exp14_{tname}_{stem}.csv", index=False)
 
     res = pd.DataFrame(rows)
     print("\n=== held-out Tsuboyama (GroupKFold on protein) ===")
     print(res[res.set == "tsu_oof"][
         ["config", "dims", "r", "rho", "mae", "stab_rho", "stab_bias",
          "auc_stab", "detpr30", "ndcg30"]].round(3).to_string(index=False))
-    print("\n=== S669 transfer ===")
-    print(res[res.set == "s669"][
+    print(f"\n=== {tname} transfer ===")
+    print(res[res.set == tname][
         ["config", "r", "rho", "mae", "stab_rho", "auc_stab"]].round(3).to_string(index=False))
     print(f"\nwrote {OUT / args.out}")
 

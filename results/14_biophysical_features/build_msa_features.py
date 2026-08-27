@@ -35,6 +35,11 @@ ID_CUT = 0.8                  # sequence-weighting identity threshold
 MAX_SEQS = 2000               # cap depth before O(N^2) weighting (see read_a3m)
 SUBSAMPLE_SEED = 0
 PSEUDO = 1.0                  # pseudocount on the weighted column counts
+# "has a usable alignment". depth > 1 is useless as a flag: the ColabFold server
+# returns the query plus at least one hit for everything, so it is constant at 1.
+# De novo designed proteins in this corpus sit at depth 2 (median) against 8,823
+# for natural ones, so 10 cleanly separates "no homologues" from "an alignment".
+MIN_DEPTH = 10
 
 # Robinson & Robinson background amino-acid frequencies
 BG = np.array([0.0787, 0.0157, 0.0530, 0.0636, 0.0400, 0.0691, 0.0227, 0.0591,
@@ -170,8 +175,10 @@ def build(exp: str) -> pd.DataFrame:
             "msa_gapfrac": float(st["gapfrac"][pos]),
             "msa_entropy": float(st["entropy"][pos]),
             "msa_maxfreq": float(st["maxfreq"][pos]),
-            # a single sequence is not an alignment: let the model discount the block
-            "msa_has_msa": float(st["depth"] > 1),
+            # lets the model discount the whole block where there is no family to
+            # be conserved against (de novo designs); msa_neff carries the same
+            # information continuously
+            "msa_has_msa": float(st["depth"] >= MIN_DEPTH),
         })
         z = cn.get((m.wt_id, m.mutation), 0.0)
         for side, aa in (("wt", str(m.wt_aa)), ("mt", str(m.mut_aa))):
