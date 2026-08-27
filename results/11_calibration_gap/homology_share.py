@@ -16,7 +16,12 @@ import pandas as pd
 
 ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
 SCR = ROOT / "data/processed/_analysis"
+HERE = Path(__file__).resolve().parent
 SCR.mkdir(parents=True, exist_ok=True)
+
+
+ROWS = []
+CURRENT = [""]
 
 
 def r(a, b):
@@ -56,6 +61,12 @@ def paired_stats(vals, labels, name, n_rep=200, seed=0):
     icc = vb / (vb + vw) if (vb + vw) > 0 else np.nan
     print(f"  {name:22s} n_groups={len(usable):3d}  pair r={np.mean(rs):+.3f}±{np.std(rs):.3f}  "
           f"|Δ|={np.mean(ds):.2f} (random {np.mean(nd):.2f})  ICC={icc:.3f}")
+    # The decisive comparison of this experiment lives in these rows -- homologues
+    # share the per-protein MEAN ddG but not the model's ERROR on it. Persist them.
+    ROWS.append(dict(quantity=CURRENT[0], grouping=name.strip(), n_groups=len(usable),
+                     pair_r=float(np.mean(rs)), pair_r_sd=float(np.std(rs)),
+                     mean_abs_diff=float(np.mean(ds)), random_abs_diff=float(np.mean(nd)),
+                     icc=float(icc)))
 
 
 def main():
@@ -73,6 +84,7 @@ def main():
           f"clusters 90/50/30 = {dg.c90.nunique()}/{dg.c50.nunique()}/{dg.c30.nunique()}")
     print(f"dG(WT): sd {dg.dG_wt.std():.2f} kcal/mol\n")
 
+    CURRENT[0] = "dG_wt"
     print("=== dG(WT): do similar proteins share it? ===")
     for lab, col in (("same base structure", "base"), ("same cluster 90%", "c90"),
                      ("same cluster 50%", "c50"), ("same cluster 30%", "c30")):
@@ -96,12 +108,14 @@ def main():
     for thr in (30, 50, 90):
         t[f"c{thr}"] = t.wt_id.map(cl[thr])
 
+    CURRENT[0] = "offset"
     print(f"\n=== per-protein OFFSET (n={len(t)} proteins with >=6 muts, "
           f"sd {t.off.std():.2f}) ===")
     for lab, col in (("same base structure", "base"), ("same cluster 90%", "c90"),
                      ("same cluster 50%", "c50"), ("same cluster 30%", "c30")):
         paired_stats(t.off.to_numpy(), t[col].to_numpy(), lab)
 
+    CURRENT[0] = "mean_ddg"
     print(f"\n=== per-protein MEAN ddG (the quantity itself, sd {t.mean_ddg.std():.2f}) ===")
     for lab, col in (("same base structure", "base"), ("same cluster 90%", "c90"),
                      ("same cluster 50%", "c50"), ("same cluster 30%", "c30")):
@@ -114,3 +128,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+    pd.DataFrame(ROWS).to_csv(HERE / "homology_share.csv", index=False)
+    print(f"\nwrote {HERE / 'homology_share.csv'}")

@@ -45,6 +45,31 @@ None. Runs locally in ~15–25 min.
 
 ## Log — newest first
 
+### 2026-08-27 (más tarde) — estimador corregido en los dos scripts; los números aún no
+
+Trabajando en results/11 encontré que **sus dos scripts cargaban el defecto del estimador**
+(`max_iter=250, early_stopping=False`, el que results/14 halló en results/09 — `max_iter`
+cuenta épocas, así que el régimen con más datos sobreentrena más). Importa fuera de este
+folder: `mut_class_error.py` escribe el cache `s669_predictions.csv` que lee el split-half de
+results/11, así que **el defecto se propagaba entre carpetas**.
+
+Corregidos los dos: `mut_class_error.py` y `tsu_class_error.py`.
+
+**Cuidado — el código está corregido y los números comprometidos no.** Solo re-corrí
+`mut_class_error.py`, y escribe únicamente al scratch gitignorado, así que ninguna tabla,
+figura ni el `report.pdf` de este folder cambió. Concretamente:
+
+- **El pase de transferencia (primario para cualquier afirmación cruzada) no está afectado**:
+  usa los dumps por variante de results/14, producidos con `make_model("mlp")`.
+- **El pase original sí**: sus números de S669 y de Tsuboyama in-distribution salieron del
+  estimador defectuoso. El README ya los etiqueta como "the concat readout that was the
+  project default at the time"; ahora además preceden a la corrección del estimador.
+
+Para alinearlos hay que re-correr `tsu_class_error.py` y `mut_class_error.py` y rehacer las
+tablas del pase original, el README y `report.pdf`. No lo hice: cambia números de un folder
+recién cerrado y excede el alcance de la tarea en curso (reportes de 09/11/13). Queda como
+próximo paso.
+
 ### 2026-08-27 (tarde) — report.pdf
 
 `build_report.py` (misma convencion que results/14: HTML autocontenido con figuras en base64

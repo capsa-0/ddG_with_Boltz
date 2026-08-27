@@ -1,18 +1,19 @@
 # Status — 11_calibration_gap
 
-**State:** 🚧 In progress
-**Last updated:** 2026-08-25
+**State:** ✅ Done
+**Last updated:** 2026-08-27
 
 ## Current state
 
 Diagnostic experiment, run entirely on the **local workstation** (all inputs were
 already in `data/processed/`; no cluster job was needed). It asks why the S669 pooled
-Pearson (0.40 filtered) is so much lower than the per-protein median (0.58–0.61), and
+Pearson (0.45 filtered) is so much lower than the per-protein median (0.54–0.59), and
 whether the missing piece — a per-protein additive offset — can be predicted.
 
-**Final answer (2026-08-25): the offset is a domain-shift term, not a protein property.**
-It is worth **+0.204** pooled r on S669 but only **+0.029** on held-out Tsuboyama, where
-the model is already well calibrated (offset sd 0.29 vs 1.43 kcal/mol on S669). And
+**Final answer (2026-08-25, numbers corrected 2026-08-27): the offset is a domain-shift
+term, not a protein property.** It is worth **+0.144** pooled r on S669 but only **+0.029**
+on held-out Tsuboyama, where the model is already well calibrated (offset sd 0.29 vs
+1.46 kcal/mol on S669). And
 while the per-protein **mean ΔΔG** *is* shared between homologues (pair r = 0.52 for
 constructs of the same base structure), the model's **error** on it is **not**
 (pair r = 0.09 ± 0.24) — i.e. the model already captures the part of the protein-level
@@ -21,13 +22,13 @@ representation of the protein can supply.
 
 Nothing we can extract predicts the offset, on either dataset.
 
-- A perfect per-protein offset is worth **+0.204 pooled r** (honest split-half; the
-  naive in-sample oracle overstates it at +0.26). Per-protein *gain* correction does
-  **not** help — offset alone beats affine.
+- A perfect per-protein offset is worth **+0.144 pooled r** (honest split-half; the
+  in-sample oracle overstates it by +0.055). Per-protein *gain* correction does **not**
+  help — it worsens RMSE in every regime, and offset alone beats affine.
 - Split-half reliability of the per-protein mean ΔΔG on S669 (proteins with ≥6
   variants) is **0.823**, so the offset is a stable quantity, not curation noise.
 - The offset is **not predictable** from: the WT Boltz embedding pooled over mutated
-  positions (LOPO r=0.09/0.14; head trained on 550 proteins r=+0.185 best, applying it
+  positions (LOPO r=0.09/0.14; head trained on 550 proteins r=+0.262 best, applying it
   moves pooled r by +0.006 and *hurts* regime D); protein length, amino-acid
   composition, burial, or hydropathy (every set at or worse than a constant baseline;
   length is the only univariate signal at r=+0.32).
@@ -69,6 +70,62 @@ explains the 0.61-vs-0.40 gap, the regime-A calibration failure in results/09, a
 None. All inputs are local; runtimes are ~10–25 min per script on the workstation.
 
 ## Log — newest first
+
+### 2026-08-27 — report.pdf + figura 02; **tres bugs y el estimador defectuoso**
+
+El folder no tenía **ninguna tabla comprometida**: sus números vivían solo en la prosa del
+README. Al intentar generarlas aparecieron tres problemas, todos arreglados.
+
+**1. `offset_ceiling.py` nunca pudo guardar su tabla.** `NameError: name 'SCR' is not
+defined` en la última línea — todos los scripts hermanos definen `SCR`, este no. Calculaba
+todo, lo imprimía y moría al escribir, así que el CSV **nunca existió**. Ahora escribe
+`offset_ceiling.csv` en el folder (no en el scratch gitignorado).
+
+**2. El defecto del estimador estaba acá también**, y llegaba por dos caminos:
+- directo: `offset_ceiling.py` y `offset_learn.py` con `max_iter=250, early_stopping=False`;
+- por cache: `offset_real.py` lee `s669_predictions.csv`, que escribe
+  `results/12/mut_class_error.py` — también defectuoso, y el cache era del 08-25, anterior a
+  la corrección del 08-27. **El defecto se propagaba entre carpetas.**
+Corregidos los cuatro (más `results/12/tsu_class_error.py`, la quinta ocurrencia). Barrido
+del repo: queda una viva en `results/08/run_finetune.py`, fuera de alcance acá.
+
+**3. `offset_learn.py` escribía la figura al scratch gitignorado** y alguien la copiaba a
+mano a `figures/`, así que una re-corrida dejaba la figura commiteada obsoleta en silencio.
+Ahora escribe directo a `figures/01_per_protein_error.png`.
+
+**Los números se mueven; la conclusión no.**
+
+| | README decía | corregido |
+|---|---|---|
+| baseline régimen D (common25) | 0.408 | **0.453** |
+| techo con offset oráculo | 0.651 | 0.643 |
+| split-half honesto | 0.444 → 0.648 | **0.511 → 0.655** |
+| **ganancia transferible** | **+0.204** | **+0.144** |
+| mejor cabeza de offset | r=+0.185 | r=+0.262 (ridge, régimen B) |
+| figura 01 panel 3 | r = 0.91 | r = 0.88 |
+
+Lo que **no** se movió, porque no depende del estimador de S669: el contraste
+in-distribution (+0.029, 0.779 → 0.808), ΔG(WT) 0.293 contra 0.266 de longitud, y **la fila
+decisiva** — homólogas comparten la media ΔΔG (+0.516 ± 0.080) pero no el error del modelo
+sobre ella (+0.090 ± 0.242).
+
+Una afirmación hay que reescribirla: el README decía que el *gain* oráculo "perjudica a los
+regímenes A y B". Con los números corregidos les sube levemente el r — pero **empeora el RMSE
+en los tres regímenes** (D: 1.618 → 1.722), que es la razón real para descartarlo. Reescrito
+así.
+
+La razón cross/in-distribution pasó de ~7× a **~5×**. La conclusión (el offset es corrimiento
+de dominio, no propiedad de la proteína) queda intacta.
+
+**Salidas nuevas:** `offset_ceiling.csv`, `split_half.csv`, `split_half_tsuboyama.csv`,
+`homology_share.csv` (los tres últimos por parches que hacen persistir lo que antes solo se
+imprimía), `make_figures.py` → `figures/02_ceiling_and_sharing.png` — el pendiente
+"figura contrastando los techos" que el folder arrastraba —, `figures/README.md`,
+`build_report.py` → `report.pdf` (3 páginas, 2 figuras, 0 términos de procedencia).
+
+**Nota de reproducibilidad:** correr con `conda run -n ddG_with_Boltz`. El python base del
+workstation tiene sklearn 1.7.2, donde `MLPRegressor((256,64), ...)` posicional falla porque
+el primer parámetro posicional pasó a ser `loss`; el env del proyecto tiene 1.6.1.
 
 ### 2026-08-25 (later) — the offset is domain shift, not a protein property
 

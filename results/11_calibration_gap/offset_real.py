@@ -70,6 +70,19 @@ def main():
     print(f"  -> real transferable gain  {np.mean(hon) - np.mean(base):+.3f}"
           f"   |  noise-fitting inflation {np.mean(orc) - np.mean(hon):+.3f}\n")
 
+    # Persist the split-half result. This is the experiment's headline number and it
+    # previously existed only as printed prose, so nothing downstream could verify it.
+    HERE = Path(__file__).resolve().parent
+    pd.DataFrame([
+        dict(quantity="split_half_reliability_mean_ddg", mean=np.mean(rel), sd=np.std(rel)),
+        dict(quantity="baseline_no_offset", mean=np.mean(base), sd=np.std(base)),
+        dict(quantity="offset_from_other_half_honest", mean=np.mean(hon), sd=np.std(hon)),
+        dict(quantity="offset_from_same_half_oracle", mean=np.mean(orc), sd=np.std(orc)),
+        dict(quantity="transferable_gain", mean=np.mean(hon) - np.mean(base), sd=float("nan")),
+        dict(quantity="noise_fitting_inflation", mean=np.mean(orc) - np.mean(hon), sd=float("nan")),
+    ]).to_csv(HERE / "split_half.csv", index=False)
+    print(f"wrote {HERE / 'split_half.csv'}\n")
+
     # ---------- 2. interpretable descriptors ----------
     mut = pd.read_csv(ROOT / "data/processed/s669/mutations.csv")
     seqs = mut.groupby("wt_id").sequence_wt.first()

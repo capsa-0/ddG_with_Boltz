@@ -17,6 +17,10 @@ from sklearn.preprocessing import StandardScaler
 
 ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
 SCR = ROOT / "data/processed/_analysis"
+# Figures belong in the committed folder, not the gitignored scratch dir --
+# writing them to SCR meant a re-run left figures/ silently stale.
+FIGS = Path(__file__).resolve().parent / "figures"
+FIGS.mkdir(parents=True, exist_ok=True)
 SCR.mkdir(parents=True, exist_ok=True)
 Z, N_SEED = 128, 5
 FEAT = [f"{p}_{j}" for p in ("wtz", "mtz") for j in range(Z)]
@@ -33,8 +37,11 @@ def augment(X, y):
 
 
 def members():
+    # CORRECTED 2026-08-27: was max_iter=250, early_stopping=False -- the defect
+    # results/14 found in results/09. max_iter counts epochs.
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=s, warm_start=True) for s in range(N_SEED)]
 
 
@@ -189,9 +196,9 @@ ax.set_axisbelow(True)
 fig.suptitle("S669 per-protein error — where the pooled correlation is lost  (62 proteins, 541 variants)",
              fontsize=11.5, y=1.0)
 fig.tight_layout()
-fig.savefig(SCR / "per_protein_error.png", dpi=190, bbox_inches="tight",
+fig.savefig(FIGS / "01_per_protein_error.png", dpi=190, bbox_inches="tight",
             facecolor="white")
-print(f"\nwrote {SCR/'per_protein_error.png'}")
+print(f"\nwrote {FIGS/'01_per_protein_error.png'}")
 print("\n=== per-protein mean signed error, summary ===")
 print(pp.groupby("regime")["mean_err"].agg(["mean", "std", "min", "max"]).round(3).to_string())
 print("\n=== per-protein MAE, summary ===")

@@ -90,6 +90,18 @@ def main():
     print(f"  offset from the SAME half  [in-sample]         : {f(orc)}")
     print(f"  -> real transferable gain {np.mean(hon)-np.mean(base):+.3f}\n")
 
+    # Persist: this is the in-distribution half of the experiment's headline contrast
+    # and it previously existed only as printed prose.
+    HERE = Path(__file__).resolve().parent
+    pd.DataFrame([
+        dict(quantity="split_half_reliability_mean_ddg", mean=np.mean(rel), sd=np.std(rel)),
+        dict(quantity="baseline_no_offset", mean=np.mean(base), sd=np.std(base)),
+        dict(quantity="offset_from_other_half_honest", mean=np.mean(hon), sd=np.std(hon)),
+        dict(quantity="offset_from_same_half_oracle", mean=np.mean(orc), sd=np.std(orc)),
+        dict(quantity="transferable_gain", mean=np.mean(hon) - np.mean(base), sd=float("nan")),
+    ]).to_csv(HERE / "split_half_tsuboyama.csv", index=False)
+    print(f"wrote {HERE / 'split_half_tsuboyama.csv'}")
+
     # ---------- can the whole-protein s predict it? ----------
     off = (df.y - df.pred_OOF).groupby(df.wt_id).mean()
     keep = [i for i in ids if i in off.index]

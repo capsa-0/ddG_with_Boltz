@@ -542,3 +542,35 @@ text. That history stays here in `status.md`; the paths stay in the README table
 One deliberate framing choice: the report presents the {n} scored substitutions as *the*
 corpus and lists partial coverage under Limitations, rather than narrating how the corpus
 came to be that size.
+
+### 2026-08-27 — re-checked for public measured ΔΔG on GLA: still none (search widened)
+
+Re-ran the ground-truth search of 2026-08-25 with wider terms (thermal stability / Tm /
+DSF, urea unfolding ΔG, deep mutational scans 2025–2026, ProThermDB/ThermoMutDB/MaveDB).
+**Conclusion unchanged: no experimental ΔΔG in kcal/mol exists for α-Gal A**, for any
+substitution in the FoldX table. What the widened search added:
+
+- **Lukas et al. 2013, PLoS Genet (PMC3731228)** — the largest measured GLA set:
+  **158 missense variants** functionally characterised in HEK293H (residual activity
+  %WT in 4 classes, DGJ responsiveness, Western-blot degradation). **No ΔΔG, no Tm.**
+  At our current 29.6 % scan coverage the expected overlap with the 2,238 scored
+  substitutions is ~45–50 mutations — the only measured set large enough to be worth
+  joining, as an *ordinal activity* proxy, not a stability label.
+- **IJMS 2025 "Bioinformatics-Driven Multi-Factorial Insight into α-Galactosidase
+  Mutations" (PMC12193200)** — purely computational (FoldX + AlphaMissense + EVE + MD),
+  pulls its FoldX ΔΔG from the **ProtVar API**. Notable because that is the likely
+  provenance class of the supplied `ddg_varmed_by_mutation_foldx.csv`; it is *not* an
+  independent experimental source.
+- Engineered-variant Tm shifts exist (e.g. PubMed 36959353, +2/+4 °C vs WT, +5.5 °C with
+  migalastat) but are multi-point designs, not systematic single substitutions.
+
+Spot-check of the literature-measured variants against our tables (`mutation`: FoldX /
+Boltz mean, "–" = not yet scored): L300F 4.44/1.39, R301P 5.99/2.21, R301Q 3.76/2.21,
+A143T 4.79/0.95, G373S 9.74/1.89, D266N 0.83/0.48; D244H, Q280K, G360D, N215S in FoldX
+only. So the ~4 urea-C₀.₅ variants of Andreotti et al. give **2 scored overlaps**
+(L300F, R301P) — unchanged from the earlier entry, and still too few to validate.
+
+**Standing recommendation:** the ΔΔG-scale validation stays on S669/Ssym (results/09).
+The only new option worth considering for GLA is joining Lukas 2013 residual activity as
+an ordinal proxy (rank-based, confounded by catalytic-site variants where loss of
+activity ≠ loss of stability).

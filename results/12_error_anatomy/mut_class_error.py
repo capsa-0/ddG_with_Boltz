@@ -44,8 +44,14 @@ def augment(X, y):
 
 
 def members():
+    # CORRECTED 2026-08-27: was max_iter=250, early_stopping=False -- the defect
+    # results/14 found in results/09, where it cost regime A ~0.16 Pearson on S669.
+    # max_iter counts EPOCHS, so the regime with the most data over-trains hardest.
+    # This script also writes the cached s669_predictions.csv that results/11's
+    # split-half analysis reads, so the defect propagated across folders.
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=s, warm_start=True) for s in range(N_SEED)]
 
 

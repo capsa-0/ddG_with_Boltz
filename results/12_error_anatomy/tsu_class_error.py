@@ -43,7 +43,8 @@ def augment(X, y):
 
 def members(n=N_SEED):
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=s, warm_start=True) for s in range(n)]
 
 

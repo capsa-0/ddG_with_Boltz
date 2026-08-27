@@ -23,6 +23,7 @@ Z, N_SEED = 128, 5
 FEAT = [f"{p}_{j}" for p in ("wtz", "mtz") for j in range(Z)]
 WT = [f"wtz_{j}" for j in range(Z)]
 OUT = ROOT / "results/09_external_benchmarks"
+HERE = Path(__file__).resolve().parent
 
 
 def mat(df):
@@ -35,8 +36,16 @@ def augment(X, y):
 
 
 def members():
+    """The project-default estimator (ddg.evaluation.models.make_model('mlp')).
+
+    CORRECTED 2026-08-27: was `max_iter=250, early_stopping=False`, the same defect
+    results/14 found in results/09, where it cost regime A ~0.16 Pearson on S669.
+    `max_iter` counts EPOCHS, so the regime with the most training data over-trains
+    hardest -- which biased the very A-vs-B-vs-D comparison this script makes.
+    """
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=s, warm_start=True) for s in range(N_SEED)]
 
 
@@ -105,7 +114,7 @@ def main():
 
     D = copy.deepcopy(A)
     for m in D:
-        m.set_params(learning_rate_init=1e-3, max_iter=400)
+        m.set_params(learning_rate_init=1e-3, max_iter=400)  # early_stopping stays on
         m.fit(TA(Xfa), yfa)
 
     y = bdf["ddg"].to_numpy(float)
@@ -180,7 +189,8 @@ def main():
         print(f"           applying it: pooled r {r(y, p0):.3f} -> {r(y, corrected):.3f}, "
               f"RMSE {rmse(y, p0):.2f} -> {rmse(y, corrected):.2f}")
 
-    res.to_csv(str(SCR / "offset_ceiling.csv"), index=False)
+    res.to_csv(HERE / "offset_ceiling.csv", index=False)
+    print(f"\nwrote {HERE / 'offset_ceiling.csv'}")
 
 
 if __name__ == "__main__":
