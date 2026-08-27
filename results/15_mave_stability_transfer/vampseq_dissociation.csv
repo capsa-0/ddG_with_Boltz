@@ -1,0 +1,3 @@
+dataset,assay,n,gemme,rosetta,boltz
+005_NUDT15_abundance_reordered,abundance (VAMP-seq),2801,0.3334546651959558,0.5309279240751381,0.6749535792672918
+004_NUDT15_drug_sensitivity_reordered,drug sensitivity,2808,0.5568716907888498,0.2702143488590801,0.43832689835385125

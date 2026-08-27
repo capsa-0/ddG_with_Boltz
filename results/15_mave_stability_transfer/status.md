@@ -113,6 +113,47 @@ cuatro AUC de estrato), no promediando los cuatro intervalos — promediar IC no
 dataset) ya están cubiertas por `02_per_dataset_direct.png`; el README del folder todavía no
 cita `03`/`04`.
 
+**Addendum — el set de VAMP-seq, mirado solo.** `005_NUDT15_abundance` es el **único**
+VAMP-seq del corpus Tier-1 (PTEN y TPMT, los otros dos del paper, quedaron fuera por el
+tope de 200 aa). Es nuestro mejor dataset de los 13 en las dos capas. |rho| directo sobre
+las 2.801 filas con cobertura emparejada, bootstrap de clusters sobre las **156 posiciones**
+(dentro de una proteína la posición es la unidad: las 19 sustituciones de un sitio comparten
+entorno, enterramiento y columna del MSA), 4.000 remuestreos:
+
+| contraste | Δ\|rho\| | IC 95 % |
+|---|---|---|
+| nuestro (0,675) − Rosetta (0,531) | **+0,144** | [+0,075, +0,213] ✔ |
+| nuestro (0,675) − GEMME (0,333) | **+0,340** | [+0,251, +0,433] ✔ |
+
+**La disociación doble, dentro de una sola proteína.** NUDT15 aporta dos datasets — abundancia
+(VAMP-seq, lee estabilidad) y sensibilidad a droga (lee función). Misma secuencia, misma
+estructura, mismo MSA, **las mismas predicciones nuestras**; lo único que cambia es el ensayo:
+
+| \|rho\| directo | abundancia (VAMP-seq) | sensibilidad a droga |
+|---|---|---|
+| GEMME (conservación) | 0,333 | **0,554** |
+| Rosetta (ΔΔG) | 0,531 | 0,270 |
+| nosotros (ΔΔG) | **0,675** | 0,443 |
+
+El ordenamiento se da vuelta entero. Es la tesis central del paper reproducida dentro de una
+proteína, y es la mejor evidencia de que nuestro número mide **estabilidad** y no "ser un buen
+predictor de efecto de variante" en general.
+
+**Contra-evidencia parcial al confundidor del MSA.** En este set GEMME es *débil* (0,333) y
+nosotros sacamos el doble. Si nuestra ganancia fuera mayormente conservación contrabandeada,
+deberíamos andar mal justo donde la conservación anda mal — y pasa lo contrario. No anula el
+análisis por estratos de arriba (podemos ser parte-conservación y parte-estructura, que es lo
+que ambos resultados juntos sugieren), pero acota la hipótesis: **no somos solo conservación.**
+
+**Curiosidad con consecuencia práctica:** en este dataset agregar GEMME al modelo *empeora* el
+nuestro, 0,518 → 0,429 (ddg_only → ddg_dde), y el position-context llega a 0,439. O sea, sobre
+el ensayo de estabilidad más puro del corpus, **nuestro modelo de ΔΔG solo le gana a todos los
+modelos más ricos**. Con Rosetta no pasa (0,427 → 0,446). Consistente con que el RF se
+distraiga con una feature que no sirve para este ensayo.
+
+Números en `layer1_direct.csv` y `layer2_lopo_per_dataset.csv`; el bootstrap por posiciones fue
+ad hoc en esta sesión y **no está guardado como script** — si se promueve, hay que fijarlo.
+
 ### 2026-08-27 — FINAL: corpus complete, result stands, one confound left open
 
 Backfill 1809 (shards 4–8 of 16 = old 133–136) + features 1810 completed. Store is

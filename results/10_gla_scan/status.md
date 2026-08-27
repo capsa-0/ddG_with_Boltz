@@ -526,3 +526,19 @@ all four figures.
 
 **Remaining:** 5,323 mutations unpredicted (221 positions untouched, 177 covered). The
 run is resumable exactly as before.
+
+### 2026-08-27 — report.pdf written
+
+Paper-facing write-up built by `build_report.py` (4 pages, A4): motivation, methods,
+results with the three figures, interpretation, limitations, conclusion. Every number is
+recomputed from the committed tables at build time, so the report cannot drift from the
+data.
+
+Per `results/guidelines.md` it contains **no provenance or plumbing** — no job IDs, node
+names, paths, shard/resume history, the corrupt-file incident, or the earlier
+glycine-biased subset. Verified mechanically: zero hits for those terms in the extracted
+text. That history stays here in `status.md`; the paths stay in the README table.
+
+One deliberate framing choice: the report presents the {n} scored substitutions as *the*
+corpus and lists partial coverage under Limitations, rather than narrating how the corpus
+came to be that size.

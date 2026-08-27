@@ -216,8 +216,12 @@ def strata_auc(sub: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------- #
 INK = "#1d2321"
 SOFT = "#5d6a64"
-ROS = "#C25A12"
-BOL = "#00966F"
+# Categorical slots, fixed order by identity, validated with the dataviz six-checks
+# at --pairs all: worst all-pairs CVD ΔE 15.7 (tritan) / 10.2 (deutan), worst
+# normal-vision ΔE 23.8, chroma and contrast pass. Never cycle or reassign these.
+ROS = "#C25A12"   # Rosetta ΔΔG
+BOL = "#00966F"   # our Boltz ΔΔG
+GEM = "#6A51A3"   # GEMME ΔΔE
 
 
 def _style(ax):
@@ -239,7 +243,7 @@ def fig_landscape(df: pd.DataFrame, sub: pd.DataFrame, cuts_b, out: Path) -> Non
     samp = df.sample(min(len(df), 12000), random_state=0)
     for k, (col, cuts, name, xlab) in enumerate([
             ("rosetta_ddg", DDG_CUTS, "Rosetta ΔΔG", "ΔΔG (kcal/mol)"),
-            ("ddg_boltz", cuts_b, "nuestro ΔΔG (Boltz)", "ΔΔG (kcal/mol)")]):
+            ("ddg_boltz", cuts_b, "our ΔΔG (Boltz)", "ΔΔG (kcal/mol)")]):
         ax = fig.add_subplot(gs[0, k])
         sc = ax.scatter(samp[col], samp["dde"], c=samp["s"], cmap="RdYlBu",
                         s=3.2, alpha=.55, linewidths=0, vmin=0, vmax=1, rasterized=True)
@@ -253,20 +257,20 @@ def fig_landscape(df: pd.DataFrame, sub: pd.DataFrame, cuts_b, out: Path) -> Non
         ax.set_ylim(0, 1)
         ax.set_xlabel(xlab, fontsize=9, color=SOFT)
         if k == 0:
-            ax.set_ylabel("GEMME ΔΔE  (0 = conservativa)", fontsize=9, color=SOFT)
+            ax.set_ylabel("GEMME ΔΔE  (0 = conservative)", fontsize=9, color=SOFT)
         ax.set_title(name, fontsize=11, color=INK, pad=8, weight="semibold")
         _style(ax)
 
     cax = fig.add_subplot(gs[0, 2])
     cax.axis("off")
     cb = fig.colorbar(sc, ax=cax, fraction=.16, pad=.02, aspect=14)
-    cb.set_label("fitness s$_{exp}$  (1 = como la wild-type)", fontsize=8.5, color=SOFT)
+    cb.set_label("fitness s$_{exp}$  (1 = wild-type-like)", fontsize=8.5, color=SOFT)
     cb.ax.tick_params(labelsize=8, colors=SOFT)
     cb.outline.set_visible(False)
-    cax.text(.5, .18, "Paisaje estabilidad–conservación\nreproducción de la Fig. 1A\n"
-                      "de Høie et al. 2022\n\n"
-                      f"{len(df):,} variantes · 13 datasets MAVE\n"
-                      "cobertura emparejada a Rosetta".replace(",", "."),
+    cax.text(.5, .18, "Stability–conservation landscape\nreproducing Fig. 1A of\n"
+                      "Høie et al. 2022\n\n"
+                      f"{len(df):,} variants · 13 MAVE datasets\n"
+                      "coverage matched to Rosetta",
              ha="center", va="center", fontsize=8.6, color=SOFT,
              transform=cax.transAxes, linespacing=1.6)
 
@@ -308,36 +312,36 @@ def fig_landscape(df: pd.DataFrame, sub: pd.DataFrame, cuts_b, out: Path) -> Non
 
     norm_p = plt.Normalize(10, 100)
     ax = fig.add_subplot(gs[1, 0])
-    draw(ax, g_r, n_r, "Rosetta", "cortes del paper: 2 · 3 · 4,5 kcal/mol", "RdYlBu_r", norm_p)
+    draw(ax, g_r, n_r, "Rosetta", "the paper's cuts: 2 · 3 · 4.5 kcal/mol", "RdYlBu_r", norm_p)
     ax.set_ylabel("GEMME ΔΔE", fontsize=9, color=SOFT)
     ax.set_xticklabels([f"<{DDG_CUTS[0]:g}", f"{DDG_CUTS[0]:g}–{DDG_CUTS[1]:g}",
                         f"{DDG_CUTS[1]:g}–{DDG_CUTS[2]:g}", f">{DDG_CUTS[2]:g}"])
     ax.set_xlabel("ΔΔG (kcal/mol)", fontsize=9, color=SOFT)
 
     ax = fig.add_subplot(gs[1, 1])
-    draw(ax, g_b, n_b, "nuestro ΔΔG",
-         f"cortes al mismo cuantil: {cuts_b[0]:.2f} · {cuts_b[1]:.2f} · {cuts_b[2]:.2f}",
+    draw(ax, g_b, n_b, "our ΔΔG",
+         f"quantile-matched cuts: {cuts_b[0]:.2f} · {cuts_b[1]:.2f} · {cuts_b[2]:.2f}",
          "RdYlBu_r", norm_p)
     ax.set_xticklabels([f"<{cuts_b[0]:.1f}", f"{cuts_b[0]:.1f}–{cuts_b[1]:.1f}",
                         f"{cuts_b[1]:.1f}–{cuts_b[2]:.1f}", f">{cuts_b[2]:.1f}"])
     ax.set_xlabel("ΔΔG (kcal/mol)", fontsize=9, color=SOFT)
 
     ax = fig.add_subplot(gs[1, 2])
-    draw(ax, diff, np.minimum(n_r, n_b), "diferencia",
-         "puntos porcentuales, nuestro − Rosetta  ·  en gris: n < 50", "PuOr_r",
+    draw(ax, diff, np.minimum(n_r, n_b), "difference",
+         "percentage points, ours − Rosetta  ·  greyed: n < 50", "PuOr_r",
          TwoSlopeNorm(vcenter=0, vmin=-25, vmax=25), fmt="{:+.0f}", min_n=50)
-    ax.set_xticklabels(["bajo", "", "", "alto"])
+    ax.set_xticklabels(["low", "", "", "high"])
     ax.set_xlabel("ΔΔG (sector)", fontsize=9, color=SOFT)
 
-    fig.text(.075, .958, "El paisaje estabilidad–conservación, con nuestro ΔΔG en el lugar del de Rosetta",
+    fig.text(.075, .958, "The stability–conservation landscape, with our ΔΔG in Rosetta's place",
              fontsize=15.5, color=INK, weight="semibold")
     fig.text(.075, .932,
-             "Reproducción de la Figura 1 de Høie et al. 2022 (Cell Reports 38:110207). Abajo: % de variantes con "
-             "pérdida de función por sector",
+             "Reproducing Figure 1 of Høie et al. 2022 (Cell Reports 38:110207). Below: % of variants that lose "
+             "function, per sector",
              fontsize=9.4, color=SOFT)
     fig.text(.075, .911,
-             "(tercios extremos de fitness; el tercio medio se excluye, como en el paper). Los sectores no contienen "
-             "las mismas variantes en ambos brazos.",
+             "(extreme fitness tertiles; the middle third is excluded, as in the paper). The sectors do not hold the "
+             "same variants in both arms.",
              fontsize=9.4, color=SOFT)
     fig.savefig(out, dpi=170)
     plt.close(fig)
@@ -355,17 +359,17 @@ def fig_strata(tab: pd.DataFrame, out: Path) -> None:
     x = np.arange(len(rows))
     w = .36
     ax.bar(x - w / 2, rows.auc_rosetta, w, color=ROS, label="Rosetta ΔΔG")
-    ax.bar(x + w / 2, rows.auc_boltz, w, color=BOL, label="nuestro ΔΔG")
+    ax.bar(x + w / 2, rows.auc_boltz, w, color=BOL, label="our ΔΔG")
     for i, r in rows.iterrows():
         ax.text(i, max(r.auc_rosetta, r.auc_boltz) + .012, f"{r.delta:+.3f}",
                 ha="center", fontsize=8.5, color=INK, weight="semibold")
     ax.axhline(.5, color=SOFT, lw=.8, ls=(0, (3, 3)))
     ax.set_xticks(x)
-    ax.set_xticklabels([f"Q{i+1}\n{r.pct_low:.0f} % muertas" for i, r in rows.iterrows()],
+    ax.set_xticklabels([f"Q{i+1}\n{r.pct_low:.0f} % dead" for i, r in rows.iterrows()],
                        fontsize=8.6)
     ax.set_ylim(.45, .80)
-    ax.set_ylabel("AUC — detectar pérdida de función", fontsize=9.5, color=SOFT)
-    ax.set_xlabel("cuartil de conservación ΔΔE   (Q1 = evolutivamente tolerada  →  Q4 = restringida)",
+    ax.set_ylabel("AUC — detecting loss of function", fontsize=9.5, color=SOFT)
+    ax.set_xlabel("ΔΔE conservation quartile   (Q1 = evolutionarily tolerated  →  Q4 = constrained)",
                   fontsize=9, color=SOFT)
     ax.legend(frameon=False, fontsize=9, loc="upper left")
     _style(ax)
@@ -385,22 +389,132 @@ def fig_strata(tab: pd.DataFrame, out: Path) -> None:
                  va="center", fontsize=8.4, color=SOFT)
     ax2.axvline(0, color=SOFT, lw=.9)
     ax2.set_yticks(ys)
-    ax2.set_yticklabels(["agrupado\n(sin condicionar)", "dentro de cada\nestrato ΔΔE"],
+    ax2.set_yticklabels(["pooled\n(unconditioned)", "within each\nΔΔE stratum"],
                         fontsize=9)
     ax2.set_ylim(1.55, -.55)
     ax2.set_xlim(-.014, .125)
-    ax2.set_xlabel("Δ AUC  (nuestro − Rosetta)", fontsize=9.5, color=SOFT)
+    ax2.set_xlabel("Δ AUC  (ours − Rosetta)", fontsize=9.5, color=SOFT)
     _style(ax2)
 
-    fig.text(.070, .935, "¿De dónde viene nuestra ventaja sobre Rosetta?",
+    fig.text(.070, .935, "Where does our advantage over Rosetta come from?",
              fontsize=14.5, color=INK, weight="semibold")
     fig.text(.070, .885,
-             "Condicionar sobre conservación se lleva más de la mitad de la ventaja, y lo que queda ya no despega "
-             "de cero. Primera señal cuantitativa",
+             "Conditioning on conservation removes more than half the advantage, and what remains no longer "
+             "clears zero. The first quantitative",
              fontsize=9.2, color=SOFT)
     fig.text(.070, .845,
-             "de que parte del ΔΔG de Boltz es conservación — aunque el residuo es positivo en los cuatro "
-             "estratos, así que no queda descartado.",
+             "signature that part of the Boltz ΔΔG is conservation — though the residual is positive in all "
+             "four strata, so it is not ruled out.",
+             fontsize=9.2, color=SOFT)
+    fig.savefig(out, dpi=170)
+    plt.close(fig)
+
+
+VAMPSEQ = "005_NUDT15_abundance_reordered"
+NUDT15_FN = "004_NUDT15_drug_sensitivity_reordered"
+
+
+def vampseq_stats(df: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """The stability-readout contrast, and its within-protein bootstrap.
+
+    NUDT15 contributes two of the 13 datasets — VAMP-seq abundance, which reads out
+    cellular protein level and so is the closest thing in the corpus to a direct
+    stability assay, and drug sensitivity, which reads out enzyme function. Same
+    sequence, same structure, same alignment, and *the same ΔΔG predictions*: only
+    the assay changes. That makes it a within-protein control on whether a predictor
+    is measuring stability or merely ranking variants well in general.
+
+    The bootstrap resamples the 156 POSITIONS, not the variants: inside one protein
+    the position is the unit of independence, since a site's 19 substitutions share
+    an environment, a burial and one alignment column. It answers "is this dataset's
+    gap real", NOT "does it generalise to other proteins" — that is the 11-protein
+    interval in `bootstrap.py`, and this one must not be quoted in its place.
+    """
+    def rho(a, b):
+        from scipy.stats import spearmanr
+        return abs(spearmanr(a, b).statistic)
+
+    rows = []
+    for ds, label in [(VAMPSEQ, "abundance (VAMP-seq)"),
+                      (NUDT15_FN, "drug sensitivity")]:
+        d = df[df["dataset"] == ds]
+        rows.append(dict(dataset=ds, assay=label, n=len(d),
+                         gemme=rho(d["dde"], d["s"]),
+                         rosetta=rho(d["rosetta_ddg"], d["s"]),
+                         boltz=rho(d["ddg_boltz"], d["s"])))
+    table = pd.DataFrame(rows)
+
+    v = df[df["dataset"] == VAMPSEQ].copy()
+    v["pos"] = v["variant"].str.extract(r"(\d+)").astype(int)
+    pos = v["pos"].unique()
+    by = {p: v[v["pos"] == p] for p in pos}
+    draws = {"rosetta": [], "gemme": []}
+    for _ in range(4000):
+        r = pd.concat([by[p] for p in RNG.choice(pos, len(pos), replace=True)])
+        ours = rho(r["ddg_boltz"], r["s"])
+        draws["rosetta"].append(ours - rho(r["rosetta_ddg"], r["s"]))
+        draws["gemme"].append(ours - rho(r["dde"], r["s"]))
+    boot = pd.DataFrame([
+        dict(contrast=f"boltz_minus_{k}", n_variants=len(v), n_positions=len(pos),
+             mean=float(np.mean(d)), ci_lo=float(np.percentile(d, 2.5)),
+             ci_hi=float(np.percentile(d, 97.5)))
+        for k, d in draws.items()])
+    return table, boot
+
+
+def fig_vampseq(table: pd.DataFrame, boot: pd.DataFrame, out: Path) -> None:
+    fig, (ax, ax2) = plt.subplots(1, 2, figsize=(12.4, 4.6),
+                                  gridspec_kw=dict(width_ratios=[1.5, 1], wspace=.30))
+    fig.subplots_adjust(left=.070, right=.975, top=.755, bottom=.155)
+
+    x = np.arange(2)
+    w = .26
+    for k, (col, name, c) in enumerate([("gemme", "GEMME ΔΔE (conservation)", GEM),
+                                        ("rosetta", "Rosetta ΔΔG", ROS),
+                                        ("boltz", "our ΔΔG", BOL)]):
+        ax.bar(x + (k - 1) * w, table[col], w, color=c, label=name)
+        for i, v in enumerate(table[col]):
+            ax.text(i + (k - 1) * w, v + .012, f"{v:.3f}", ha="center",
+                    fontsize=8.6, color=INK, weight="semibold")
+    ax.set_xticks(x)
+    ax.set_xticklabels([f"{r.assay}\nn = {r.n:,}"
+                        for r in table.itertuples()], fontsize=9.5)
+    ax.set_ylim(0, .78)
+    ax.set_ylabel("|Spearman ρ| against measured fitness", fontsize=9.5, color=SOFT)
+    ax.set_xlabel("NUDT15 — same protein, same structure, same alignment, "
+                  "the same predictions", fontsize=9, color=SOFT)
+    ax.legend(frameon=False, fontsize=9, loc="upper right", ncol=1)
+    _style(ax)
+
+    ys = [0, 1]
+    lbl = {"boltz_minus_rosetta": "ours − Rosetta", "boltz_minus_gemme": "ours − GEMME"}
+    b = boot.set_index("contrast").loc[["boltz_minus_rosetta", "boltz_minus_gemme"]]
+    ax2.barh(ys, b["mean"], .42, color=[BOL, "#8fb9ab"])
+    ax2.errorbar(b["mean"], ys,
+                 xerr=[b["mean"] - b["ci_lo"], b["ci_hi"] - b["mean"]],
+                 fmt="none", ecolor=INK, lw=1.3, capsize=5)
+    for y, (_, r) in zip(ys, b.iterrows()):
+        ax2.text(r["ci_hi"] + .012, y, f"{r['mean']:+.3f}", va="center",
+                 fontsize=10.5, color=INK, weight="semibold")
+        ax2.text(r["ci_hi"] + .012, y + .28, f"[{r['ci_lo']:+.3f} · {r['ci_hi']:+.3f}]",
+                 va="center", fontsize=8.4, color=SOFT)
+    ax2.axvline(0, color=SOFT, lw=.9)
+    ax2.set_yticks(ys)
+    ax2.set_yticklabels([lbl[i] for i in b.index], fontsize=9.5)
+    ax2.set_ylim(1.55, -.55)
+    ax2.set_xlim(-.02, .62)
+    ax2.set_xlabel("Δ|ρ| on the VAMP-seq dataset", fontsize=9.5, color=SOFT)
+    _style(ax2)
+
+    fig.text(.070, .935, "The stability assay inverts the ordering of the predictors",
+             fontsize=14.5, color=INK, weight="semibold")
+    fig.text(.070, .885,
+             "On the function assay conservation wins; on the abundance assay — which reads out stability — "
+             "both ΔΔG predictors win, and ours by more.",
+             fontsize=9.2, color=SOFT)
+    fig.text(.070, .845,
+             "Right: 95 % CI from a cluster bootstrap over NUDT15's 156 positions. It answers whether this "
+             "dataset's gap is real, not whether it generalises.",
              fontsize=9.2, color=SOFT)
     fig.savefig(out, dpi=170)
     plt.close(fig)
@@ -439,6 +553,18 @@ def main(argv=None) -> int:
     fig_strata(tab, FIGS / "04_conservation_strata.png")
     print(f"\nwrote {FIGS / '04_conservation_strata.png'}")
     print(f"wrote {HERE / 'conservation_strata_auc.csv'}")
+
+    vtab, vboot = vampseq_stats(df)
+    vtab.to_csv(HERE / "vampseq_dissociation.csv", index=False)
+    vboot.to_csv(HERE / "vampseq_bootstrap.csv", index=False)
+    print("\nNUDT15 — the same protein under two assays (|rho| vs measured fitness):")
+    print(vtab[["assay", "n", "gemme", "rosetta", "boltz"]].to_string(
+        index=False, float_format=lambda v: f"{v:.3f}"))
+    print("\nVAMP-seq contrasts, cluster bootstrap over the 156 positions:")
+    print(vboot.to_string(index=False, float_format=lambda v: f"{v:.3f}"))
+    fig_vampseq(vtab, vboot, FIGS / "05_vampseq_dissociation.png")
+    print(f"\nwrote {FIGS / '05_vampseq_dissociation.png'}")
+    print(f"wrote {HERE / 'vampseq_dissociation.csv'}, {HERE / 'vampseq_bootstrap.csv'}")
     return 0
 
 
