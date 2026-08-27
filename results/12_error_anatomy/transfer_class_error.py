@@ -68,7 +68,7 @@ CORPORA = {
     "s669": dict(label="S669", diag="exp14_s669_results_s669_locality.csv",
                  onehot="exp14_s669_results_onehot_s669.csv", min_res=12, min_pair=6),
     "fpfilt": dict(label="FireProt <=500 (filt)", diag="exp14_fpfilt_results_locality_paired.csv",
-                   onehot="exp14_fpfilt_results_onehot_fp.csv", min_res=40, min_pair=15),
+                   onehot="exp14_fpfilt_results_onehot_fp.csv", min_res=40, min_pair=10),
 }
 
 
@@ -167,6 +167,14 @@ def main() -> None:
               f"r={pearsonr(d.diag, d.ddg)[0]:.3f}  MAE={ov.MAE:.3f}  "
               f"MAE/sd={ov.MAE_sd:.3f}  skill={ov.skill_vs_onehot:+.3f}\n{'=' * 78}")
 
+        # Overall + the isosteric split, so the report reads every number from a table.
+        rows.append(ov.to_frame().T.assign(**{"class": "all", "corpus": spec["label"],
+                                              "grouping": "overall"}))
+        iso = d.dvol.abs() < 30
+        for lab, sub in [("near-isosteric", d[iso]), ("rest", d[~iso])]:
+            rows.append(stats(sub).to_frame().T.assign(**{"class": lab, "corpus": spec["label"],
+                                                          "grouping": "isosteric"}))
+
         d = d.assign(pair=d.wt_aa + "->" + d.mut_aa)
         for by, min_n, title in [("wt_aa", spec["min_res"], "FROM residue"),
                                  ("mut_aa", spec["min_res"], "TO residue"),
@@ -207,9 +215,11 @@ def main() -> None:
     # ----------------------------------------------------------- write + plot
     pd.concat(rows, ignore_index=True).to_csv(HERE / "transfer_class_tables.csv", index=False)
     pd.DataFrame(boots).to_csv(HERE / "transfer_class_bootstrap.csv", index=False)
+    pd.DataFrame([dict(grouping=k[0], metric=k[1], spearman=v[0], p=v[1], k=v[2])
+                  for k, v in rep.items()]).to_csv(HERE / "transfer_replication.csv", index=False)
     make_figure(data, pd.DataFrame(boots), rep)
     print(f"\nWrote transfer_class_tables.csv, transfer_class_bootstrap.csv, "
-          f"figures/03_transfer_class_error.png")
+          f"transfer_replication.csv, figures/03_transfer_class_error.png")
 
 
 def make_figure(data: dict, boots: pd.DataFrame, rep: dict) -> None:

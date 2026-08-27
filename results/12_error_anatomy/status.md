@@ -30,8 +30,11 @@ All numbers are in the Log below; the analysis completed and printed every table
 - [x] Add `figures/README.md` index; add the Tsuboyama figure as `02_*`.
 - [x] **Transfer pass** (2026-08-27): `transfer_class_error.py`, figure `03_*`, README
       section "The transfer pass" + the per-residue-ranking correction.
-- [ ] `details.md` + `build_report.py` → `report.pdf`. Must carry the transfer pass, and
-      must NOT reproduce the retracted per-residue error ranking.
+- [x] `build_report.py` → `report.pdf` (3 pp., English, paper-facing). Carries the transfer
+      pass; does not reproduce the retracted per-residue error ranking — it reports the
+      non-replication itself as the finding.
+- [ ] `details.md` (optional appendix; the README provenance table + this log already carry
+      everything the report excludes).
 - [x] **Follow-up experiment (the actionable one):** balanced-MSE loss reweighting for
       the stabilizing tail, following constraint-aware SPURS (arXiv 2606.08100). Done as
       results/13 — the tail is unmoved by loss reweighting alone.
@@ -41,6 +44,29 @@ All numbers are in the Log below; the analysis completed and printed every table
 None. Runs locally in ~15–25 min.
 
 ## Log — newest first
+
+### 2026-08-27 (tarde) — report.pdf
+
+`build_report.py` (misma convencion que results/14: HTML autocontenido con figuras en base64
+→ wkhtmltopdf). **Todo numero se lee de las tablas commiteadas**, asi que el PDF no puede
+divergir de ellas. Para que eso fuera cierto del lado in-distribution hizo falta
+`indist_class_tables.py`, que condensa el `tsu_mut_classes.csv` (gitignored, lo produce
+`tsu_class_error.py`) a `indist_class_tables.csv`. `transfer_class_error.py` ahora emite
+tambien filas `overall` e `isosteric` y un `transfer_replication.csv`, que son los numeros
+que el report citaba a mano.
+
+Estructura del report (3 pp.): pregunta → metodo (4 convenciones) → burial es artefacto de
+escala → la cola estabilizante es el deficit dominante → que clases siguen duras en
+transferencia (tabla con los DOS corpus) → donde el embedding le gana a la matriz de
+sustitucion → interpretacion. Sin provenance, sin rutas, sin la historia de la correccion:
+la no-replicacion del ranking por residuo entra como **hallazgo** ("no citar rankings por
+residuo de un solo benchmark de este tamaño"), no como retraccion.
+
+Ajustes menores hechos al pasar: `min_pair` de FireProt 15 → 10 para que W→A (n=14) entre en
+la tabla commiteada; README alineado a los valores recalculados (→Pro 0.55 → **0.56**, otras
+0.44 → **0.43**, skill S669 +0.143 → **+0.145**) — eran redondeos del pase original, ahora la
+fuente de verdad es la tabla.
+
 
 ### 2026-08-27 — la anatomia de error en TRANSFERENCIA, rehecha con el readout correcto
 
