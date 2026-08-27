@@ -2,7 +2,7 @@
 
 **State:** ✅ Done. Both benchmarks extracted (S669 541/62, Ssym 337/13, full coverage),
 scored (A/B/D × full/filtered/common), written up (README + figure). Optional: report.pdf.
-**Last updated:** 2026-07-20
+**Last updated:** 2026-08-27
 
 ## Results (pooled Pearson r; per-protein median in parens)
 | Benchmark | A Tsuboyama (leak-free) | B FireProt full → filt25 | D finetune full → filt25 |
@@ -124,6 +124,48 @@ Method (reuse `ddg.evaluation.cluster`, MMseqs2):
 - Feature extraction is the long pole (cluster GPU). Everything else is local + cheap.
 
 ## Log — newest first
+
+### 2026-08-27 — report.pdf + segunda figura, y **el README estaba desactualizado**
+
+**Hallazgo que importa.** El banner de corrección del README decía "Every number below is
+the corrected one" — **y no lo era**. Las dos tablas de resultados (S669 y Ssym), la línea de
+antisimetría y los hallazgos 2–4 seguían con los valores **pre-corrección**, idénticos a
+`results_pre-correction.csv`. Solo la sección "What the correction changed" tenía los
+corregidos. Es decir: quien leyera el README se llevaba los números defectuosos con un cartel
+que le aseguraba lo contrario.
+
+Corregido contra `results.csv`. Los cambios que importan:
+
+| | README decía | real (corregido) |
+|---|---|---|
+| S669 A full | 0.255 (0.46) | **0.415 (0.55)** |
+| S669 A common25 | 0.214 (0.48) | **0.361 (0.59)** |
+| S669 B filt25 | 0.404 (0.56) | 0.460 (0.59) |
+| S669 D filt25 | 0.408 (0.61) | 0.453 (0.54) |
+| Ssym B full | 0.891 (0.89) | 0.850 (0.85) |
+| antisimetría A/B/D | 0.91/0.98/0.97, "bias ≈ 0.05" | 0.945/0.979/0.973, bias **+0.25/+0.04/−0.23** |
+
+**Una conclusión se da vuelta.** El hallazgo 4 decía "fine-tuning earns its keep on the hard
+benchmark: regime D has the best S669 per-protein median (0.61)". Con los números corregidos
+**D es el último** en mediana por proteína (0.54 contra 0.59 de A y B) y está por debajo de B
+en r filtrado (0.453 vs 0.460). Reescrito: fine-tuning **no** rinde acá — lo que además ahora
+concuerda con results/08, donde también se lavaba.
+
+También revisado el hallazgo 3: la brecha B−A en common25 pasó de 0.190 a **0.099**, la mitad.
+
+**Figura nueva** `02_correction_and_antisymmetry.png`: (a) el efecto de la corrección por
+benchmark × subset × régimen, con la flecha antes→después — la ganancia sigue el tamaño del
+corpus de entrenamiento (A +0.15/+0.16 contra +0.02/+0.06 de B y D), que es la firma que
+predice el argumento de las épocas; (b) el sesgo residual de antisimetría en Ssym, que es
+**dependiente del régimen** y estaba subestimado en el README.
+
+**`report.pdf`** construido (3 páginas, `build_report.py`, números leídos de los CSV).
+Verificado: 2 figuras embebidas, 0 términos de procedencia. La figura 01 ya estaba
+regenerada post-corrección (01:26 contra 01:25 del CSV), confirmado.
+
+**`figures/README.md`** creado — no existía, y las guidelines lo piden. Incluye la advertencia
+de que las barras "filtered" de `01` **no son comparables entre regímenes** (cada una descarta
+un conjunto distinto de proteínas); solo `common25` sostiene una afirmación cruzada.
 
 ### 2026-08-27 — regime A is overfit; its S669 number is understated (found in results/14)
 

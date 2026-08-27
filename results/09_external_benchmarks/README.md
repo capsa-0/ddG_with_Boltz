@@ -55,19 +55,21 @@ variant subset for all three regimes — the fair cross-regime comparison).
 ### S669 (541 variants / 62 proteins)
 | Regime | full | filtered (25%) | common (25%, n=360) |
 |---|---|---|---|
-| **A — Tsuboyama** | 0.255 (0.46) | 0.255 (0.46) — *0 leaky* | 0.214 (0.48) |
-| **B — FireProt** | 0.500 (0.58) | 0.404 (0.56) | 0.404 (0.56) |
-| **D — fine-tuned** | 0.462 (0.61) | 0.408 (0.61) | **0.408 (0.61)** |
+| **A — Tsuboyama** | 0.415 (0.55) | 0.415 (0.55) — *0 leaky* | 0.361 (0.59) |
+| **B — FireProt** | 0.546 (0.59) | 0.460 (0.59) | **0.460 (0.59)** |
+| **D — fine-tuned** | 0.506 (0.54) | 0.453 (0.54) | 0.453 (0.54) |
 
 ### Ssym (337 variants / 13 proteins)
 | Regime | full | filtered (25%) | common (25%, n=47) |
 |---|---|---|---|
-| **A — Tsuboyama** | 0.728 (0.73) | 0.728 (0.73) — *0 leaky* | 0.845 (0.72) |
-| **B — FireProt** | 0.891 (0.89) | 0.871 (0.72) | 0.871 (0.72) |
-| **D — fine-tuned** | 0.797 (0.75) | 0.864 (0.71) | 0.864 (0.71) |
+| **A — Tsuboyama** | 0.759 (0.75) | 0.759 (0.75) — *0 leaky* | 0.857 (0.75) |
+| **B — FireProt** | 0.850 (0.85) | 0.849 (0.59) | 0.849 (0.59) |
+| **D — fine-tuned** | 0.780 (0.76) | 0.863 (0.76) | **0.863 (0.76)** |
 
-Antisymmetry (Ssym): corr(direct, −reverse) = **0.91 / 0.98 / 0.97** for A/B/D, with
-bias ≈ 0.05 kcal/mol — the model treats a reverse mutation as ≈ minus the forward.
+Antisymmetry (Ssym): corr(direct, −reverse) = **0.945 / 0.979 / 0.973** for A/B/D. The
+model treats a reverse mutation as ≈ minus the forward, but the residual bias is *not*
+negligible and differs by regime: **+0.25 / +0.04 / −0.23** kcal/mol. Only FireProt-only
+training is near-unbiased; Tsuboyama-only over-destabilises and fine-tuning over-corrects.
 
 See `figures/01_pooled_r_full_vs_filtered.png`; full numbers in `results.csv`.
 
@@ -80,16 +82,19 @@ See `figures/01_pooled_r_full_vs_filtered.png`; full numbers in `results.csv`.
    Ssym essentially vanishes (**A 0.85 ≈ B 0.87 ≈ D 0.86**): it was leakage.
 2. **The two benchmarks tell different stories.** Ssym is narrow and easy (a handful of
    well-studied folds) — everyone scores ~0.7–0.9. **S669 is the honest hard test**
-   (diverse, dissimilar); pooled r is modest (0.21–0.50), reflecting how difficult blind
+   (diverse, dissimilar); pooled r is modest (0.36–0.55), reflecting how difficult blind
    cross-protein ΔΔG *magnitude* prediction genuinely is.
-3. **Training distribution matters more than raw label count.** On the diverse S669, even
-   after homology filtering, FireProt-based regimes (B/D ≈ 0.40) beat Tsuboyama-only
-   (A ≈ 0.21) in pooled r — FireProt's *natural* proteins resemble S669 far more than
-   Tsuboyama's *designed* mini-domains. Regime A ranks well *within* a protein
-   (median 0.46–0.48) but calibrates poorly *across* proteins (pooled 0.21–0.26).
-4. **Fine-tuning earns its keep on the hard benchmark.** Regime D has the best S669
-   per-protein median (0.61) and it is unchanged by homology filtering — in contrast to
-   the within-FireProt result (results/08) where fine-tuning washed out.
+3. **Training distribution matters, but less than it appeared.** On the diverse S669, after
+   homology filtering, FireProt-based regimes (B/D 0.45–0.46) still beat Tsuboyama-only
+   (A 0.36) in pooled r — FireProt's *natural* proteins resemble S669 more than
+   Tsuboyama's *designed* mini-domains. But the corrected gap is **0.099**, roughly half the
+   0.190 the defective estimator reported. Regime A still ranks better *within* a protein
+   (median 0.59) than it calibrates *across* proteins (pooled 0.36).
+4. **Fine-tuning does *not* earn its keep — a claim the correction reversed.** On the
+   pre-correction numbers regime D had the best S669 per-protein median (0.61) and the best
+   filtered pooled r. Corrected, D is **last** on S669 per-protein median (0.54 against
+   A and B at 0.59) and below B on filtered pooled r (0.453 vs 0.460). This now agrees with
+   the within-FireProt result (results/08), where fine-tuning also washed out.
 
 ## Reproduce
 

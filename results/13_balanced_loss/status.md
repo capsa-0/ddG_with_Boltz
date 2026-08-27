@@ -1,7 +1,7 @@
 # Status — 13_balanced_loss
 
 **State:** ✅ Done
-**Last updated:** 2026-08-25
+**Last updated:** 2026-08-27
 
 ## Current state
 
@@ -49,6 +49,29 @@ but cannot create discrimination the features do not carry.
 None. Runs locally, CPU torch, ~1.5–2 h for the full 30 model fits.
 
 ## Log — newest first
+
+### 2026-08-27 — report.pdf, y las diferencias pareadas ahora se guardan
+
+**`bootstrap.py` calculaba las diferencias pareadas y las tiraba.** Las imprimía por pantalla
+y solo persistía los valores absolutos por pérdida en `bootstrap.csv` — así que **la tabla
+titular del README (las diferencias vs MSE con IC) no estaba respaldada por ninguna tabla
+comprometida**, que es exactamente el riesgo de deriva que el reporte debe evitar. Ahora
+escribe `bootstrap_paired.csv` (loss, ref, metric, mean, lo95, hi95, excludes_zero).
+
+Re-corrido: reproduce el README exacto — bmc stab_bias **−0.113 [−0.144, −0.080]**,
+r −0.052 [−0.131, −0.001], mae +0.088 [+0.076, +0.100], y stab_rho / auc_stab / detpr30 todos
+cruzando cero. LDS dominada. **Ningún número del README cambió**; lo que cambió es que ahora
+son verificables.
+
+Nota de reproducibilidad: hay que correrlo con `conda run -n ddG_with_Boltz`. El python base
+del workstation tiene sklearn 1.7.2, donde `MLPRegressor((256,64), ...)` posicional falla
+(el primer parámetro posicional pasó a ser `loss`); el env del proyecto tiene 1.6.1.
+
+**`report.pdf`** construido (2 páginas, `build_report.py`, todo leído de `results.csv` y
+`bootstrap_paired.csv`). Verificado: figura embebida, 0 términos de procedencia. Estructura
+el resultado sobre la distinción que lo define — sesgo (arreglable por la pérdida) contra
+discriminación (propiedad de la representación congelada) — y agrega la sección de
+transferencia externa, donde ninguna pérdida se separa de otra.
 
 ### 2026-08-25 (later) — full run + bootstrap: fixes the bias, not the blindness
 

@@ -83,7 +83,21 @@ def main():
             rows.append({"loss": k, "metric": m, "mean": np.nanmean(v),
                          "lo95": lo, "hi95": hi})
     pd.DataFrame(rows).to_csv(OUT / "bootstrap.csv", index=False)
-    print(f"\nwrote {OUT/'bootstrap.csv'}")
+
+    # The PAIRED differences are the result of this experiment -- the absolute CIs
+    # above overlap heavily because they carry the between-protein variance that the
+    # pairing cancels. They were previously printed and thrown away, which left the
+    # README's headline table unbacked by any table; persist them.
+    prows = []
+    for k in ("bmc", "lds"):
+        for m in keys:
+            v = np.array(diff[k][m], float)
+            lo, hi = np.nanpercentile(v, [2.5, 97.5])
+            prows.append({"loss": k, "ref": "mse", "metric": m,
+                          "mean": np.nanmean(v), "lo95": lo, "hi95": hi,
+                          "excludes_zero": bool(lo > 0 or hi < 0)})
+    pd.DataFrame(prows).to_csv(OUT / "bootstrap_paired.csv", index=False)
+    print(f"\nwrote {OUT/'bootstrap.csv'}, {OUT/'bootstrap_paired.csv'}")
 
 
 if __name__ == "__main__":
