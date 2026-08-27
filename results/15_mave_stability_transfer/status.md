@@ -1,7 +1,7 @@
 # Status — 15_mave_stability_transfer
 
 **State:** ✅ Done. Full corpus (25,224 structures, 0 gaps), both comparison layers scored, bootstrap CIs in, figures rendered.
-**Last updated:** 2026-08-26
+**Last updated:** 2026-08-27
 
 ## Current state
 
@@ -51,6 +51,67 @@ Done so far, all CPU-only on the workstation:
 - None.
 
 ## Log — newest first
+
+### 2026-08-27 — reproducimos su Figura 1 con nuestro ΔΔG; y una primera cota al confundidor del MSA
+
+**Qué se hizo.** `paper_figures.py` (nuevo, local, sin GPU, ~2 min): reproduce la Figura 1
+de Høie et al. poniendo nuestro ΔΔG en el lugar del de Rosetta, y agrega un análisis que
+las correlaciones del `score.py` no pueden dar — de dónde viene nuestra ventaja.
+
+**Gate de fidelidad, primero.** Con el ΔΔG *de ellos* sobre nuestro subconjunto Tier-1 de
+13 datasets, las dos esquinas que el paper cita en el texto vuelven a salir:
+
+| sector | nosotros | ellos publican (39 datasets) |
+|---|---|---|
+| ΔΔE < 0,25 y ΔΔG < 2,0 → % alta fitness | **84 %** | 81 % |
+| ΔΔE > 0,75 y ΔΔG > 4,5 → % baja fitness | **96 %** | 93 % |
+
+`_check_orientation` aborta si estos se van a más de 15 puntos, así que las figuras no se
+generan sobre un arnés roto.
+
+**Gotcha de datos, verificado y no asumido.** La columna `gemme_dde` de
+`data/raw/mave_hoie_le200_labels.csv` es el `gemme_score_01` de PRISM tal cual, y corre
+**al revés de la ΔΔE del paper**: alto = evolutivamente tolerada. Correlaciona
+*positivamente* con fitness (ρ agrupado +0,27) — por eso `layer1_direct.csv` muestra
+`rho_gemme > 0` mientras los dos brazos de ΔΔG son negativos. Las figuras usan
+ΔΔE = 1 − `gemme_dde`, y esa elección se valida contra los porcentajes publicados, no
+contra el nombre de la columna. Documentado en `figures/README.md`.
+
+**Resultado 1 — el paisaje se reproduce, pero sobre un eje comprimido.** sd de nuestro
+ΔΔG 0,97 kcal/mol contra 2,14 de Rosetta, así que con los cortes absolutos del paper
+(2/3/4,5) la columna alta queda casi vacía (46 variantes contra 1.129 de Rosetta). Con
+cortes **al mismo cuantil** los sectores se llenan y la estructura es prácticamente
+idéntica a la de Rosetta: fila de ΔΔE alta 68/81/88/96 % contra 71/81/88/96 %.
+La compresión de amplitud ya era conocida (results/05, pendiente 0,27) — esto la vuelve
+visible en el marco del paper.
+
+**Resultado 2 (nuevo) — más de la mitad de nuestra ventaja sobre Rosetta se explica por
+conservación.** AUC para detectar pérdida de función, bootstrap de clusters sobre las 11
+proteínas, pareado:
+
+| | Rosetta | nuestro | Δ | IC 95 % |
+|---|---|---|---|---|
+| agrupado | 0,710 | 0,759 | **+0,048** | [+0,014, +0,079] ✔ |
+| dentro de cada cuartil de ΔΔE | 0,633 | 0,654 | **+0,021** | [−0,010, +0,052] ✗ |
+
+Condicionar sobre conservación se lleva el 56 % de la ventaja, y lo que queda ya no
+despega de cero. **Es la primera cota cuantitativa al confundidor del MSA que el README
+deja abierto, y se obtuvo sin GPU.** Lectura honesta en las dos direcciones: el residuo es
+positivo en los cuatro estratos (+0,018 a +0,023), así que "no despega de cero" es falta de
+potencia con 11 proteínas, no ausencia de efecto. **No reemplaza el test `no_msa: true`** —
+lo hace más urgente, y le da una predicción: si la ganancia fuera puramente evolutiva, el
+condicional debería caer a ~0.
+
+El estadístico condicional se calcula como **una cantidad por resample** (media de los
+cuatro AUC de estrato), no promediando los cuatro intervalos — promediar IC no da un IC.
+
+**Salidas:** `figures/03_landscape_reproduction.png`, `figures/04_conservation_strata.png`,
+`conservation_strata_auc.csv`, `paper_figures.py`. Nada se re-entrenó: usa
+`mave_ddg_predictions.csv` (regime `mean`) ya en disco.
+
+**Pendiente si esto se promueve:** las tres figuras que faltan de su Fig 2A (movimiento por
+dataset) ya están cubiertas por `02_per_dataset_direct.png`; el README del folder todavía no
+cita `03`/`04`.
 
 ### 2026-08-27 — FINAL: corpus complete, result stands, one confound left open
 

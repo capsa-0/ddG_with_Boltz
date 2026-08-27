@@ -46,7 +46,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from ddg.evaluation.labels import add_label_columns, feature_columns
+from ddg.evaluation.labels import (TRANSFER_BLOCKS, add_label_columns,
+                                   block_columns, feature_columns)
 from ddg.evaluation.metrics import compute_metrics, summarize
 from ddg.evaluation.models import make_model
 
@@ -91,11 +92,24 @@ def run_transfer(
     Returns a dict with the pooled metrics, the per-protein distribution, a
     ``sign_flipped`` flag, the in/out-of-range split, and a predictions DataFrame.
     """
-    # Feature columns common to both tables (both are raw-Δz here, so this is the
-    # full zdiag_/zpool_ set; the intersection guards against schema drift).
-    ftr = set(feature_columns(train_df, drop_s=drop_s))
-    fte = set(feature_columns(test_df, drop_s=drop_s))
-    feat_cols = sorted(ftr & fte)
+    # Readout. CHANGED 2026-08-27 (results/14): this module trains on one corpus and
+    # tests on another, so it takes the TRANSFER readout — the pair-track diagonal
+    # alone — rather than every numeric column. On two blind corpora the diagonal
+    # (128d) matches every 256-d construction, while the pooled levels wtz/mtz carry a
+    # corpus-specific per-protein offset costing -0.141 [-0.241,-0.020] r. Tables built
+    # before the all-blocks default may lack zdiag_*; fall back to the old behaviour
+    # (every shared numeric column) with a warning rather than failing.
+    try:
+        shared = set(block_columns(train_df, TRANSFER_BLOCKS)) & \
+                 set(block_columns(test_df, TRANSFER_BLOCKS))
+        feat_cols = sorted(shared, key=lambda c: int(c.rsplit("_", 1)[1]))
+        ftr = fte = shared
+    except ValueError as exc:
+        logger.warning("transfer readout unavailable (%s); falling back to all shared "
+                       "numeric columns — see results/14 on why this transfers worse", exc)
+        ftr = set(feature_columns(train_df, drop_s=drop_s))
+        fte = set(feature_columns(test_df, drop_s=drop_s))
+        feat_cols = sorted(ftr & fte)
     if not feat_cols:
         raise ValueError("no shared feature columns between train and test tables")
     if ftr != fte:

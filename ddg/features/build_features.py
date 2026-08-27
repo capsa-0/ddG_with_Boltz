@@ -45,10 +45,19 @@ Z_DIM = 128  # Boltz-2 pair-track (z) feature dimension
 
 # Every z-derived block this builder knows how to emit, in canonical column order.
 Z_BLOCKS = ("zdiag", "zpool", "wtz", "mtz")
-# What the pipeline emits when the experiment YAML says nothing: the raw-Δz pair
-# that every experiment up to 06 used. Kept as the default so existing configs
-# keep producing byte-identical feature tables.
-DEFAULT_Z_BLOCKS = ("zdiag", "zpool")
+# What the pipeline emits when the experiment YAML says nothing.
+#
+# CHANGED 2026-08-27 (results/14): emit ALL z blocks by default, so the feature
+# table is a superset and downstream code can *select* a readout without a rebuild.
+# The blocks are not equivalent — results/14 found, on two blind corpora:
+#   - `zdiag` alone (128d) matches every 256-d construction on TRANSFER, and beats
+#     a substitution-identity lookup by +0.26 r, so it is not an amino-acid table;
+#   - the pooled LEVELS `wtz`/`mtz` carry a corpus-specific per-protein offset (the
+#     results/11 domain-shift term) and cost -0.141 r on cross-dataset transfer,
+#     though they are worth +0.017 r IN-DISTRIBUTION;
+#   - the pooled DIFFERENCE `zpool` = mtz - wtz cancels that offset and is neutral.
+# So: build everything, and choose per task. See ddg.evaluation.labels.TRANSFER_BLOCKS.
+DEFAULT_Z_BLOCKS = ("zdiag", "zpool", "wtz", "mtz")
 
 
 def normalize_blocks(blocks) -> tuple[str, ...]:

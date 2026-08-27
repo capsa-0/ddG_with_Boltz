@@ -472,3 +472,57 @@ strands the run.
 **Progress at pause:** roughly 2,000 of 7,562 mutations have structures (44 shards done
 of 256; ~28 shards' worth of real work beyond the 1,063 pre-banked). Remaining ≈ 212
 shards × ~33 min ÷ 2 slots ≈ **58 h**.
+
+### 2026-08-27 — stopped at 29.6 % and finished; the subset's glycine result REVERSES
+
+Resumed (1818–1821, throttle raised to %3), then stopped at the user's request.
+**`prepare` took 19m54s vs 1h48m before** — the MSA fix (`14b46c2`) logged
+`MSA mutants: 0 written, 7562 already present (skipped)` in 1.3 s, confirming it works.
+
+Salvaged **42** structures from the three in-flight shards. The shardless slim then hit
+one **corrupt** prediction (`GLA_human_R7W`, truncated when its shard was killed
+mid-write), deleted it and aborted — the corruption guard behaving correctly. Re-ran:
+slim OK (raw 9.8 GB → 0, 94 shards), features OK.
+
+**Final dataset: 2,239 mutations over 177 positions (29.6 % of 7,562), 3.7× the subset
+and no longer glycine-dominated — glycines are 505/2,238 (23 %) vs 82 % before.**
+
+**Predictions:** A +1.28 [−1.21, +4.64], B +1.17 [−3.95, +6.40], D +1.33 [−1.05, +5.52].
+Regime agreement rose sharply (Pearson 0.78–0.92 vs 0.63–0.80) and across-regime SD fell
+to **0.29** (from 0.52) — the wider corpus makes the three regimes converge.
+
+## The subset's headline finding was a small-sample artifact
+
+| | subset (604, 82 % Gly) | **full (2,238, 23 % Gly)** |
+|---|---|---|
+| overall ρ | +0.504 | **+0.595** |
+| glycine ρ | +0.532 | **+0.458** |
+| non-glycine ρ | +0.445 (n=110) | **+0.639** (n=1,733) |
+| flagged median ρ | +0.375 | **+0.261** |
+| other positions median ρ | +0.262 | **+0.404** |
+
+**Both comparisons flip.** With only 110 non-glycine mutations the subset made glycines
+look *better* than the rest; with 1,733 they are clearly **worse** (+0.458 vs +0.639).
+That now **agrees with results/12**, which found buried glycines a genuine weak spot in
+magnitude — and removes the discrepancy I had reconciled by appealing to
+ranking-vs-magnitude. The honest reading is simpler: the subset was underpowered.
+
+Likewise the **10 flagged positions now agree with FoldX *worse* than the rest**
+(median ρ +0.261 vs +0.404), the opposite of the subset. Consistent with the user's
+original observation, though still not significant at position level
+(Mann-Whitney **p = 0.120**; glycine-vs-not **p = 0.058**) — per-position ρ stays noisy.
+At *mutation* level, where the power is, the glycine gap is unambiguous.
+
+**Other numbers:** removing FoldX's clash tail barely changes ρ now (+0.602 at
+FoldX < 10, vs +0.595 overall) — unlike the subset, where it *fell* from 0.504 to 0.379.
+That was the glycine bias too. Scale mismatch persists but is milder: FoldX per-position
+SD 5.36 vs Boltz 0.82 (6.5×, was 10.3×); raw difference still −0.948 correlated with
+FoldX alone. Stabilizing predictions: 173/2,238 (7.7 %), only 20 below −0.5 — the
+results/12 stabilizing blindness, still visible.
+
+**Artifacts refreshed:** `scan_predictions_mean.csv`, `scan_summary.json`,
+`compare_foldx_*_mean.csv`, `discrepancy_by_position.csv`, `boltz_minus_foldx.pdb`,
+all four figures.
+
+**Remaining:** 5,323 mutations unpredicted (221 positions untouched, 177 covered). The
+run is resumable exactly as before.

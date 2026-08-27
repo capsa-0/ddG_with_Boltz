@@ -37,14 +37,22 @@ from sklearn.impute import SimpleImputer
 from sklearn.neural_network import MLPRegressor
 from sklearn.preprocessing import StandardScaler
 
+from ddg.evaluation.labels import TRANSFER_BLOCKS, IN_DISTRIBUTION_BLOCKS  # noqa: F401
 from ddg.scan.mutations import AA_ORDER
 
 logger = logging.getLogger(__name__)
 
 Z_DIM = 128
 N_SEEDS = 5
-# The concat representation adopted in results/07 and used by 08/09.
-FEATURES = [f"{block}_{j}" for block in ("wtz", "mtz") for j in range(Z_DIM)]
+# Readout. CHANGED 2026-08-27 (results/14): a scan predicts a protein the model was
+# never trained on, so this is a TRANSFER task and takes the transfer readout — the
+# pair-track diagonal alone. On two blind corpora it matches every 256-d construction
+# at half the width, while the concat levels previously used here (`wtz`+`mtz`) cost
+# -0.141 [-0.241,-0.020] r on cross-dataset transfer by carrying a corpus-specific
+# per-protein offset. Set FEATURE_BLOCKS = IN_DISTRIBUTION_BLOCKS for same-corpus work.
+FEATURE_BLOCKS = TRANSFER_BLOCKS
+FEATURES = [f"{block}_{j}" for block in FEATURE_BLOCKS for j in range(Z_DIM)]
+_IS_DIFFERENCE = FEATURE_BLOCKS == ("zdiag",)
 
 REGIMES = ("A_tsuboyama", "B_fireprot", "D_finetuned")
 REGIME_LABEL = {
@@ -62,8 +70,12 @@ DEFAULT_FIREPROT = "data/processed/fireprot_le500/features_ablation.parquet"
 # --------------------------------------------------------------------------- #
 def _members() -> list[MLPRegressor]:
     """The 5 seed-decorrelated MLPs whose predictions get averaged."""
+    # CORRECTED 2026-08-27: was `max_iter=250, early_stopping=False`. `max_iter`
+    # counts EPOCHS, so the regime with the most data over-trains hardest; in
+    # results/09 that cost regime A ~0.16 Pearson on S669. Matches make_model("mlp").
     return [MLPRegressor((256, 128, 64), alpha=3e-3, learning_rate_init=1e-3,
-                         batch_size=256, max_iter=250, early_stopping=False,
+                         batch_size=256, max_iter=1000, early_stopping=True,
+                         n_iter_no_change=25, validation_fraction=0.1,
                          random_state=seed, warm_start=True)
             for seed in range(N_SEEDS)]
 
@@ -73,19 +85,22 @@ def _matrix(df: pd.DataFrame) -> np.ndarray:
     missing = [c for c in FEATURES if c not in df.columns]
     if missing:
         raise ValueError(
-            f"features table is missing {len(missing)} concat column(s) "
+            f"features table is missing {len(missing)} feature column(s) "
             f"(e.g. {missing[:3]}). Rebuild it with "
             f"`feature.blocks: [zdiag, zpool, wtz, mtz]` in the experiment YAML.")
     return df[FEATURES].replace([np.inf, -np.inf], np.nan).to_numpy(float)
 
 
 def _augment(X: np.ndarray, y: np.ndarray):
-    """Antisymmetry for concat features: swap [wtz|mtz] halves, negate ΔΔG.
+    """Antisymmetry, dispatched on the feature form. ΔΔG(A→B) = −ΔΔG(B→A).
 
-    ΔΔG(A→B) = −ΔΔG(B→A), and for this representation the reverse mutation is just
-    the two halves exchanged — so the identity is expressible as an input transform
-    and doubles the training set for free.
+    concat (`wtz`|`mtz`): the reverse mutation exchanges the two halves.
+    difference (`zdiag`): it NEGATES the vector — a half-swap is meaningless on a
+    difference block, which is why difference-form augmentation had never been
+    computable before results/14.
     """
+    if _IS_DIFFERENCE:
+        return np.vstack([X, -X]), np.concatenate([y, -y])
     swapped = np.concatenate([X[:, Z_DIM:], X[:, :Z_DIM]], axis=1)
     return np.vstack([X, swapped]), np.concatenate([y, -y])
 

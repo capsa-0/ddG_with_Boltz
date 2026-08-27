@@ -20,6 +20,47 @@ POLAR = set("STNQ")
 POS = set("KRH")
 NEG = set("DE")
 
+# ----- Readout selection (results/14) -----------------------------------------
+# The z blocks in a features table are NOT interchangeable, and which to use depends
+# on whether train and test come from the same corpus. Measured on two blind corpora
+# with paired cluster bootstraps over proteins:
+#
+#   TRANSFER (train and test from different corpora)
+#     `zdiag` alone (128d) matches every 256-d construction: diag - dz is
+#     +0.012 [-0.031,+0.053] on S669 and -0.006 [-0.034,+0.024] on FireProt, and it
+#     beats a substitution-identity lookup by +0.26 r on both, so it is structural.
+#     The pooled LEVELS wtz/mtz carry a corpus-specific per-protein offset (the
+#     results/11 domain-shift term) and cost -0.141 [-0.241,-0.020] r.
+#
+#   IN-DISTRIBUTION (train and test from the same corpus)
+#     The pooled half earns its keep: dropping it costs -0.017 [-0.023,-0.010] r.
+#     Use the full table.
+#
+# In-distribution holdout performance MIS-RANKS readouts for cross-corpus use: the
+# concat levels are the best configuration in-distribution and among the worst on
+# transfer. Select deliberately; do not infer one regime from the other.
+TRANSFER_BLOCKS = ("zdiag",)
+IN_DISTRIBUTION_BLOCKS = ("zdiag", "zpool", "wtz", "mtz")
+
+
+def block_columns(df: pd.DataFrame, blocks=TRANSFER_BLOCKS) -> list[str]:
+    """Feature columns for the named z blocks, in canonical order.
+
+    Raises if a requested block is absent — a features table built before
+    2026-08-27 may predate the all-blocks default in ddg.features.build_features.
+    """
+    cols = []
+    for b in blocks:
+        got = [c for c in df.columns if c.startswith(f"{b}_")
+               and c[len(b) + 1:].isdigit()]
+        if not got:
+            raise ValueError(
+                f"features table has no '{b}_*' columns; rebuild it with "
+                f"`feature.blocks: [zdiag, zpool, wtz, mtz]` in the experiment YAML")
+        cols += sorted(got, key=lambda c: int(c.rsplit("_", 1)[1]))
+    return cols
+
+
 # Metadata / target columns that are never features.
 META_COLS = ("mut_id", "wt_id", "sample_id", "mutation", "ddg")
 # Label columns this module adds (also excluded from the feature matrix).
