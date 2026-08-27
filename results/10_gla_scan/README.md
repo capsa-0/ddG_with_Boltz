@@ -69,6 +69,10 @@ The 398 extra rows in that file are wild-type-to-itself (`X→X`) entries, not m
 | Train (A, D) | `data/processed/tsuboyama_bench_fast/features_ablation.parquet` |
 | Train (B, D) | `data/processed/fireprot_le500/features_ablation.parquet` |
 | FoldX baseline | `ddg_varmed_by_mutation_foldx.csv` (this folder) |
+| Percentile shift | `percentile_shift_mean.csv` (share of each group below the `pct(Boltz)=pct(FoldX)` diagonal) |
+| Activity proxy | `lukas2013_activity.csv` (parsed from PLoS Genet 9(8):e1003632, Table S1) |
+| Activity comparison | `compare_lukas.py` → `compare_lukas_merged.csv`, `figures/04_lukas_activity.png` |
+| Active-site definition | UniProt P06280 `ACT_SITE`/`BINDING` ∪ 5 Å shell around the galactose in PDB `1R47`; recheck with `compare_lukas.py --pdb 1R47.pdb` |
 
 ## Reproduce
 
@@ -100,13 +104,20 @@ sbatch slurm/scan_predict.sbatch experiment_configs/scan_GLA_human.yaml
   agreeing that buried-glycine substitutions are bad.
 - **No measured ΔΔG exists for GLA** (ProThermDB / ThermoMutDB / FireProtDB / MaveDB all
   checked; the one biophysical study reports urea C₀.₅, not ΔΔG). GLA is also absent from
-  every training corpus, so the predictions are leakage-free — but unvalidatable here.
+  every training corpus, so the predictions are leakage-free.
+- **The one external measurement that does overlap** is residual enzyme activity for 157
+  Fabry missense variants (Lukas et al. 2013, HEK293H), of which **45 are scored here**.
+  Predicted ΔΔG ranks against it with the right sign — **ρ = −0.305** (p = 0.042), and
+  **−0.328** (p = 0.036) over the **41** that are not at active-site positions — versus
+  −0.275 / −0.343 for FoldX on the same variants, a difference indistinguishable from
+  zero (paired CI [−0.25, +0.29]). Activity is not stability, so this is a weak ordinal
+  check, not a ΔΔG validation.
 - **Neither the "glycines are worse" nor the "flagged positions are worse" hypothesis
   separates from noise** at ~15 substitutions per position (p = 0.077 and p = 0.476;
   bootstrap CI for a single position's ρ spans [+0.09, +0.83]).
 
 **The overestimation question is open.** It needs measured ΔΔG — i.e. S669/Ssym
-(results/09 corpora), not FoldX on this protein.
+(results/09 corpora), not FoldX on this protein, and not the activity proxy either.
 
 ## Status
 

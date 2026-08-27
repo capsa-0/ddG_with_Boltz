@@ -39,6 +39,47 @@ def _corr(x, y):
                 pearson=float(pearsonr(x[m], y[m])[0]))
 
 
+def _wilson(k, n, z=1.96):
+    """Wilson score interval — the binomial CI that stays sane at k/n near 0 or 1."""
+    if n == 0:
+        return np.nan, np.nan
+    p = k / n
+    d = 1 + z * z / n
+    c = (p + z * z / (2 * n)) / d
+    h = z * np.sqrt(p * (1 - p) / n + z * z / (4 * n * n)) / d
+    return c - h, c + h
+
+
+def percentile_shift(scored):
+    """How each group sits relative to the percentile diagonal pct(Boltz) = pct(FoldX).
+
+    Each method is ranked within its OWN spread, so the diagonal needs no fitting and
+    is immune to the ~12x dynamic-range difference between the two. A point below it
+    is one FoldX ranks higher, within its own distribution, than Boltz does.
+
+    A fitted line would NOT do: the least-squares slope of Boltz on FoldX is ~0.055,
+    so "below the line" degenerates into "low Boltz" and stops measuring disagreement
+    at all (glycines then come out at 58% vs 56% for the rest, versus 78% vs 38% here).
+    """
+    gly = scored.wt_aa == "G"
+    flag = scored.position.isin(FLAGGED)
+    groups = {"all": pd.Series(True, index=scored.index),
+              "glycine": gly,
+              "non-glycine": ~gly,
+              "flagged": flag,
+              "flagged, non-glycine": flag & ~gly,
+              "flagged, glycine": flag & gly,
+              "rest (non-Gly, non-flagged)": ~gly & ~flag}
+    rows = []
+    for label, sel in groups.items():
+        d = scored.delta[sel]
+        k, n = int((d < 0).sum()), len(d)
+        lo, hi = _wilson(k, n)
+        rows.append(dict(group=label, n=n, n_below=k, pct_below=100 * k / n if n else np.nan,
+                         ci_lo=100 * lo, ci_hi=100 * hi, median_delta=d.median()))
+    return pd.DataFrame(rows)
+
+
 def load(scan_path, regime):
     scan = pd.read_csv(scan_path)
     col = f"ddg_{regime}" if regime != "mean" else "ddg_mean"
@@ -65,7 +106,13 @@ def main():
     out = Path(args.out) if args.out else HERE
 
     scan, fx, df = load(args.scan, args.regime)
-    scored = df.dropna(subset=["foldx", "boltz"])
+    scored = df.dropna(subset=["foldx", "boltz"]).copy()
+    # Rank each method within its own spread; their difference is the scale-free
+    # measure of who is ranked higher by whom. Sums to ~0 by construction, so it is
+    # a strictly relative statement between groups, never an accuracy claim.
+    scored["pct_boltz"] = scored.boltz.rank(pct=True) * 100
+    scored["pct_foldx"] = scored.foldx.rank(pct=True) * 100
+    scored["delta"] = scored.pct_boltz - scored.pct_foldx
     print(f"scan rows {len(scan)} | FoldX substitutions {len(fx)} | "
           f"joined {len(df)} | both scored {len(scored)}")
     if len(df) < len(scan):
@@ -122,28 +169,45 @@ def main():
     print(f"  others  ({len(rest)} sites) : bias {rest.bias.mean():+.2f}   "
           f"median rho {rest.spearman.median():+.3f}")
 
+    shift = percentile_shift(scored)
+    print("\n=== position relative to the percentile diagonal pct(Boltz) = pct(FoldX) ===")
+    print("  below the diagonal = FoldX ranks it higher, within its own spread, than Boltz")
+    print(f"  {'group':<30}{'below':>12}{'%':>8}{'95% CI':>16}{'median delta':>14}")
+    for r in shift.itertuples(index=False):
+        print(f"  {r.group:<30}{f'{r.n_below}/{r.n}':>12}{r.pct_below:>8.1f}"
+              f"{f'[{r.ci_lo:.1f}, {r.ci_hi:.1f}]':>16}{r.median_delta:>+14.1f}")
+    shift.to_csv(out / f"percentile_shift_{args.regime}.csv", index=False)
+
     per_pos.to_csv(out / f"compare_foldx_per_position_{args.regime}.csv", index=False)
     pd.DataFrame(rows).to_csv(out / f"compare_foldx_summary_{args.regime}.csv", index=False)
-    scored[["mutation", "position", "wt_aa", "mut_aa", "boltz", "foldx"]].to_csv(
+    scored[["mutation", "position", "wt_aa", "mut_aa", "boltz", "foldx",
+            "pct_boltz", "pct_foldx", "delta"]].to_csv(
         out / f"compare_foldx_merged_{args.regime}.csv", index=False)
 
-    _plots(scored, per_pos, out, args.regime)
+    _plots(scored, per_pos, shift, out, args.regime)
     print(f"\nwrote -> {out}")
 
 
-def _plots(scored, per_pos, out, regime):
-    """Scatter + per-position comparison, with glycines and flagged positions marked.
+def _plots(scored, per_pos, shift, out, regime):
+    """Raw scatter, percentile-diagonal scatter, and the per-position comparison.
 
     The two annotations are orthogonal and overlap (3 of the 10 flagged positions are
     glycines), so they use different channels: glycine = colour/outline, flagged =
     shaded band + bold tick label.
+
+    Layout: the two scatters share the top row, the per-position trace spans the
+    bottom — it carries one tick per scanned position and needs the full width.
     """
     import matplotlib
     matplotlib.use("Agg")
     import matplotlib.pyplot as plt
     from matplotlib.patches import Patch
     from matplotlib.lines import Line2D
-    fig, (a, b) = plt.subplots(1, 2, figsize=(14, 5.6))
+    fig = plt.figure(figsize=(14, 9.6))
+    gs = fig.add_gridspec(2, 2, height_ratios=[1, 1.05], hspace=.3, wspace=.18)
+    a = fig.add_subplot(gs[0, 0])
+    c = fig.add_subplot(gs[0, 1])
+    b = fig.add_subplot(gs[1, :])
 
     gly = (scored.wt_aa == "G").to_numpy()
     flag = scored.position.isin(FLAGGED).to_numpy()
@@ -162,6 +226,34 @@ def _plots(scored, per_pos, out, regime):
     a.set_title(f"Per mutation (n={len(scored)}), Spearman ρ={rho:+.3f}")
     a.axhline(0, color="0.6", lw=.8); a.axvline(0, color="0.6", lw=.8)
     a.legend(fontsize=8, loc="upper left"); a.grid(alpha=.3)
+
+    # --- percentile panel: same points, each method ranked within its own spread ---
+    c.scatter(scored.pct_foldx[~gly], scored.pct_boltz[~gly], s=13, alpha=.40,
+              color="#4C72B0", edgecolors="none")
+    c.scatter(scored.pct_foldx[gly], scored.pct_boltz[gly], s=13, alpha=.45,
+              color="#C44E52", edgecolors="none")
+    c.scatter(scored.pct_foldx[flag], scored.pct_boltz[flag], s=40, facecolors="none",
+              edgecolors="#B8860B", linewidths=.9)
+    c.plot([0, 100], [0, 100], ls="--", lw=1.3, color="#333333", zorder=4)
+    # Label each triangle where it belongs: below the diagonal is the FoldX-higher side.
+    c.text(97, 12, "below: FoldX ranks it higher", ha="right", va="center", fontsize=8.5,
+           style="italic", color="#555555")
+    c.text(6, 94, "above: Boltz ranks it higher", ha="left", va="center", fontsize=8.5,
+           style="italic", color="#555555")
+    pct = shift.set_index("group").pct_below
+    box = "\n".join([f"{lab:<22}{pct[key]:5.1f}%" for lab, key in (
+        ("WT glycine", "glycine"),
+        ("  · also flagged", "flagged, glycine"),
+        ("flagged, non-glycine", "flagged, non-glycine"),
+        ("rest", "rest (non-Gly, non-flagged)"),
+        ("all", "all"))])
+    c.text(.03, .74, "% below the diagonal\n" + box, transform=c.transAxes,
+           va="top", ha="left", fontsize=8, family="monospace",
+           bbox=dict(boxstyle="round,pad=.45", fc="white", ec="#BBBBBB", alpha=.92))
+    c.set_xlabel("FoldX ΔΔG — percentile within FoldX")
+    c.set_ylabel(f"Boltz ΔΔG ({regime}) — percentile within Boltz")
+    c.set_title("Same points, each method ranked within its own spread", fontsize=10)
+    c.set_xlim(-2, 102); c.set_ylim(-2, 102); c.grid(alpha=.3)
 
     o = per_pos.sort_values("position").reset_index(drop=True)
     x = np.arange(len(o))
@@ -185,7 +277,6 @@ def _plots(scored, per_pos, out, regime):
     b.set_title("Per position  (* / shaded = flagged · ▲ = wild-type glycine)", fontsize=10)
     b.legend(fontsize=8); b.grid(alpha=.3)
 
-    fig.tight_layout()
     p = out / f"figures/01_boltz_vs_foldx_{regime}.png"
     p.parent.mkdir(exist_ok=True)
     fig.savefig(p, dpi=150)

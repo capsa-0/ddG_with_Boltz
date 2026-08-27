@@ -1,6 +1,7 @@
 # 10_gla_scan — status log
 
-**State:** full scan **paused** (too slow); a targeted 722-mutation subset (`scan_GLA_human_hard`) is running instead — jobs 976 → 977 → 978. No ΔΔG predictions yet.
+**State:** ✅ Done for the subset. The full 398-position scan stays **paused** (too slow); the targeted subset carries the result. Predictions compared against FoldX and against measured residual activity (Lukas et al. 2013); 5 figures, `report.pdf` built.
+**Last updated:** 2026-08-27
 
 ---
 
@@ -574,3 +575,232 @@ only. So the ~4 urea-C₀.₅ variants of Andreotti et al. give **2 scored overl
 The only new option worth considering for GLA is joining Lukas 2013 residual activity as
 an ordinal proxy (rank-based, confounded by catalytic-site variants where loss of
 activity ≠ loss of stability).
+
+### 2026-08-27 — activity proxy tested: Lukas 2013 residual activity vs the scan
+
+Followed through on the option left open in the entry above. **Source:** Lukas et al.
+2013, *PLoS Genet* 9(8):e1003632, **Supplementary Table S1** — 159 missense GLA variants
+expressed in HEK293H with residual α-Gal A activity (% WT, ± the chaperone DGJ). The
+table ships as a legacy Word `.doc`; `compare_lukas.py --fetch` downloads it and parses
+the OLE piece table directly (no `libreoffice`/`antiword` — both failed on this file),
+writing `lukas2013_activity.csv`. Numbering matches ours (UniProt precursor numbering),
+so the join is on the raw mutation string.
+
+**Overlap:** 157 variants in the mature chain 32–429; 156 in the FoldX table; **45 also
+scored by the scan** (the scan is at 29.6 % coverage).
+
+| Test (n = 45 unless noted) | ρ | p |
+|---|---|---|
+| Boltz `ddg_mean` vs activity | **−0.305** | 0.042 |
+| Boltz, active-site residues dropped (n = 42) | −0.338 | 0.028 |
+| FoldX, same 45 | −0.275 | 0.068 |
+| FoldX, active-site dropped (n = 42) | −0.344 | 0.026 |
+| paired ρ(Boltz) − ρ(FoldX) | −0.030, CI [−0.297, +0.237] | P(Boltz better) = 0.59 |
+| dead (0 % activity, n = 27) vs alive, Boltz median | +1.72 vs +1.09 | MWU 0.049 |
+| dead vs alive, FoldX median | +3.01 vs +2.43 | MWU 0.112 |
+
+Boltz ρ 95 % CI = [−0.561, −0.011] — excludes zero, but only just. Per regime:
+A −0.334, D −0.315, B −0.213.
+
+**Three things this does and does not say:**
+1. **Right sign, real but weak signal.** Higher predicted ΔΔG does track lower measured
+   activity, and it survives dropping the 3 active-site variants (it strengthens, as
+   expected if the catalytic confound is what activity adds on top of stability).
+2. **Boltz ≈ FoldX here.** On the mutations both cover, the difference is noise. The
+   headline ρ = −0.491 for FoldX over all 157 is **not** a FoldX win: FoldX scores
+   ρ = −0.597 on the 111 variants we have *not* scored and only −0.275 on our 45, i.e.
+   **our 45 are a harder-than-average subset for both methods** — a consequence of the
+   scan's non-random position coverage, not of the predictor. Any comparison must be on
+   the shared subset.
+3. **It is not a ΔΔG validation.** Activity is zero-inflated (27/45 are exactly 0 %) and
+   a catalytic-site variant can be dead while folded. This bounds the claim at "ranks
+   loss-of-function better than chance", not "predicts stability accurately".
+
+**Committed:** `compare_lukas.py`, `lukas2013_activity.csv`, `compare_lukas_merged.csv`,
+`figures/04_lukas_activity.png`. README headline + provenance table and
+`figures/README.md` updated. `report.pdf` **not** regenerated — worth folding this in
+when the remaining 5,323 mutations land, since coverage is what limits n here (finishing
+the scan would take the overlap from 45 to ~157).
+
+### 2026-08-27 — active-site set corrected (was from memory), figure 04 restricted, §3.5 added to report
+
+**Correction.** The `ACTIVE_SITE` constant in the first version of `compare_lukas.py` was
+written from memory, attributed to Garman & Garboczi 2004, and **was wrong** — it contained
+172 and 297, which are not in the pocket, and was missing 143, which is. Replaced with a set
+derived from two verifiable sources and recomputable on demand:
+
+- **UniProt P06280 feature table:** `ACT_SITE 170` (nucleophile), `ACT_SITE 231` (proton
+  donor), `BINDING 203..207` (substrate).
+- **PDB `1R47`** (α-Gal A with galactose bound): every residue with a heavy atom within
+  **5.0 Å** of the catalytic-pocket ligand `GAL A1101` / `B1103`, unioned over both monomers.
+  The NAG/MAN/FUC hetero-atoms are N-glycans and are excluded by residue name. 1R47 numbers
+  the mature chain 32–429, i.e. UniProt numbering, so no offset is applied anywhere.
+  Sanity checks: D170, E203, Y207, D231 come back with the right identities.
+
+Union = {47, 92, 93, 134, 142, 143, 168, 170, 203–207, 227, 231, 266, 267} (17 positions).
+`compare_lukas.py --pdb 1R47.pdb` recomputes the shell, prints all three sets and **fails
+loudly** if the derivation stops matching the committed constant.
+
+**Effect on the numbers.** 4 of the 45 shared variants are now flagged (`C142R`, `A143P`,
+`A143T`, `D170N`), not 3, so the clean subset is **41, not 42**:
+
+| Test | before (wrong set, n=42) | now (n=41) |
+|---|---|---|
+| Boltz, no active-site | −0.338 (p 0.028) | **−0.328 (p 0.036)** |
+| FoldX, no active-site | −0.344 (p 0.026) | **−0.343 (p 0.028)** |
+| paired ρ(Boltz) − ρ(FoldX) | not computed on subset | +0.015, CI [−0.250, +0.286] |
+| dead vs alive, Boltz | — | +1.76 vs +1.10, MWU p 0.042 |
+| dead vs alive, FoldX | — | +3.36 vs +2.40, MWU p 0.061 |
+
+The full-45 numbers are unchanged (−0.305 / −0.275). Conclusion unchanged: indistinguishable.
+
+**Figure 04 rebuilt** showing only the 41 non-active-site variants (they are dropped, not
+marked — at those positions activity is not a stability proxy at all). Trend bars are the
+**mean** per tercile, not the median: 24 of 41 sit at exactly 0 % activity, so medians are 0
+in most bins and hide the signal. Each bar is labelled with its zero count — for Boltz that
+runs 9/14 → 4/13 → 11/14, i.e. **not monotone**: its lowest-ΔΔG tercile still holds 9 dead
+variants. FoldX is monotone (6/14 → 7/13 → 11/14). Worth stating plainly rather than
+smoothing over. No least-squares line on either panel: the reported statistic is a rank
+correlation and an OLS slope on FoldX would be set by the clash tail.
+
+**`report.pdf` rebuilt** (still 4 pages) with a new **§3.5 "An external check against
+measured data"** + Figure 4, and the caveat box and Limitations amended to say the activity
+proxy constrains loss of function, not folding free energy. Per `guidelines.md` the section
+cites the study and states the method but carries no provenance — the `.doc` parsing, the
+PDB download and this correction stay here. Mechanically re-checked for leaked plumbing
+terms: none.
+
+**Next step unchanged:** finishing the remaining 5,323 mutations takes the overlap from 41
+to ~150 and is the only thing that would move this from suggestive to conclusive.
+
+### 2026-08-27 — tested the "FoldX ranks glycines higher within its own spread" reading of figure 01
+
+Question raised from the scatter: glycines and flagged positions sit **below-right of a
+hypothetical fit** (high FoldX, mid Boltz). Does that quantify as FoldX ranking them higher
+*within its own range* than Boltz does?
+
+**Where they actually sit** (`compare_foldx_merged_mean.csv`, n = 2,238):
+
+| group | n | median FoldX | median Boltz | pct FoldX | pct Boltz |
+|---|---|---|---|---|---|
+| glycine | 505 | 4.31 | 1.26 | 70.4 | 56.1 |
+| non-glycine | 1,733 | 1.85 | 1.03 | 41.1 | 47.5 |
+| flagged | 160 | 4.30 | 1.25 | 70.3 | 55.7 |
+
+So yes — below-right, and the gap is in the *percentiles*, not only in kcal/mol.
+
+**The metric already existed and was never split this way.** `map_discrepancy.py` computes
+`delta = pct(Boltz) − pct(FoldX)` per mutation — each method ranked within its own spread,
+which is exactly the "within its own range" question — but only ever aggregated it *per
+position* (figure 02). The tests we had run by residue type were on per-position **Spearman**
+(agreement in ordering), a different quantity: it cannot see a systematic shift, only scatter.
+Running the split on `delta` is new.
+
+**Result — glycine (negative = FoldX ranks it higher than Boltz does):**
+
+| test | median delta | n | p | Cliff's d |
+|---|---|---|---|---|
+| glycine vs non-glycine | **−13.1 vs +5.4** (gap −18.5 pts, CI [−20.9, −16.7]) | 505 / 1733 | 4.5e−60 | **−0.477** |
+| same, FoldX < 10 (re-ranked) | −15.7 vs +4.2 | 379 / 1664 | 7.3e−45 | −0.462 |
+| same, FoldX < 5 (re-ranked) | −19.8 vs +3.2 | 288 / 1420 | 2.9e−37 | −0.476 |
+
+**It is not the clash tail** — dropping it leaves the effect intact, slightly stronger. And it
+is a *shift*, not extra noise: mean |delta| is 21.9 for glycines vs 19.3 for the rest, i.e.
+the dispersion is comparable while the centre moves ~18 points.
+
+**The flagged-position effect is mostly the glycines inside it:**
+
+| test | median delta | n | p | Cliff's d |
+|---|---|---|---|---|
+| flagged vs rest, **non-glycine only** | +3.6 vs +5.7 | 114 / 1619 | 0.040 | −0.115 |
+| flagged vs rest, **glycine only** | −19.7 vs −12.2 | 46 / 459 | 0.005 | −0.252 |
+
+Among non-glycines, being flagged is worth ~2 percentile points (negligible). Among glycines
+it does add a real extra shift. So the original ten-position hypothesis is **not independent
+of the glycine effect** — it is largely a restatement of it, plus a genuine extra among the
+flagged glycines specifically.
+
+**What this does and does not license.** `delta` is zero-sum by construction (both percentile
+means are 50), so glycines being negative *forces* non-glycines positive; the statement is
+strictly relative — "FoldX ranks glycines higher than Boltz does" — and cannot say which
+method is wrong. Two independent facts pull in opposite directions and the metric cannot
+separate them: FoldX holds the backbone rigid, which is worst exactly where glycine is
+replaced; and results/12 finds **buried glycines are also one of Boltz's genuine weak spots**
+on labelled data (MAE ÷ sd 0.64 vs 0.48 for buried non-Gly), i.e. Boltz plausibly
+*under*-ranks them at the same time. Both can be true and the observed 18-point gap is
+their sum.
+
+Numbers computed ad hoc from the committed table; **not yet folded into
+`map_discrepancy.py` or the report**. Worth doing if this becomes a claim in the paper.
+
+### 2026-08-27 — "% que cae debajo de la recta": la recta ajustada no sirve, la diagonal percentil sí
+
+Follow-up: would fitting a line to Boltz~FoldX and reporting the share of each group below
+it add anything? **The share is the right intuition; a fitted line is the wrong ruler.**
+The same statistic under five ways of drawing the line (% of each group *below* it):
+
+| recta | glicina | flagged | flagged no-Gly | flagged Gly | resto |
+|---|---|---|---|---|---|
+| **diagonal percentil (sin ajuste)** | **77.8** | 58.8 | 43.0 | **97.8** | 38.2 |
+| OLS crudo (pend 0.055) | 58.2 | 51.2 | 49.1 | 56.5 | 56.3 |
+| OLS clip ±10 (pend 0.168) | 67.3 | 58.1 | 46.5 | 87.0 | 51.9 |
+| OLS symlog (pend 0.590) | 68.5 | 55.6 | 44.7 | 82.6 | 52.6 |
+| Theil-Sen (pend 0.169) | 73.3 | 57.5 | 45.6 | 87.0 | 51.6 |
+
+The glycine number moves 58 → 78 and flagged-Gly 57 → 98 on fit choice alone. Worst case is
+plain OLS: at slope 0.055 the line is nearly horizontal, so "below the line" degenerates into
+"low Boltz" and the contrast against the rest vanishes entirely (58.2 vs 56.3).
+
+**Use the percentile diagonal** (`pct_boltz = pct_foldx`) — no fit, scale-free, and it is
+exactly the "within its own range" question, i.e. `sign(delta)` from the entry above:
+
+| grupo | debajo | % | IC95 |
+|---|---|---|---|
+| glicina | 393/505 | 77.8 | [74.0, 81.2] |
+| flagged | 94/160 | 58.8 | [51.0, 66.1] |
+| **flagged no-Gly** | 49/114 | **43.0** | [34.3, 52.2] |
+| **flagged Gly** | **45/46** | **97.8** | [88.7, 99.6] |
+| resto (no-Gly, no-flag) | 618/1619 | 38.2 | [35.8, 40.6] |
+
+Global base rate 47.4 % (not 50 — ties). Same conclusion as the `delta` test, now in a form
+that reads off the scatter: **45 of the 46 flagged glycines sit below-right**, while flagged
+non-glycines (43.0 %) are within noise of the rest (38.2 %).
+
+Per-group agreement, for completeness (different axis — scatter, not shift): Spearman
+ρ = +0.595 overall, +0.458 at glycines, +0.639 at non-glycines.
+
+Caveat: the percentage binarises `delta` and throws away magnitude; Cliff's d = −0.477 is the
+continuous version and is the number to quote statistically. The % is for the narrative.
+
+### 2026-08-27 — percentile diagonal added to figure 01; §3.4 of the report re-derived
+
+Implemented the diagonal + group shares in `compare_foldx.py` (not a throwaway script):
+
+- `percentile_shift(scored)` — share of each group below `pct(Boltz) = pct(FoldX)`, with
+  Wilson CIs and median delta. Its docstring records **why there is no fitted line**: the
+  OLS slope of Boltz on FoldX is ~0.055, so "below the line" collapses into "low Boltz"
+  and the contrast dies (58 % vs 56 % instead of 78 % vs 38 %).
+- `scored` now carries `pct_boltz` / `pct_foldx` / `delta`, and those columns are written
+  into `compare_foldx_merged_mean.csv` (extra columns; `build_report.py` reads by name and
+  is unaffected). New table `percentile_shift_mean.csv`.
+- **Figure 01 relaid out** from 1×2 to a gridspec: the two scatters share the top row, the
+  per-position trace spans the full bottom (it has one tick per scanned position and was
+  cramped at half width). New top-right panel = percentile space, dashed diagonal, both
+  triangles labelled ("above: Boltz ranks it higher" / "below: FoldX ranks it higher"), and
+  a monospace box with the five group shares.
+
+Regenerated with `compare_foldx.py --scan scan_predictions_mean.csv --regime mean`. Shares
+match the ad-hoc computation exactly (glycine 77.8, flagged-Gly 45/46 = 97.8, flagged
+non-Gly 43.0, rest 38.2, all 47.4).
+
+**`report.pdf` (now 5 pages).** Figure 2's caption had to be rewritten anyway — it described
+a two-panel figure that no longer exists. Also extended §3.4: it presented the flagged
+positions and the glycines as two separate findings, which the panel now visibly contradicts
+on the same page. The new paragraph states that the flagged-position hypothesis is largely a
+restatement of the glycine effect, with a real extra shift only where they coincide. All
+figures are numbers pulled from `percentile_shift_mean.csv` at build time, so the prose
+cannot drift from the panel.
+
+Still open, unchanged: this is a *relative* statement between two predictors and cannot say
+which is wrong; results/12's buried-glycine weakness for Boltz and FoldX's rigid backbone
+both push the same direction and the metric cannot separate them.
