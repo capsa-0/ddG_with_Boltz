@@ -45,6 +45,54 @@ n_stab_strong = int((merged.boltz < -0.5).sum())
 reg = summary["per_regime"]
 agree = summary["regime_agreement_pearson"]
 
+# ---- per-regime robustness (table 2): does every headline claim survive the
+# choice of training corpus, or only the across-regime mean? -----------------
+REGIME_LABEL = {"ddg_A_tsuboyama": "A — Tsuboyama-only",
+                "ddg_B_fireprot": "B — FireProt-only",
+                "ddg_D_finetuned": "D — A fine-tuned on B",
+                "ddg_mean": "Mean of A, B, D (used throughout)"}
+_pr = preds.merge(merged[["mutation", "foldx"]], on="mutation")
+_prg = _pr[_pr.wt_aa == "G"]
+_prn = _pr[_pr.wt_aa != "G"]
+regime_rows = [(
+    REGIME_LABEL[c],
+    spearmanr(_pr[c], _pr.foldx).statistic,
+    spearmanr(_prn[c], _prn.foldx).statistic,
+    spearmanr(_prg[c], _prg.foldx).statistic,
+    100 * (_pr[c] < 0).mean(),
+) for c in REGIME_LABEL]
+rho_reg_lo = min(r[1] for r in regime_rows[:3])
+rho_reg_hi = max(r[1] for r in regime_rows[:3])
+stab_lo = min(r[4] for r in regime_rows[:3])
+stab_hi = max(r[4] for r in regime_rows[:3])
+REGIME_TBL = "\n".join(
+    f"<tr><td>{lab}</td><td>{a:+.3f}</td><td>{n:+.3f}</td><td>{g:+.3f}</td>"
+    f"<td>{s:.1f}%</td></tr>" for lab, a, n, g, s in regime_rows)
+
+# ---- landscape structure (3.1), replacing the former heatmap figure --------
+# omega^2 rather than eta^2: variance explained is inflated by group count, and
+# the two factors here differ 9-fold in it (177 positions vs 20 mutant residues),
+# so the uncorrected numbers are not comparable to each other.
+def _omega2(df, key, col="ddg_mean"):
+    grp = df.groupby(key)[col]
+    n, k, gm = len(df), grp.ngroups, df[col].mean()
+    ss_b = (grp.count() * (grp.mean() - gm) ** 2).sum()
+    ss_t = ((df[col] - gm) ** 2).sum()
+    ms_w = (ss_t - ss_b) / (n - k)
+    return (ss_b - (k - 1) * ms_w) / (ss_t + ms_w)
+
+
+w2_pos, w2_aa = _omega2(preds, "position"), _omega2(preds, "mut_aa")
+# Counts of "tolerates everything" / "rejects everything" are meaningless at a
+# position with 3 scored substitutions, so they are taken over covered sites only.
+MIN_COV = 10
+_pp = preds.groupby("position").ddg_mean.agg(["mean", "min", "max", "count"])
+_well = _pp[_pp["count"] >= MIN_COV]
+n_well, n_scan_pos = len(_well), len(_pp)
+pp_lo, pp_hi = _well["mean"].min(), _well["mean"].max()
+n_tol = int((_well["max"] < 0.5).sum())
+n_inv = int((_well["min"] > 1.5).sum())
+
 # ---- external check: measured residual activity (Lukas 2013) ---------------
 lk = pd.read_csv(R / "compare_lukas_merged.csv")
 lkc = lk[lk.active_site == 0]                     # active-site variants excluded
@@ -70,13 +118,12 @@ p_lb_s = f"p = {p_lb:.3f}" if p_lb >= 0.001 else "p < 0.001"
 p_lf_s = f"p = {p_lf:.3f}" if p_lf >= 0.001 else "p < 0.001"
 rho_abs = abs(rho_lb)
 
-# ---- percentile-diagonal shares (figure 2, top right) ----------------------
+# ---- percentile-diagonal shares (figure 1, top right) ----------------------
 _ps = pd.read_csv(R / "percentile_shift_mean.csv").set_index("group").pct_below
 pct_gly, pct_rest = _ps["glycine"], _ps["rest (non-Gly, non-flagged)"]
 pct_fng, pct_fg = _ps["flagged, non-glycine"], _ps["flagged, glycine"]
 
 img = lambda p: "data:image/png;base64," + base64.b64encode(Path(p).read_bytes()).decode()
-f_heat = img(R / "figures/01_heatmap_mean.png")
 f_cmp = img(R / "figures/01_boltz_vs_foldx_mean.png")
 f_raw = img(R / "figures/03_discrepancy_map_raw.png")
 f_act = img(R / "figures/04_lukas_activity.png")
@@ -141,9 +188,11 @@ label negated.</p>
 regimes are reported together, differing only in training distribution:
 <b>A</b> — a mega-scale folding-assay corpus of mostly small domains;
 <b>B</b> — a literature-curated corpus of natural proteins;
-<b>D</b> — A pretrained then fine-tuned on B. Their spread per mutation is the honest
-uncertainty signal: where the regimes disagree, the prediction depends on training
-distribution rather than on the input. Positive ΔΔG denotes destabilization throughout.</p>
+<b>D</b> — A pretrained then fine-tuned on B. They are a robustness check on that free
+parameter rather than three competing answers: the training corpus is the one modelling
+choice that no measurement on this target can adjudicate, so every headline result is
+repeated under each regime in §3.2 (Table 2) and the value reported everywhere else is
+their mean. Positive ΔΔG denotes destabilization throughout.</p>
 <h3>2.3 Comparison metric</h3>
 <p>Predicted and FoldX values are compared by <b>rank correlation</b>. This is not a
 stylistic choice: FoldX holds the backbone rigid, so a substitution that would be
@@ -154,23 +203,35 @@ only.</p>
 
 <h2>3. Results</h2>
 <h3>3.1 The predicted landscape</h3>
-<figure><img src="{f_heat}"/>
-<figcaption><b>Figure 1.</b> Predicted ΔΔG for every scored substitution (mean of the three
-regimes). Rows are mutant residues grouped by side-chain chemistry; columns are scanned
-positions. Red is destabilizing, blue stabilizing, grey has no value. The model separates
-sites strongly: some positions are intolerant to every substitution, others accept
-almost any.</figcaption></figure>
 <p>The three regimes place the landscape at similar levels (mean ΔΔG
 {reg['A_tsuboyama']['mean']:+.2f}, {reg['B_fireprot']['mean']:+.2f} and
 {reg['D_finetuned']['mean']:+.2f} kcal/mol for A, B and D) and agree closely on ordering
 (pairwise Pearson {agree['A_tsuboyama_vs_B_fireprot']:.2f}–{agree['A_tsuboyama_vs_D_finetuned']:.2f}),
 with a mean across-regime spread of {summary['mean_regime_sd']:.2f} kcal/mol. Conclusions
-below are therefore not artifacts of one training corpus.</p>
+below are therefore not artifacts of one training corpus. <b>Every predicted value reported
+from here on is the mean across the three regimes</b> — the quantity plotted, tabulated and
+correlated in §3.2–§3.5. Table 2 repeats the headline comparison under each regime
+separately, so the corpus dependence can be checked rather than assumed.</p>
+<p>Within that landscape the dominant axis is <b>position, not substituted residue</b>:
+position accounts for ω² = {w2_pos:.2f} of the variance in predicted ΔΔG against
+ω² = {w2_aa:.2f} for the identity of the incoming residue. (The bias-corrected ω² is used
+because the two factors differ nine-fold in group count — {n_scan_pos} positions against 20
+residues — which inflates the uncorrected figure for position.) So the model is reading the
+site far more than the substitution.</p>
+<p>It grades those sites by degree rather than sorting them into tolerant and intolerant
+classes. Across the {n_well} positions where at least {MIN_COV} of the 19 substitutions were
+scored, the per-position mean ΔΔG spans {pp_lo:+.2f} to {pp_hi:+.2f} kcal/mol — a wide
+range, but a near-continuous one. Positions that are absolute in either direction are rare:
+only {n_inv} destabilise on <i>every</i> scored substitution (all above +1.5 kcal/mol) and
+{n_tol} tolerates all of them (all below +0.5). Restricting to still better-covered
+positions removes them entirely, so apparent all-or-nothing sites in this scan are an
+artifact of thin coverage rather than a feature of the predictions.</p>
 
 <h3>3.2 Agreement with an independent predictor</h3>
 <table>
-<caption><b>Table 1.</b> Rank agreement between the embedding scan and FoldX. Pearson values
-are shown for completeness; the clipped column bounds FoldX at ±10 kcal/mol.</caption>
+<caption><b>Table 1.</b> Rank agreement between the embedding scan and FoldX, the predicted
+value being the across-regime mean of §3.1. Pearson values are shown for completeness; the
+clipped column bounds FoldX at ±10 kcal/mol.</caption>
 <tr><th>Subset</th><th>n</th><th>Spearman ρ</th><th>Pearson (raw)</th><th>Pearson (clipped)</th></tr>
 <tr><td>All scored substitutions</td><td>{n_mut:,}</td><td>{rho_all:+.3f}</td><td>{pear_raw:+.3f}</td><td>{pear_clip:+.3f}</td></tr>
 <tr><td>Non-glycine sites</td><td>{len(non):,}</td><td>{rho_n:+.3f}</td><td>—</td><td>—</td></tr>
@@ -178,7 +239,8 @@ are shown for completeness; the clipped column bounds FoldX at ±10 kcal/mol.</c
 <tr><td>Excluding FoldX clash regime (&lt;10 kcal/mol)</td><td>{len(clash):,}</td><td>{rho_clean:+.3f}</td><td>—</td><td>—</td></tr>
 </table>
 <figure><img src="{f_cmp}"/>
-<figcaption><b>Figure 2.</b> Top left: per-substitution comparison; the horizontal axis is
+<figcaption><b>Figure 1.</b> Predicted ΔΔG (across-regime mean) against FoldX. Top left:
+per-substitution comparison; the horizontal axis is
 symlog because FoldX extends to tens of kcal/mol. Top right: the same points with each
 method ranked <i>within its own spread</i>, so the diagonal needs no fitting and is immune to
 the dynamic-range gap; a point below it is one FoldX ranks higher than the embedding model
@@ -192,10 +254,25 @@ concurring that clashes are bad. It is, however, <b>strongly residue-dependent</
 non-glycine sites the two predictors agree at {rho_n:+.3f}, at glycines only {rho_g:+.3f}.
 Glycine is the residue whose replacement most often demands backbone accommodation, and it
 is where the two methods' treatments diverge most.</p>
+<table>
+<caption><b>Table 2.</b> The same comparison computed separately under each training regime.
+The mean row is the value used everywhere else in this report.</caption>
+<tr><th>Training regime</th><th>ρ all</th><th>ρ non-Gly</th><th>ρ Gly</th><th>stabilizing</th></tr>
+{REGIME_TBL}
+</table>
+<p>Neither of the report's two central claims depends on which corpus the model was trained
+on. Agreement with FoldX varies between ρ = {rho_reg_lo:+.3f} and {rho_reg_hi:+.3f} across
+the three regimes, spanning the reported {rho_all:+.3f}; the glycine deficit appears in
+<i>every</i> regime, with non-glycine agreement exceeding glycine agreement in each row; and
+the stabilizing tail stays small throughout ({stab_lo:.1f}–{stab_hi:.1f}% of predictions
+below zero). Regime B agrees with FoldX least, but that ordering should not be read as an
+accuracy ranking: on labelled external benchmarks the same predictor ranks these regimes the
+other way round, and agreement with FoldX on a glycine-rich set is not a measure of
+correctness in the absence of ground truth.</p>
 
 <h3>3.3 The methods disagree about magnitude far more than about order</h3>
 <figure><img src="{f_raw}"/>
-<figcaption><b>Figure 3.</b> The same comparison in real units. Top: per-position difference.
+<figcaption><b>Figure 2.</b> The same comparison in real units. Top: per-position difference.
 Bottom: per-position means of both methods on one axis — the narrow bars are the embedding
 model's entire dynamic range.</figcaption></figure>
 <p>Per-position variability is {sd_f:.2f} kcal/mol for FoldX against {sd_b:.2f} for the
@@ -214,7 +291,7 @@ significance at the position level ({'p = %.3f' % p_flag} and {'p = %.3f' % p_gl
 Mann–Whitney), because per-position correlations over ~19 substitutions are noisy. The
 glycine effect is unambiguous only at the substitution level, where the sample is large.</p>
 <p>At that level the two hypotheses turn out not to be independent. Ranking each method
-within its own spread (Figure 2, top right), glycine substitutions fall on the FoldX-higher
+within its own spread (Figure 1, top right), glycine substitutions fall on the FoldX-higher
 side of the diagonal {pct_gly:.1f}% of the time versus {pct_rest:.1f}% for the rest — but
 flagged positions that are not glycines sit at {pct_fng:.1f}%, indistinguishable from that
 baseline, while the flagged positions that <i>are</i> glycines reach {pct_fg:.1f}%. The
@@ -230,7 +307,7 @@ in a perfectly folded protein — so <b>variants at active-site positions are ex
 here, leaving {n_lkc} that the scan also covers. What remains is a weak but genuine external
 constraint: a variant destabilised enough to misfold should not retain activity.</p>
 <figure><img src="{f_act}"/>
-<figcaption><b>Figure 4.</b> Predicted ΔΔG against measured residual activity for the
+<figcaption><b>Figure 3.</b> Predicted ΔΔG against measured residual activity for the
 {n_lkc} variants outside the active site. Red bars are the mean activity within terciles of
 the prediction, labelled with how many variants in each tercile have exactly zero activity;
 the FoldX axis is symlog. Both methods rank in the correct direction and neither separates

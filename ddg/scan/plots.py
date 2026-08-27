@@ -87,7 +87,8 @@ def plot_heatmap(predictions, path, column="ddg_mean",
                                            edgecolor="#404040", linewidth=.8))
     axes[-1, 0].set_xlabel(
         "residue" if contiguous else
-        "scanned residue  (NOT contiguous — 38 selected sites, adjacent on screen only)",
+        f"scanned residue  (NOT contiguous — {len(positions)} selected sites, "
+        "adjacent on screen only)",
         fontsize=9)
     fig.suptitle(title, fontsize=12)
     from matplotlib.patches import Patch
