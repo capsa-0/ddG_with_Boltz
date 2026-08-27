@@ -69,6 +69,14 @@ def img(p):
     return "data:image/png;base64," + base64.b64encode(Path(p).read_bytes()).decode()
 
 
+# Burial is the one in-distribution grouping that does not cover the whole set:
+# the distogram lookup fails for some variants and qcut drops them, so the
+# tertiles silently sum to less than the out-of-fold total. Report the gap.
+N_ALL = int(IND[(IND.grouping == "overall") & (IND.klass == "all")].n.iloc[0])
+N_BURIAL = int(IND[IND.grouping == "burial"].n.sum())
+N_NO_BURIAL = N_ALL - N_BURIAL
+
+
 fig_ind = img(R / "figures/02_tsuboyama_mut_class_error.png")
 fig_tr = img(R / "figures/03_transfer_class_error.png")
 
@@ -106,11 +114,15 @@ and where the learned representation actually beats a substitution matrix.</p>
 {indn('overall', 'all')} mutations) is not uniform across the substitution space, but most of the
 apparent structure is an effect-size artifact: classes containing larger &Delta;&Delta;G values
 show larger absolute errors and identical <i>relative</i> accuracy. Three things survive
-normalisation. (i) The dominant deficit is the <b>stabilizing tail</b>: error is
-{ind('direction', 'stabilizing', 'MAE_sd', 1)}&times; the class's own spread and the bias is
-{ind('direction', 'stabilizing', 'bias', 2)} kcal/mol &mdash; stabilizing mutations are called
-destabilizing. (ii) On blind transfer, <b>proline in either direction and mutations leaving
-glycine</b> are genuinely harder, while <b>mutations <i>to</i> glycine are not</b>. (iii) The
+normalisation. (i) The dominant deficit is the <b>stabilizing tail</b>: within-class ranking
+falls to &rho; = {ind('direction', 'stabilizing', 'rho', 2)} against
+{ind('direction', 'destabilizing', 'rho', 2)} for destabilizing variants, and stabilizing
+mutations are called destabilizing. The size of that gap is partly set by slicing on the
+measured value (&sect;4), but the amplitude compression driving it is visible directly in
+Figure 1. (ii) On blind transfer, <b>proline in either direction and mutations leaving
+glycine</b> are harder, while <b>mutations <i>to</i> glycine are not</b> &mdash; though only
+<i>from</i> Pro clears zero on both corpora, and the proline cells are the ones whose intervals
+&sect;5 shows to be least reliable. (iii) The
 representation's advantage over a plain amino-acid lookup is <b>not uniform</b>: it is largest
 for core-packing substitutions and near zero when the mutation preserves the chemistry.</p>
 </div>
@@ -126,8 +138,9 @@ structural representation contribute anything beyond knowing which residue repla
 
 <h2>2. Method</h2>
 <p>Predictions come from a regressor on frozen structure-model embeddings. Three evaluation sets
-are used: <b>{indn('overall', 'all')} out-of-fold predictions</b> from 5-fold grouped
-cross-validation on the training corpus (grouping by protein, so no protein is ever in both
+are used: <b>{indn('overall', 'all')} out-of-fold predictions on the Tsuboyama mega-scale
+corpus</b>, the corpus the model is trained on, from 5-fold grouped
+cross-validation (grouping by protein, so no protein is ever in both
 folds), and <b>two blind corpora</b> never seen in training &mdash; S669
 ({trn(S6, 'overall', 'all')} variants over 62 proteins) and a homology-filtered FireProt
 subset ({trn(FP, 'overall', 'all')} variants over 130 proteins). The blind corpora are scored with the readout
@@ -150,6 +163,10 @@ a protein are not independent.</li>
 </ul>
 
 <h2>3. Burial does not degrade the model</h2>
+<p class="note">Tsuboyama out-of-fold. Burial resolves from the distogram for
+{N_BURIAL:,} of the {N_ALL:,} out-of-fold variants; the remaining {N_NO_BURIAL:,}
+({100 * N_NO_BURIAL / N_ALL:.1f}%) have no burial value and fall outside the tertiles, which are
+equal thirds of what remains.</p>
 <table>
 <tr><th>Burial tertile</th><th>n</th><th>MAE</th><th>&rho;</th><th>sd(true)</th><th>MAE &divide; sd</th></tr>
 <tr><td>buried</td><td>{indn('burial', 'buried')}</td><td>{ind('burial', 'buried', 'MAE', 2)}</td><td>{ind('burial', 'buried', 'rho', 2)}</td><td>{ind('burial', 'buried', 'sd_true', 2)}</td><td><b>{ind('burial', 'buried', 'MAE_sd', 2)}</b></td></tr>
@@ -170,19 +187,33 @@ n = {indn('burial_x_gly', 'buried, from Gly')}, against
 regime in which a physics-based method independently breaks down.</p>
 
 <h2>4. The dominant deficit is the stabilizing tail</h2>
+<p class="note">Tsuboyama out-of-fold, all {N_ALL:,} variants.</p>
 <table>
 <tr><th>Effect direction</th><th>n</th><th>MAE</th><th>bias</th><th>&rho;</th><th>sd(true)</th><th>MAE &divide; sd</th></tr>
 <tr><td>stabilizing</td><td>{indn('direction', 'stabilizing')}</td><td>{ind('direction', 'stabilizing', 'MAE', 2)}</td><td><b>{ind('direction', 'stabilizing', 'bias', 2)}</b></td><td><b>{ind('direction', 'stabilizing', 'rho', 2)}</b></td><td>{ind('direction', 'stabilizing', 'sd_true', 2)}</td><td><b>{ind('direction', 'stabilizing', 'MAE_sd', 2)}</b></td></tr>
 <tr><td>destabilizing</td><td>{indn('direction', 'destabilizing')}</td><td>{ind('direction', 'destabilizing', 'MAE', 2)}</td><td>{ind('direction', 'destabilizing', 'bias', 2)}</td><td>{ind('direction', 'destabilizing', 'rho', 2)}</td><td>{ind('direction', 'destabilizing', 'sd_true', 2)}</td><td>{ind('direction', 'destabilizing', 'MAE_sd', 2)}</td></tr>
 <tr><td>neutral</td><td>{indn('direction', 'neutral')}</td><td>{ind('direction', 'neutral', 'MAE', 2)}</td><td>{ind('direction', 'neutral', 'bias', 2)}</td><td>{ind('direction', 'neutral', 'rho', 2)}</td><td>{ind('direction', 'neutral', 'sd_true', 2)}</td><td>{ind('direction', 'neutral', 'MAE_sd', 2)}</td></tr>
 </table>
-<p>This is the one class effect that is not an arithmetic artifact, and it runs the wrong way for
-protein engineering. The model's error on stabilizing mutations is roughly twice the spread of
+<p>This effect runs the wrong way for protein engineering, and unlike the burial gap it does not
+vanish under normalisation &mdash; though, as the note below sets out, the slicing inflates its
+size. The model's error on stabilizing mutations is roughly twice the spread of
 the class itself, the bias is strongly positive &mdash; stabilizing variants are predicted less
 stabilizing than they are &mdash; and within-class ranking nearly collapses
 (&rho; {ind('direction', 'stabilizing', 'rho', 2)} against
 {ind('direction', 'destabilizing', 'rho', 2)} for destabilizing variants). Amplitude compression
 toward the mean, visible directly in the predicted-versus-measured panel below, is the mechanism.</p>
+<p class="note"><b>These three classes are cut on the measured value</b> (destabilizing above
++0.5, stabilizing below &minus;0.5, neutral between), so unlike every other table here the class
+definition is conditioned on the quantity being predicted, and two artifacts follow by
+construction. Each class's sd(true) is truncated by its own cut &mdash; the neutral band cannot
+exceed 0.5 either side, which is why its sd is
+{ind('direction', 'neutral', 'sd_true', 2)} and its MAE &divide; sd exceeds unity &mdash; and any
+imperfect predictor regresses toward the mean <i>within</i> a slice, which yields bias of the sign
+seen here ({ind('direction', 'stabilizing', 'bias', 2)} stabilizing,
+{ind('direction', 'destabilizing', 'bias', 2)} destabilizing, both pointing inward) whatever the
+model does. The compression is real and Figure 1 shows it directly, but the MAE &divide; sd column
+is not comparable with the burial or mutation-class tables, whose classes are defined without
+reference to the label.</p>
 
 <figure>
 <img src="{fig_ind}"/>
@@ -206,7 +237,15 @@ MAE &divide; sd, with a cluster bootstrap over proteins. Both blind corpora are 
 <tr><td>X &rarr; Ala</td><td>{bsn(FP, 'X->Ala')}</td><td>{bs(FP, 'X->Ala')}</td><td>{bsn(S6, 'X->Ala')}</td><td>{bs(S6, 'X->Ala')}</td></tr>
 <tr><td>near-isosteric (|&Delta;Vol| &lt; 30 &Aring;<sup>3</sup>)</td><td>{bsn(FP, 'near-isosteric (|dVol|<30)')}</td><td>{bs(FP, 'near-isosteric (|dVol|<30)')}</td><td>{bsn(S6, 'near-isosteric (|dVol|<30)')}</td><td>{bs(S6, 'near-isosteric (|dVol|<30)')}</td></tr>
 </table>
-<p class="note">Bold = the 95&nbsp;% interval excludes zero. Positive = the class is harder than the rest.</p>
+<p class="note">Bold = the 95&nbsp;% interval excludes zero. Positive = the class is harder than the rest.
+<b>Small-n cells are not trustworthy here.</b> The contrast is a ratio whose denominator is the
+class's own resampled sd, so at small n its bootstrap distribution is right-skewed and the
+percentile interval sits above the point estimate: for the two S669 proline cells (n = 6 each)
+and for &rarr;Pro on FireProt, the point estimate falls in the lowest quintile of its own
+interval, against roughly the midpoint for the classes with hundreds of variants. The resampling
+additionally discards any draw holding fewer than 10 in-class variants, which for a class of 6
+retains only draws that over-represent it. Both push <code>lo</code> upward, and significance is
+declared from <code>lo &gt; 0</code>. Read the proline rows as directional, not as established.</p>
 
 <p>The proline and glycine result reproduces the ordering seen in-distribution
 (&rarr;Pro {ind('gly_pro', 'to Pro', 'MAE_sd', 2)}, from-Gly {ind('gly_pro', 'from Gly', 'MAE_sd', 2)},
@@ -247,19 +286,24 @@ trivial baseline, and</p>
 better than one either:</p>
 
 <table>
-<tr><th>Source residue</th><th>skill, S669</th><th>skill, FireProt</th><th>&nbsp;</th><th>Substitution</th><th>n (FireProt)</th><th>skill, FireProt</th></tr>
-<tr><td>Gln</td><td>{tr(S6, 'wt_aa', 'Q', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'Q', 'skill_vs_onehot')}</td><td></td><td>Tyr &rarr; Phe</td><td>{trn(FP, 'pair', 'Y->F')}</td><td>{tr(FP, 'pair', 'Y->F', 'skill_vs_onehot')}</td></tr>
-<tr><td>Trp</td><td>{tr(S6, 'wt_aa', 'W', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'W', 'skill_vs_onehot')}</td><td></td><td>Trp &rarr; Ala</td><td>{trn(FP, 'pair', 'W->A')}</td><td>{tr(FP, 'pair', 'W->A', 'skill_vs_onehot')}</td></tr>
-<tr><td>Thr</td><td>{tr(S6, 'wt_aa', 'T', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'T', 'skill_vs_onehot')}</td><td></td><td>Trp &rarr; Phe</td><td>{trn(FP, 'pair', 'W->F')}</td><td>{tr(FP, 'pair', 'W->F', 'skill_vs_onehot')}</td></tr>
-<tr><td>Lys</td><td>{tr(S6, 'wt_aa', 'K', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'K', 'skill_vs_onehot')}</td><td></td><td>Lys &rarr; Arg</td><td>{trn(FP, 'pair', 'K->R')}</td><td>{tr(FP, 'pair', 'K->R', 'skill_vs_onehot')}</td></tr>
-<tr><td>Ile</td><td>{tr(S6, 'wt_aa', 'I', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'I', 'skill_vs_onehot')}</td><td></td><td>Val &rarr; Ala</td><td>{trn(FP, 'pair', 'V->A')}</td><td>{tr(FP, 'pair', 'V->A', 'skill_vs_onehot')}</td></tr>
-<tr><td>Leu</td><td>{tr(S6, 'wt_aa', 'L', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'L', 'skill_vs_onehot')}</td><td></td><td>Ile &rarr; Ala</td><td>{trn(FP, 'pair', 'I->A')}</td><td>{tr(FP, 'pair', 'I->A', 'skill_vs_onehot')}</td></tr>
-<tr><td>Val</td><td>{tr(S6, 'wt_aa', 'V', 'skill_vs_onehot')}</td><td>{tr(FP, 'wt_aa', 'V', 'skill_vs_onehot')}</td><td></td><td>Leu &rarr; Ala</td><td>{trn(FP, 'pair', 'L->A')}</td><td>{tr(FP, 'pair', 'L->A', 'skill_vs_onehot')}</td></tr>
+<tr><th>Source residue</th><th>n (S669)</th><th>skill, S669</th><th>n (FP)</th><th>skill, FireProt</th><th>&nbsp;</th><th>Substitution</th><th>n (FireProt)</th><th>skill, FireProt</th></tr>
+<tr><td>Gln</td><td>{trn(S6, 'wt_aa', 'Q')}</td><td>{tr(S6, 'wt_aa', 'Q', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'Q')}</td><td>{tr(FP, 'wt_aa', 'Q', 'skill_vs_onehot')}</td><td></td><td>Tyr &rarr; Phe</td><td>{trn(FP, 'pair', 'Y->F')}</td><td>{tr(FP, 'pair', 'Y->F', 'skill_vs_onehot')}</td></tr>
+<tr><td>Trp</td><td>{trn(S6, 'wt_aa', 'W')}</td><td>{tr(S6, 'wt_aa', 'W', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'W')}</td><td>{tr(FP, 'wt_aa', 'W', 'skill_vs_onehot')}</td><td></td><td>Trp &rarr; Ala</td><td>{trn(FP, 'pair', 'W->A')}</td><td>{tr(FP, 'pair', 'W->A', 'skill_vs_onehot')}</td></tr>
+<tr><td>Thr</td><td>{trn(S6, 'wt_aa', 'T')}</td><td>{tr(S6, 'wt_aa', 'T', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'T')}</td><td>{tr(FP, 'wt_aa', 'T', 'skill_vs_onehot')}</td><td></td><td>Trp &rarr; Phe</td><td>{trn(FP, 'pair', 'W->F')}</td><td>{tr(FP, 'pair', 'W->F', 'skill_vs_onehot')}</td></tr>
+<tr><td>Lys</td><td>{trn(S6, 'wt_aa', 'K')}</td><td>{tr(S6, 'wt_aa', 'K', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'K')}</td><td>{tr(FP, 'wt_aa', 'K', 'skill_vs_onehot')}</td><td></td><td>Lys &rarr; Arg</td><td>{trn(FP, 'pair', 'K->R')}</td><td>{tr(FP, 'pair', 'K->R', 'skill_vs_onehot')}</td></tr>
+<tr><td>Ile</td><td>{trn(S6, 'wt_aa', 'I')}</td><td>{tr(S6, 'wt_aa', 'I', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'I')}</td><td>{tr(FP, 'wt_aa', 'I', 'skill_vs_onehot')}</td><td></td><td>Val &rarr; Ala</td><td>{trn(FP, 'pair', 'V->A')}</td><td>{tr(FP, 'pair', 'V->A', 'skill_vs_onehot')}</td></tr>
+<tr><td>Leu</td><td>{trn(S6, 'wt_aa', 'L')}</td><td>{tr(S6, 'wt_aa', 'L', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'L')}</td><td>{tr(FP, 'wt_aa', 'L', 'skill_vs_onehot')}</td><td></td><td>Ile &rarr; Ala</td><td>{trn(FP, 'pair', 'I->A')}</td><td>{tr(FP, 'pair', 'I->A', 'skill_vs_onehot')}</td></tr>
+<tr><td>Val</td><td>{trn(S6, 'wt_aa', 'V')}</td><td>{tr(S6, 'wt_aa', 'V', 'skill_vs_onehot')}</td><td>{trn(FP, 'wt_aa', 'V')}</td><td>{tr(FP, 'wt_aa', 'V', 'skill_vs_onehot')}</td><td></td><td>Leu &rarr; Ala</td><td>{trn(FP, 'pair', 'L->A')}</td><td>{tr(FP, 'pair', 'L->A', 'skill_vs_onehot')}</td></tr>
 </table>
 
-<p>Two residues sit at zero on <i>both</i> blind corpora: mutations away from <b>glutamine</b> and
-from <b>tryptophan</b>, where the representation matches but does not beat the substitution
-matrix. At the other end, mutations away from the aliphatics &mdash; Val, Leu, Ile &mdash; and from
+<p>Mutations away from <b>tryptophan</b> sit at zero on both blind corpora
+({tr(S6, 'wt_aa', 'W', 'skill_vs_onehot')} on S669, {tr(FP, 'wt_aa', 'W', 'skill_vs_onehot')} on
+FireProt), where the representation matches but does not beat the substitution matrix.
+<b>Glutamine</b> is the other low cell but weaker evidence: near zero on FireProt
+({tr(FP, 'wt_aa', 'Q', 'skill_vs_onehot')}, n = {trn(FP, 'wt_aa', 'Q')}) yet
+{tr(S6, 'wt_aa', 'Q', 'skill_vs_onehot')} on S669, where the one-hot baseline is not matched but
+beaten, on n = {trn(S6, 'wt_aa', 'Q')} &mdash; the inclusion threshold itself.
+At the other end, mutations away from the aliphatics &mdash; Val, Leu, Ile &mdash; and from
 Ala carry most of the model's advantage. By substitution pair the split is cleaner still:
 chemistry-preserving replacements (Tyr&rarr;Phe, Trp&rarr;Phe, Lys&rarr;Arg) sit at zero skill,
 while large-hydrophobic-to-alanine truncations, the classic core-packing perturbation, are where
