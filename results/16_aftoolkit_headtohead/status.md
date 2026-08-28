@@ -1,6 +1,6 @@
 # Status — 16_aftoolkit_headtohead
 
-**State:** 🚧 In progress — S669 done and settled; AFToolkit-on-FireProt extraction running (job 20245)
+**State:** ✅ Done — both corpora settled. S669 paired comparison + FireProt leakage reversal.
 **Last updated:** 2026-08-28
 
 ## Current state
@@ -81,6 +81,28 @@ the leakage audit as a page (private until shared). Regenerate/update it from
 `README.md` + `figures/`; keep the same URL.
 
 ## Log — newest first
+
+### 2026-08-28 (evening) — FireProt lands; the leakage reversal replicates the S669 story
+
+- **Extraction finished**: job 20245, 32/32 shards COMPLETED, ~13 min each, no shard
+  failures. **2,899 of 2,983 variants** produced features; **84 (2.8 %) failed inside
+  AFToolkit's own code** — 33 `AssertionError`, 28 `RuntimeError('No active exception to
+  reraise')` (a bare `raise` in their error path), 23 `KeyError(<resnum>)`. All are
+  structures with unresolved residues, where their contiguous-numbering assumption in
+  `set_observable_positions` breaks. Both methods scored on the same 2,899.
+- **Result** (Spearman ρ): on the 88 proteins AFToolkit trained on, AFToolkit 0.755 vs
+  ours 0.716 (paired Δ −0.063 [−0.164, −0.004], significant). On the 36 blind to both,
+  AFToolkit 0.633 vs ours 0.685 (Δ +0.046 [−0.019, +0.094], n.s.). **AFToolkit loses
+  0.122 ρ when its own training proteins are removed; this project loses 0.031.**
+- The naive all-corpus number (AFToolkit 0.706 vs ours 0.696) is the one anyone would
+  compute from the two papers, and it gets the *direction* wrong.
+- Cluster housekeeping while this ran: `conda clean` + `pip cache purge` took
+  `/home/hgarbarino` 48 GB → 17 GB; deleting `mave_hoie_le200/{_predict_shards,slim}`
+  (orphaned temp + a slim store verified byte-identical to the local copy by a
+  filename+size manifest hash) took the project dir 31 GB → 23 GB. Guarded by a
+  re-check of the manifest hash and a 2-hour write-freshness test immediately before
+  `rm`. `scan_GLA_human` was explicitly excluded — its `_predict_shards` looked like the
+  same orphaned temp but belongs to the live job 20156.
 
 ### 2026-08-28 — S669 head-to-head done (paired); FireProt extraction set up
 

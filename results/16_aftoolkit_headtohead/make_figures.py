@@ -154,30 +154,36 @@ def figure2():
                  "MMseqs2 30 % identity for this project; PDB identity for AFToolkit",
                  fontsize=9.5, loc="left")
 
-    # --- B: our FireProt score, full vs blind-to-both
+    # --- B: the leakage reversal -- both methods, split by what AFToolkit has seen
     ax = axes[1]
-    cfgs = ["diag", "dz_cw", "dz", "cw", "base"]
-    names = ["zdiag 128d", "diag+cw 256d", "dz 256d", "cw 256d", "concat 256d"]
-    full = ours[ours.corpus == "fireprot_le500_filtered"].set_index("config")
-    blind = ours[ours.corpus == "fireprot_blind_to_both"].set_index("config")
-    x = np.arange(len(cfgs))
-    ax.bar(x - .19, [full.loc[c, "rho"] for c in cfgs], .34, color=ORANGE,
-           edgecolor="white", linewidth=.6, label=f"all 130 proteins (n={int(full.n.iloc[0])})")
-    ax.bar(x + .19, [blind.loc[c, "rho"] for c in cfgs], .34, color=GREEN,
-           edgecolor="white", linewidth=.6,
-           label=f"blind to both methods, 40 proteins (n={int(blind.n.iloc[0])})")
-    for xi, c in zip(x, cfgs):
-        ax.text(xi - .19, full.loc[c, "rho"] + .01, f"{full.loc[c,'rho']:.2f}",
-                ha="center", fontsize=7.6, color=INK)
-        ax.text(xi + .19, blind.loc[c, "rho"] + .01, f"{blind.loc[c,'rho']:.2f}",
-                ha="center", fontsize=7.6, color=INK)
-    ax.set_xticks(x); ax.set_xticklabels(names, fontsize=8, rotation=18, ha="right")
-    ax.set_ylabel("Spearman ρ, this project"); ax.set_ylim(0, 0.82)
+    h2h = pd.read_csv(HERE / "headtohead_fireprot.csv")
+    subsets = ["AFToolkit HAS trained on these proteins", "blind to both methods"]
+    labels = ["proteins AFToolkit\ntrained on", "blind to\nboth methods"]
+    x = np.arange(len(subsets))
+    def get(sub, model):
+        r = h2h[(h2h.subset == sub) & (h2h.model == model)]
+        return float(r.rho.iloc[0]), int(r.n.iloc[0])
+    aft = [get(s_, "AFToolkit SVM") for s_ in subsets]
+    our = [get(s_, "ours: dz_cw") for s_ in subsets]
+    ax.bar(x - .2, [v for v, _ in aft], .38, color=BLUE, edgecolor="white", linewidth=.6,
+           label="AFToolkit SVM")
+    ax.bar(x + .2, [v for v, _ in our], .38, color=ORANGE, edgecolor="white", linewidth=.6,
+           label="this project (diag + cw)")
+    for xi, ((va, n), (vo, _)) in enumerate(zip(aft, our)):
+        ax.text(xi - .2, va + .012, f"{va:.3f}", ha="center", fontsize=8.5, color=INK)
+        ax.text(xi + .2, vo + .012, f"{vo:.3f}", ha="center", fontsize=8.5, color=INK)
+        ax.text(xi, .03, f"n={n} variants", ha="center", fontsize=7.8, color="white")
+    # how much each method loses when its own training proteins are removed
+
+    ax.set_xticks(x); ax.set_xticklabels(labels, fontsize=8.4)
+    ax.set_ylabel("Spearman ρ on FireProt"); ax.set_ylim(0, 0.94)
     ax.yaxis.grid(True, color=GRID, lw=0.6); ax.set_axisbelow(True)
-    for s in ("top", "right"): ax.spines[s].set_visible(False)
-    ax.legend(frameon=False, fontsize=8, loc="upper right")
-    ax.set_title("B · restricting FireProt to the proteins blind to both methods\n"
-                 "barely moves this project's score", fontsize=9.5, loc="left")
+    for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+    ax.legend(frameon=False, fontsize=8, loc="upper left", ncol=2)
+    ax.set_title("B · the leakage reversal — AFToolkit leads only where it has trained;\n"
+                 "on blind proteins the ordering flips. Removing them costs AFToolkit\n"
+                 f"−{aft[0][0]-aft[1][0]:.3f} ρ against this project's −{our[0][0]-our[1][0]:.3f}.",
+                 fontsize=9.5, loc="left")
 
     fig.savefig(OUT / "02_leakage_audit.png", dpi=200, bbox_inches="tight")
     plt.close(fig)
