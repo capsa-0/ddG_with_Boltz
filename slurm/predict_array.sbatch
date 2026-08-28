@@ -18,10 +18,12 @@
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
 # No --time (gpu partition is unlimited). Exclude too-small/old GPUs and the
-# nodes that crash boltz at startup (nodo1 CUDA init, nodo3 ld.so, nodo5 bad GPU).
+# nodes that crash boltz at startup (nodo1 CUDA init, nodo3 ld.so, nodo5 bad GPU),
+# nodo4 (broken /grupos mount: hangs or fails writing output), and nodo9 (excluded
+# at the cluster administrators' request, 2026-08-27).
 # Keep this list to nodes that ACTUALLY EXIST -- sbatch rejects the whole job with
 # "Invalid node name specified" otherwise (nodo14/nodo15 were decommissioned).
-#SBATCH --exclude=nodo1,nodo3,nodo4,nodo5,nodo11,nodo12,sauron
+#SBATCH --exclude=nodo1,nodo3,nodo4,nodo5,nodo9,nodo11,nodo12,sauron
 # Auto-requeue if the node fails/preempts (predict is resumable: on rerun it
 # skips queries already predicted, so requeue only redoes leftover work).
 #SBATCH --requeue

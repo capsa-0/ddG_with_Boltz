@@ -37,7 +37,7 @@ cd "$(dirname "$0")/.."
 # sbatch rejects an ENTIRE submission with "Invalid node name specified" if the
 # list names a node that no longer exists (nodo14/nodo15 were decommissioned).
 WANT_CPU="nodo1 nodo3 nodo5"
-WANT_GPU="nodo1 nodo3 nodo4 nodo5 nodo11 nodo12 sauron"
+WANT_GPU="nodo1 nodo3 nodo4 nodo5 nodo9 nodo11 nodo12 sauron"
 
 existing_nodes() {
     scontrol show hostnames "$(sinfo -h -o '%N' | paste -sd, -)" 2>/dev/null
