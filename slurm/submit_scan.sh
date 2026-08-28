@@ -36,7 +36,7 @@ cd "$(dirname "$0")/.."
 # plus GPUs too small for a large protein. Filtered against the live inventory:
 # sbatch rejects an ENTIRE submission with "Invalid node name specified" if the
 # list names a node that no longer exists (nodo14/nodo15 were decommissioned).
-WANT_CPU="nodo1 nodo3 nodo5"
+WANT_CPU="nodo1 nodo3 nodo4 nodo5 nodo9"
 WANT_GPU="nodo1 nodo3 nodo4 nodo5 nodo9 nodo11 nodo12 sauron"
 
 existing_nodes() {
