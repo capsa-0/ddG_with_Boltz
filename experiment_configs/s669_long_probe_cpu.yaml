@@ -4,7 +4,7 @@
 # capability >= 8.0; see boltz2.py:365 -- they are force-disabled on Turing cards).
 head:
   mode: "train"
-  experiment_name: "s669_long_probe"
+  experiment_name: "s669_long_probe_cpu"
 data_processing:
   overwrite: false
   raw_data_path: "data/raw/s669_long_probe.csv"
