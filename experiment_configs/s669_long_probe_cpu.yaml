@@ -1,0 +1,33 @@
+# Length-ceiling probe: can Boltz embed the S669 proteins the 500-residue cap excludes?
+# One variant per protein, 505 -> 1207 aa. Deliberately does NOT set `no_kernels`, so the
+# memory-efficient triangle kernels run wherever the GPU supports them (compute
+# capability >= 8.0; see boltz2.py:365 -- they are force-disabled on Turing cards).
+head:
+  mode: "train"
+  experiment_name: "s669_long_probe"
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/s669_long_probe.csv"
+  dataset_type: "minimal"
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+feature_extraction:
+  process_one_by_one: true
+  boltz_flags:
+    accelerator: "cpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    write_embeddings: true
+    skip_run_structure: true
+slim:
+  keep_s: false
+  delete_raw: false
+feature:
+  source: "auto"
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
