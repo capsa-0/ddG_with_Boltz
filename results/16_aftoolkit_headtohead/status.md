@@ -74,6 +74,12 @@ None open. Resolved during setup:
   (openmm/pdbfixer) at module scope; patched to a lazy import inside `relax_protein`,
   which is never called. No model code touched.
 
+## Shareable write-up
+
+<https://claude.ai/code/artifact/d7f6d51c-b727-49f1-ab99-a131089f46d0> — the S669 result and
+the leakage audit as a page (private until shared). Regenerate/update it from
+`README.md` + `figures/`; keep the same URL.
+
 ## Log — newest first
 
 ### 2026-08-28 — S669 head-to-head done (paired); FireProt extraction set up
@@ -119,7 +125,10 @@ None open. Resolved during setup:
   Replaced with a longest-processing-time bin-packing over *variants*, precomputed into
   a `shard` column of `fireprot_aft_task.csv`: **32 shards of 0.85 h each** (93 variants,
   spread of 0.00 h).
-- **Running now: job 20245, `--array=0-31%2`**, ~13.6 h wall expected. `%2` deliberately,
+- **Running now: job 20245, `--array=0-31%2`** on nodo6 + nodo8 (RTX 2080, 8 GB — no OOM
+  so far; the longest chain is 477 aa). First 51 variants took ~8.8 s each against the
+  32.8 s/variant the cost model assumed, so the wall clock may land nearer 4-6 h than the
+  ~13.6 h estimated — the model was fitted on two points and over-predicts. `%2` deliberately,
   to leave GPUs for the user's own `ddg-predict` array (job 20156) on the same partition
   — raise to `%3`/`%4` if that array finishes first. Shards are resumable (they skip any
   variant whose `.npy` exists), so a requeue costs at most one shard.
