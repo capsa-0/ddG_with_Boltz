@@ -1,0 +1,33 @@
+# S669 extension: the 88 variants on 9 proteins in the 505-701 aa band that the
+# pipeline's 500-residue cap excluded but the hardware can actually reach. Measured on
+# an 8 GB RTX 2080 (job 20745): 701 aa peaks at 7,465 MiB and succeeds; 795 aa is
+# silently dropped. Together with the existing 541 this takes S669 to 629/669 (94 %).
+head:
+  mode: "train"
+  experiment_name: "s669_ext"
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/s669_ext.csv"
+  dataset_type: "minimal"
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+feature_extraction:
+  process_one_by_one: false
+  boltz_flags:
+    accelerator: "gpu"
+    model: "boltz2"
+    recycling_steps: 3
+    write_full_pae: false
+    write_full_pde: false
+    write_embeddings: true
+    skip_run_structure: true
+slim:
+  keep_s: false
+  delete_raw: true
+feature:
+  source: "auto"
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42

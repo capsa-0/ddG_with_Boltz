@@ -177,3 +177,18 @@ def run_boltz_predictions(config, shard=None) -> None:
         shutil.rmtree(d, ignore_errors=True)
 
     logger.info("Boltz done: %d prediction folders now under %s", total, dst_predictions)
+
+    # Boltz can drop a structure it cannot fit in VRAM and still exit 0: the CLI
+    # reports success having written nothing, so `check=True` above never fires and
+    # the corpus silently loses that structure. Measured on an 8 GB RTX 2080
+    # (compute capability 7.5, so Boltz's own triangle kernels are off): chains up to
+    # ~701 aa succeed at ~7.5 GB peak, and >=795 aa are dropped exactly this way.
+    # Fail loudly instead -- predict is resumable, so a requeue only redoes the gap.
+    missing = [f.stem for f in pending if not _is_done(dst_predictions, f.stem)]
+    if missing:
+        shown = ", ".join(missing[:10]) + (" ..." if len(missing) > 10 else "")
+        raise RuntimeError(
+            f"Boltz exited 0 but wrote no prediction for {len(missing)} of "
+            f"{len(pending)} queries in {label}: {shown}. This is usually a GPU "
+            f"out-of-memory on a long chain, which Boltz does not report as an error."
+        )
