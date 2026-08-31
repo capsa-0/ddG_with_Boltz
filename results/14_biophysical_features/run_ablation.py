@@ -58,6 +58,7 @@ MSA_RES_KEYS = ("msafreq", "msalogodds", "is_consensus", "x_cons")
 # convention to Tsuboyama/FireProt (results/13), so it alone needs the flip.
 TRANSFER = {
     "s669":           {"flip": True},    # 541 variants / 62 proteins
+    "s669_full":      {"flip": True},    # 629 / 71 -- s669 + the 505-701 aa band (results/16)
     "fireprot_le500": {"flip": False},   # 3,205 variants / 138 proteins
 }
 
