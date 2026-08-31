@@ -35,8 +35,8 @@ plt.rcParams.update({
     "figure.facecolor": "white", "axes.facecolor": "white",
 })
 
-h2h = pd.read_csv(HERE / "headtohead_s669.csv")
-boot = pd.read_csv(HERE / "headtohead_s669_bootstrap.csv")
+h2h = pd.read_csv(HERE / "headtohead_s669_full.csv")
+boot = pd.read_csv(HERE / "headtohead_s669_full_bootstrap.csv")
 ours = pd.read_csv(HERE / "results_ours.csv")
 aft = pd.read_csv(HERE / "aftoolkit_s669_predictions.csv")
 
@@ -47,19 +47,20 @@ def figure1():
 
     # --- A: both methods on the identical 541 variants
     ax = fig.add_subplot(gs[0])
-    order = ["ours: Boltz-2 zdiag, 128d (best transfer)",
-             "ours: Boltz-2 diag + contact-weighted, 256d",
-             "ours: Boltz-2 dz, 256d",
-             "AFToolkit SVM (AF2 pair+lddt+plddt, 223,611 train)",
-             "ours: Boltz-2 concat, 256d (project default)",
-             "AFToolkit MLP", "AFToolkit CatBoost"]
+    order = ["this project: Boltz-2 zdiag, 128d",
+             "this project: diag + contact-weighted, 256d",
+             "this project: Boltz-2 dz, 256d",
+             "AFToolkit SVM",
+             "AFToolkit MLP",
+             "this project: Boltz-2 concat, 256d (project default)",
+             "AFToolkit CatBoost"]
     short = ["Boltz-2 zdiag 128d", "Boltz-2 diag+cw 256d", "Boltz-2 dz 256d",
-             "AFToolkit SVM", "Boltz-2 concat 256d\n(project default)",
-             "AFToolkit MLP", "AFToolkit CatBoost"]
+             "AFToolkit SVM", "AFToolkit MLP",
+             "Boltz-2 concat 256d\n(project default)", "AFToolkit CatBoost"]
     d = h2h.set_index("model").loc[order]
     y = np.arange(len(order))[::-1]
-    cols = [ORANGE if m.startswith("ours") else BLUE for m in order]
-    cols[order.index("ours: Boltz-2 concat, 256d (project default)")] = PURPLE
+    cols = [ORANGE if m.startswith("this project") else BLUE for m in order]
+    cols[order.index("this project: Boltz-2 concat, 256d (project default)")] = PURPLE
     ax.barh(y + 0.19, d.rho, 0.34, color=cols, edgecolor="white", linewidth=0.6)
     ax.barh(y - 0.19, d.r, 0.34, color=cols, alpha=0.5, edgecolor="white", linewidth=0.6)
     for yy, (rho, r) in zip(y, zip(d.rho, d.r)):
@@ -69,13 +70,13 @@ def figure1():
     ax.set_xlabel("correlation with experimental ΔΔG"); ax.set_xlim(0, 0.72)
     ax.xaxis.grid(True, color=GRID, lw=0.6); ax.set_axisbelow(True)
     for s in ("top", "right", "left"): ax.spines[s].set_visible(False)
-    ax.set_title("A · S669, the same 541 variants / 62 proteins\n"
+    ax.set_title("A · S669, the same 629 variants / 71 proteins\n"
                  "solid = Spearman ρ, pale = Pearson r", fontsize=9.5, loc="left")
 
     # --- B: paired bootstrap difference
     ax = fig.add_subplot(gs[1])
-    lab = {"zdiag 128d": "Boltz-2 zdiag 128d", "dz 256d": "Boltz-2 dz 256d",
-           "concat 256d": "Boltz-2 concat 256d\n(project default)"}
+    lab = {"diag": "Boltz-2 zdiag 128d", "dz_cw": "Boltz-2 diag+cw 256d",
+           "dz": "Boltz-2 dz 256d", "base": "Boltz-2 concat 256d\n(project default)"}
     yy = np.arange(len(boot))[::-1] * 1.0
     for i, (y0, r) in enumerate(zip(yy, boot.itertuples())):
         for off, m, c, a in ((+.17, "rho", ORANGE, 1.0), (-.17, "r", ORANGE, 0.5)):
@@ -91,7 +92,7 @@ def figure1():
     ax.set_xlabel("Δ correlation vs AFToolkit SVM")
     ax.xaxis.grid(True, color=GRID, lw=0.6); ax.set_axisbelow(True)
     for s in ("top", "right", "left"): ax.spines[s].set_visible(False)
-    ax.set_title("B · paired difference, same variants\n"
+    ax.set_title("B · paired difference, same 629 variants\n"
                  "4,000-resample protein bootstrap, 95 % CI", fontsize=9.5, loc="left")
     ax.set_ylim(-0.55, len(boot) - 0.45)
     ax.legend(handles=[plt.Line2D([], [], color=ORANGE, lw=2.4, marker="o", ms=5.5),
@@ -101,22 +102,25 @@ def figure1():
     ax.text(1.0, -0.20, "right of 0 = this project ahead", transform=ax.transAxes,
             fontsize=7.5, color=MUTED, ha="right")
 
-    # --- C: is our 500-aa subset the easy half?
+    # --- C: how hard is each length band? (measured with AFToolkit's predictions,
+    # so the difficulty estimate does not come from the method under test)
     ax = fig.add_subplot(gs[2])
-    kept, excl = aft[aft.seqlen <= 500], aft[aft.seqlen > 500]
     from scipy.stats import spearmanr
-    vals = [spearmanr(kept.ddg, -kept.aft_svm).statistic,
-            spearmanr(excl.ddg, -excl.aft_svm).statistic]
-    b = ax.bar([0, 1], vals, 0.55, color=[BLUE, "#8fb8dc"], edgecolor="white", linewidth=0.6)
-    for x, v, n in zip([0, 1], vals, [len(kept), len(excl)]):
-        ax.text(x, v + .012, f"{v:.3f}", ha="center", fontsize=8.5, color=INK)
-        ax.text(x, .02, f"n={n}", ha="center", fontsize=8, color="white")
-    ax.set_xticks([0, 1]); ax.set_xticklabels(["≤500 aa\n(scored here)", ">500 aa\n(excluded)"],
-                                              fontsize=8.2)
-    ax.set_ylabel("AFToolkit SVM, Spearman ρ"); ax.set_ylim(0, 0.66)
+    bands = [("base 541\n≤500 aa", aft[aft.seqlen <= 500]),
+             ("added 88\n505–701", aft[(aft.seqlen > 500) & (aft.seqlen <= 701)]),
+             ("excluded 40\n>701 aa", aft[aft.seqlen > 701])]
+    vals = [spearmanr(d.ddg, -d.aft_svm).statistic for _, d in bands]
+    ax.bar(range(3), vals, 0.6, color=[BLUE, GREEN, "#9fb3c4"],
+           edgecolor="white", linewidth=0.6)
+    for x, (lab, d), v in zip(range(3), bands, vals):
+        ax.text(x, v + .015, f"{v:.3f}", ha="center", fontsize=8.5, color=INK)
+        ax.text(x, .02, f"n={len(d)}", ha="center", fontsize=8, color="white")
+    ax.set_xticks(range(3)); ax.set_xticklabels([b for b, _ in bands], fontsize=8)
+    ax.set_ylabel("AFToolkit SVM, Spearman ρ"); ax.set_ylim(0, 0.88)
     ax.yaxis.grid(True, color=GRID, lw=0.6); ax.set_axisbelow(True)
-    for s in ("top", "right"): ax.spines[s].set_visible(False)
-    ax.set_title("C · the cap is not a\nfavourable subset", fontsize=9.5, loc="left")
+    for sp in ("top", "right"): ax.spines[sp].set_visible(False)
+    ax.set_title("C · the bands differ in difficulty —\nwhich is why the paired Δ, not the\n"
+                 "absolute score, is the comparison", fontsize=9.5, loc="left")
 
     fig.savefig(OUT / "01_s669_headtohead.png", dpi=200, bbox_inches="tight")
     plt.close(fig)

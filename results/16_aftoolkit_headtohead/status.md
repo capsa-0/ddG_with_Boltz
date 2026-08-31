@@ -82,6 +82,49 @@ the leakage audit as a page (private until shared). Regenerate/update it from
 
 ## Log — newest first
 
+### 2026-08-31 — S669 extended to 94 % coverage; three latent defects fixed on the way
+
+- **Length ceiling measured** (job 20745, RTX 2080 8 GB, cc 7.5 so Boltz's kernels are
+  off): 505 aa peaks at 4,991 MiB / 2.4 min, 701 aa at 7,465 MiB / 4.6 min, and **795,
+  801 and 1207 aa all fail**. Cliff between 701 and 795 aa.
+- **Boltz drops over-long chains silently** — exit 0, nothing written, pipeline logs
+  "Feature extraction complete!". `run_boltz.py` now raises if collected predictions
+  don't match pending queries. Safe mid-run: scan_GLA_human's chain is 398 aa.
+- **CPU is not an alternative**: 505 aa took 6 h 09 m (14.4 GB RSS); 701 aa and 1207 aa
+  both hit the 8-hour wall with no output. ~150x the GPU cost and it doesn't reach the
+  top of the band.
+- **Extension run** (20856 prepare → 20857 predict, `afterok`-chained so it survived my
+  session): 97/97 structures, 16 shards ~20 min each, ~5.3 GPU-hours at `%1`. The new
+  guard never fired.
+- **Result on 629 variants / 71 proteins**: this project `zdiag` ρ 0.583 / r 0.574 vs
+  AFToolkit 0.533 / 0.548; paired Δρ **+0.054 [−0.003, +0.124]**, P(ahead) 0.97. The
+  verdict is unchanged from 541 (Δρ was +0.063 [−0.002, +0.144]). `concat`, the project
+  default, is significantly behind at **−0.153 [−0.241, −0.054]**.
+- **Corrected an earlier reading in this folder.** The old "the cap gives us the harder
+  half" line rested on the excluded 128 scoring 0.552 vs the kept 541's 0.511. Splitting
+  that 128 shows it was a blend: the 88 in 505–701 aa are *easy* (AFToolkit ρ **0.761**)
+  and the 40 above 701 aa are *hard* (**0.327**). So extending the corpus made it easier
+  in absolute terms for both methods; only the paired Δ is stable across corpora.
+
+**Three defects found and fixed while doing this**, all latent rather than new:
+1. `results/` scripts are invoked as `python results/.../x.py`, which puts the script's
+   own directory on `sys.path` rather than the repo root, so `import ddg` fails. The
+   pipeline never hits it because it runs `python -m ddg`. Fixed with `PYTHONPATH` in
+   `slurm/ext_features.sh`.
+2. `build_bio_features.py` and `results/14/run_ablation.py` hardcoded
+   `ROOT = Path("/media/capsa/...")`, so they only ran on the workstation. Now derived
+   from `__file__` with a `DDG_ROOT` override. **Ten other results/ scripts still carry
+   this pattern** (07, 08 ×2, 11 ×4, 12 ×2) and will fail the same way on the cluster.
+3. `build_bio_features.py` never emitted `cwd_*` or `oh_wt_*`/`oh_mt_*`, though
+   results/14's shipped tables contain them and `run_ablation.py`'s `cwpool`/`onehot`
+   configs read them — the script could not regenerate its own output, and a newly built
+   corpus came out 168 columns short. Both blocks are exactly recoverable and were
+   verified against the shipped s669 table (`cwd == mtcw − wtcw`, max|err| 0.0; one-hots
+   exact) before being added.
+
+Also: the exp-14 feature tables live **only on the workstation** — the cluster holds the
+slim stores. The merge and transfer therefore run locally, which is how results/14 ran.
+
 ### 2026-08-28 (evening) — FireProt lands; the leakage reversal replicates the S669 story
 
 - **Extraction finished**: job 20245, 32/32 shards COMPLETED, ~13 min each, no shard

@@ -16,40 +16,101 @@ AFToolkit's own released training manifest rather than by inference.
 
 ## Headline
 
-### S669 — the same 541 variants / 62 proteins, both methods blind
+### S669 — the same 629 variants / 71 proteins, both methods blind
+
+The pipeline's 500-residue cap originally left this at 541 of 669 variants. Measuring the
+real hardware ceiling (below) showed the 505–701 aa band was reachable, so `s669_ext`
+extracted its 88 variants and the corpus is now **629/669 = 94 %** of the published
+benchmark.
 
 | method | representation | training set | ρ | r | RMSE |
 |---|---|---|---|---|---|
-| **this project — `zdiag`, 128 d** | Boltz-2 pair-track diagonal, frozen | 12,359 Tsuboyama | **0.569** | **0.557** | **1.357** |
-| this project — `diag`+contact-weighted, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.565 | 0.547 | 1.365 |
-| this project — `dz`, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.552 | 0.541 | 1.425 |
-| **AFToolkit (SVM)** | AF2 pair + LDDT logits + pLDDT, frozen | 223,611 cDNA+PROSTATA | 0.511 | 0.525 | 1.401 |
-| this project — `concat`, 256 d *(project default)* | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.371 | 0.381 | 1.543 |
-| AFToolkit (MLP) | same features | same | 0.344 | 0.370 | 1.631 |
-| AFToolkit (CatBoost) | same features | same | 0.330 | 0.269 | 1.712 |
+| **this project — `zdiag`, 128 d** | Boltz-2 pair-track diagonal, frozen | 12,359 Tsuboyama | **0.583** | **0.574** | **1.295** |
+| this project — `diag`+contact-weighted, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.578 | 0.565 | 1.303 |
+| this project — `dz`, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.568 | 0.559 | 1.366 |
+| **AFToolkit (SVM)** | AF2 pair + LDDT logits + pLDDT, frozen | 223,611 cDNA+PROSTATA | 0.533 | 0.548 | 1.327 |
+| AFToolkit (MLP) | same features | same | 0.381 | 0.400 | 1.558 |
+| this project — `concat`, 256 d *(project default)* | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.373 | 0.385 | 1.507 |
+| AFToolkit (CatBoost) | same features | same | 0.358 | 0.309 | 1.635 |
 
 Paired protein-cluster bootstrap (4,000 resamples), this project − AFToolkit SVM:
 
 | configuration | Δρ | Δr |
 |---|---|---|
-| `zdiag` 128 d | **+0.063 [−0.002, +0.144]**, P(ahead) 0.97 | +0.042 [−0.029, +0.133], P 0.84 |
-| `dz` 256 d | +0.047 [−0.028, +0.136], P 0.88 | +0.027 [−0.057, +0.132], P 0.71 |
-| `concat` 256 d *(default)* | **−0.130 [−0.226, −0.017]** | **−0.132 [−0.220, −0.028]** |
+| `zdiag` 128 d | **+0.054 [−0.003, +0.124]**, P(ahead) 0.97 | +0.033 [−0.029, +0.111] |
+| `diag`+cw 256 d | +0.046 [−0.021, +0.120], P 0.91 | +0.023 [−0.053, +0.109] |
+| `dz` 256 d | +0.039 [−0.026, +0.120], P 0.86 | — |
+| `concat` 256 d *(project default)* | **−0.153 [−0.241, −0.054]** | — |
 
-**Read it as parity, not a win.** `zdiag` is nominally ahead on every metric and the
-Spearman difference is marginal (95 % CI touches zero at −0.002), but it is not
-significant. What *is* significant is the other direction: the project's **adopted
-default** loses to AFToolkit by 0.13. The parity is bought entirely by the
-transfer-facing readout results/14 recommended — the pair-track **diagonal**, 128
-dimensions, against AFToolkit's 358 — and by a training corpus **18× smaller**
-(12,359 mutations vs 223,611 samples), both models frozen.
+**The extra 88 variants do not change the verdict — parity, not a win.** `zdiag` is
+nominally ahead on every metric and the Spearman interval still just touches zero. Both
+methods gain slightly on the larger corpus (AFToolkit 0.511 → 0.533, this project
+0.569 → 0.583), so the earlier 541-variant reading was not an artefact of the cap. This
+project reaches that with **128 dimensions against 358** and a training corpus **18×
+smaller**, both backbones frozen.
 
-### The 500-residue cap does not flatter this project — measured, not assumed
+What *is* significant runs the other way: the project's **adopted default** (`concat`)
+loses to AFToolkit by **−0.153 [−0.241, −0.054]**. The parity above is bought entirely by
+the transfer-facing readout results/14 recommended, and would be missed by anyone taking
+the pipeline's own default configuration.
 
-results/14 could only bound this with a length-independent proxy. With AFToolkit's
-per-variant predictions the control is direct: AFToolkit scores **ρ 0.552 on the 128
-S669 variants our cap excludes** and **0.511 on the 541 we keep**. The variants we score
-are the *harder* half, so the comparison is conservative.
+<details><summary>The original 541-variant view, for continuity with earlier commits</summary>
+
+| method | ρ | r | RMSE |
+|---|---|---|---|
+| this project — `zdiag` 128 d | 0.569 | 0.557 | 1.357 |
+| AFToolkit (SVM) | 0.511 | 0.525 | 1.401 |
+| this project — `concat` 256 d *(project default)* | 0.371 | 0.381 | 1.543 |
+| AFToolkit (MLP) | 0.344 | 0.370 | 1.631 |
+| AFToolkit (CatBoost) | 0.330 | 0.269 | 1.712 |
+
+Paired Δρ for `concat` was **−0.130 [−0.226, −0.017]** — the project's *adopted default*
+loses to AFToolkit significantly. The parity above is bought entirely by the
+transfer-facing readout results/14 recommended.
+</details>
+
+### The length cap: measured, then lifted
+
+**The ceiling was measured, and it was not 500.** A length-ladder probe on an 8 GB
+RTX 2080 (compute capability 7.5, so Boltz's own triangle kernels are force-disabled) put
+the real limit between 701 and 795 aa:
+
+| chain (aa) | 505 | 619 | 648 | 701 | 795 | 801 | 1207 |
+|---|---|---|---|---|---|---|---|
+| peak VRAM (MiB) | 4,991 | 6,395 | 6,769 | 7,465 | 7,711 | 7,755 | 7,195 |
+| result | ✓ | ✓ | ✓ | ✓ | ✗ | ✗ | ✗ |
+| GPU time | 2.4 m | 3.6 m | 3.9 m | 4.6 m | — | — | — |
+
+So the 88 variants on 9 proteins in the 505–701 aa band were extracted (~5.3 GPU-hours)
+and folded in: **81 % → 94 %** coverage. The remaining 40 sit on proteins ≥724 aa and need
+more VRAM or an Ampere card, where the kernels switch on.
+
+**The length bands differ sharply in difficulty — so absolute scores are not comparable
+across corpora, and the paired Δ is.** Measured with AFToolkit's predictions, so the
+difficulty estimate is independent of the method under test:
+
+| band | n | AFToolkit ρ |
+|---|---|---|
+| base, ≤500 aa | 541 | 0.511 |
+| **added, 505–701 aa** | 88 | **0.761** |
+| still excluded, >701 aa | 40 | **0.327** |
+
+The band we added is markedly *easier* than the base corpus and the tail we still cannot
+reach is much harder, so extending to 629 raised both methods' absolute numbers
+(AFToolkit 0.511 → 0.533, this project 0.569 → 0.583). **This corrects an earlier reading
+in this folder**: on the old split the excluded 128 looked slightly *easier* overall
+(ρ 0.552 vs 0.511), which was a blend of the easy 88 and the hard 40 — the cap was not
+handing us the harder half, it was handing us a mixture.
+
+What matters is that the *paired* difference barely moves — **Δρ +0.063 [−0.002, +0.144]
+on 541 against +0.054 [−0.003, +0.124] on 629** — so the parity verdict is robust to which
+of the two corpora you score, which is exactly why the comparison is run paired.
+
+**A silent-failure trap, now guarded.** For all three over-long chains Boltz **exited 0
+having written nothing**, and the pipeline logged `Feature extraction complete!`. Nothing
+in `subprocess.run(..., check=True)` catches that, so a run containing long proteins would
+quietly lose them and report success. `run_boltz.py` now compares collected predictions
+against pending queries and raises.
 
 ### FireProt — AFToolkit publishes no number, and most of the corpus is in its training set
 
