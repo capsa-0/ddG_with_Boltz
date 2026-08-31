@@ -282,6 +282,55 @@ def _plots(scored, per_pos, shift, out, regime):
     fig.savefig(p, dpi=150)
     plt.close(fig)
 
+    plot_percentile_shift(shift, out, regime)
+
+
+def plot_percentile_shift(shift, out, regime):
+    """Forest plot of the per-group percentile shift.
+
+    The group table is where the actual claim lives -- whether the flagged positions
+    are shifted once glycines are taken out of them -- and it was previously only
+    printed, never drawn, so the headline had no picture to stand on. One measure
+    (% of mutations FoldX ranks higher) on one axis, 50 % marking no systematic
+    disagreement; a group whose interval clears 50 % is a real shift.
+    """
+    import matplotlib
+    matplotlib.use("Agg")
+    import matplotlib.pyplot as plt
+
+    order = ["glycine", "flagged", "all", "flagged, non-glycine",
+             "non-glycine", "rest (non-Gly, non-flagged)", "flagged, glycine"]
+    d = shift.set_index("group").loc[[g for g in order if g in set(shift.group)]].reset_index()
+    # colour encodes the reading, not the label: does the interval clear 50 %?
+    ORANGE, BLUE, GREY = "#D95F02", "#1F6FB4", "#8b949e"
+    cols = [ORANGE if lo > 50 else BLUE if hi < 50 else GREY
+            for lo, hi in zip(d.ci_lo, d.ci_hi)]
+    fig, ax = plt.subplots(figsize=(9.2, 4.0))
+    y = np.arange(len(d))[::-1]
+    ax.axvline(50, color="#1a1a1a", lw=1.1, ls="--", alpha=.6, zorder=1)
+    for yy, r, c in zip(y, d.itertuples(index=False), cols):
+        ax.plot([r.ci_lo, r.ci_hi], [yy, yy], color=c, lw=2.4,
+                solid_capstyle="round", zorder=2)
+        ax.plot(r.pct_below, yy, "o", ms=8, color=c, mec="white", mew=1.4, zorder=3)
+        ax.text(r.ci_hi + 1.2, yy, f"{r.pct_below:.1f}%  (n={r.n})",
+                va="center", fontsize=8.5, color="#1a1a1a")
+    ax.set_yticks(y); ax.set_yticklabels(d.group, fontsize=9)
+    ax.set_xlabel("% of mutations FoldX ranks as more destabilizing than Boltz does")
+    ax.set_xlim(30, 108); ax.set_ylim(-0.7, len(d) - 0.3)
+    ax.xaxis.grid(True, color="#c9d1d9", lw=.6); ax.set_axisbelow(True)
+    for sp in ("top", "right", "left"):
+        ax.spines[sp].set_visible(False)
+    ax.set_title("Where the two methods disagree, by group\n"
+                 "dashed line = 50 %, i.e. no systematic disagreement; "
+                 "bars are 95 % CI", fontsize=10, loc="left")
+    ax.text(0.0, -0.19, "orange = FoldX systematically harsher   ·   "
+                        "blue = Boltz systematically harsher   ·   "
+                        "grey = interval covers 50 %, no separation",
+            transform=ax.transAxes, fontsize=8, color="#555555")
+    p2 = out / f"figures/05_percentile_shift_{regime}.png"
+    fig.savefig(p2, dpi=150, bbox_inches="tight")
+    plt.close(fig)
+
 
 if __name__ == "__main__":
     main()

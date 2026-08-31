@@ -83,6 +83,7 @@ rho_abs = abs(rho_lb)
 _ps = pd.read_csv(R / f"percentile_shift{SUF}.csv").set_index("group").pct_below
 pct_gly, pct_rest = _ps["glycine"], _ps["rest (non-Gly, non-flagged)"]
 pct_fng, pct_fg = _ps["flagged, non-glycine"], _ps["flagged, glycine"]
+pct_flag = _ps["flagged"]
 
 img = lambda p: "data:image/png;base64," + base64.b64encode(Path(p).read_bytes()).decode()
 # Figures must match the regime the numbers come from -- embedding the "mean" panels
@@ -101,6 +102,7 @@ f_heat = fig("01_heatmap")
 f_cmp = fig("01_boltz_vs_foldx")
 f_raw = fig("03_discrepancy_map_raw")
 f_act = fig("04_lukas_activity")
+f_shift = fig("05_percentile_shift")
 
 CSS = """
 @page { size: A4; margin: 20mm 18mm; }
@@ -207,6 +209,15 @@ does. Glycines fall below it {pct_gly:.0f}% of the time against {pct_rest:.0f}% 
 and flagged positions that are <i>not</i> glycine sit at {pct_fng:.0f}%, i.e. within noise of
 the rest. Bottom: per-position means. Agreement is visibly tighter away from glycine
 positions.</figcaption></figure>
+<figure><img src="{f_shift}"/>
+<figcaption><b>Figure 2b.</b> The same percentile shift, per group, with 95 % confidence
+intervals. This is the test behind the claim above: <b>glycine sites</b> sit far off 50 %
+({pct_gly:.0f}%), and so do the flagged positions as a whole ({pct_flag:.0f}%) — but once the
+glycines are taken out of them, <b>flagged, non-glycine</b> falls to {pct_fng:.0f}% with an
+interval that covers 50 %, indistinguishable from the {pct_rest:.0f}% of everything else. The
+"flagged positions are overestimated" signal is the glycine effect in disguise; the flagged
+glycines alone are the extreme of the whole scan at 98 %.</figcaption></figure>
+
 <p>The headline agreement of ρ = {rho_all:+.3f} is essentially unchanged when FoldX's clash
 regime is excluded ({rho_clean:+.3f}), so it does not rest on the two methods merely
 concurring that clashes are bad. It is, however, <b>strongly residue-dependent</b>: at
