@@ -223,6 +223,19 @@ def build(exp: str) -> pd.DataFrame:
         for k in INTERACT:
             df[f"{side}_x_{k}"] = df[f"{side}_{k}"] * df["site_cn_z"]
 
+    # Contact-weighted DIFFERENCE and the substitution one-hot. run_ablation.py's
+    # `cwpool` and `onehot` configs consume these, and the tables shipped with
+    # results/14 contain them, but the emitting code was never committed -- so the
+    # script could not regenerate its own output. Both are exactly recoverable, and
+    # the identities below were verified against results/14's own s669 table
+    # (cwd max|err| 0.0; one-hots exact).
+    for j in range(Z_DIM):
+        df[f"cwd_{j}"] = df[f"mtcw_{j}"] - df[f"wtcw_{j}"]
+    wt_aa, mt_aa = df.mutation.astype(str).str[0], df.mutation.astype(str).str[-1]
+    for a in "ACDEFGHIKLMNPQRSTVWY":
+        df[f"oh_wt_{a}"] = (wt_aa == a).astype(np.float32)
+        df[f"oh_mt_{a}"] = (mt_aa == a).astype(np.float32)
+
     meta = ["wt_id", "mutation", "ddg"]
     feats = [c for c in df.columns if c not in meta]
     df[feats] = df[feats].astype(np.float32)
