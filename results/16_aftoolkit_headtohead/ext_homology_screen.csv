@@ -1,0 +1,72 @@
+group,protein,length,best_identity,aligned_len,closest_training_protein,leaky
+extension (unscreened),O43353,540,0.4375,32,6ACV.pdb,True
+extension (unscreened),P03322,701,0.43333333333333335,30,XX|run7_0974_0003.pdb,True
+extension (unscreened),P03372,595,0.45161290322580644,31,EEHEE_rd3_1716.pdb,True
+extension (unscreened),P04049,648,0.41935483870967744,31,XX|run6_1081_0004.pdb,True
+extension (unscreened),P08659,550,0.41935483870967744,31,2MYX.pdb,True
+extension (unscreened),P15891,592,0.5,48,1Y0M.pdb,True
+extension (unscreened),P37231,505,0.43333333333333335,30,1TUC.pdb,True
+extension (unscreened),Q15582,683,0.40625,32,GG|run4_0467_0002.pdb,True
+extension (unscreened),Q9UBU9,619,0.4166666666666667,36,6EWT.pdb,True
+original 62 (control),1fh5H,198,0.4375,32,2QFF.pdb,True
+original 62 (control),1iv7B,96,0.40476190476190477,42,r6_831_TrROS_Hall.pdb,True
+original 62 (control),1iv9A,96,0.37142857142857144,35,2KT8.pdb_V15A,True
+original 62 (control),A2IC68,227,0.42424242424242425,33,2KXD.pdb,True
+original 62 (control),E0WVU4,206,0.425,40,HEEH_KT_rd6_0793.pdb,True
+original 62 (control),O34627,261,0.4117647058823529,34,2KR3.pdb,True
+original 62 (control),O66523,112,0.45454545454545453,33,HHH_rd1_0493.pdb,True
+original 62 (control),O73951,297,0.42857142857142855,42,1EM7.pdb_L7A,True
+original 62 (control),P00149,146,0.34210526315789475,38,5Z2S.pdb,True
+original 62 (control),P00441,154,0.3548387096774194,31,2D1U.pdb,True
+original 62 (control),P02417,149,1.0,48,2HBB.pdb,True
+original 62 (control),P02654,83,0.4,30,1UFM.pdb,True
+original 62 (control),P02882,50,0.2647058823529412,34,2JT1.pdb,False
+original 62 (control),P03069,281,0.43333333333333335,30,6NMW.pdb,True
+original 62 (control),P04080,98,0.3225806451612903,31,2LSS.pdb_F17A,True
+original 62 (control),P05112,153,0.3870967741935484,31,2PTL.pdb_L38S,True
+original 62 (control),P07737,140,0.40625,32,2MKX.pdb_L11A,True
+original 62 (control),P07830,376,0.47619047619047616,42,r16_88_TrROS_Hall.pdb,True
+original 62 (control),P07845,175,0.3333333333333333,30,2K5H.pdb,True
+original 62 (control),P09167,493,0.3888888888888889,36,2KT8.pdb_G54S,True
+original 62 (control),P0A3C7,99,0.45161290322580644,31,r11_233_TrROS_Hall.pdb,True
+original 62 (control),P0A6R3,98,0.4,40,1QP2.pdb,True
+original 62 (control),P0A780,139,0.41935483870967744,31,2KVS.pdb,True
+original 62 (control),P0A9D2,201,0.42857142857142855,49,2LHR.pdb,True
+original 62 (control),P11053,99,0.4,30,r11_829_TrROS_Hall.pdb,True
+original 62 (control),P11309,313,0.3225806451612903,31,2KZJ.pdb,True
+original 62 (control),P11961,428,0.9772727272727273,44,1W4G.pdb,True
+original 62 (control),P12376,126,0.4,30,v2R31S|R32S_2N5D.pdb,True
+original 62 (control),P18429,213,0.4,30,2N88.pdb,True
+original 62 (control),P19267,69,0.4375,32,1ORC.pdb,True
+original 62 (control),P22505,448,0.4375,32,HEEH_KT_rd6_0280.pdb,True
+original 62 (control),P26747,430,0.4,30,HEEH_KT_rd6_1415.pdb,True
+original 62 (control),P37957,212,0.4,30,1W4G.pdb,True
+original 62 (control),P40040,218,1.0,43,4UZW.pdb,True
+original 62 (control),P47992,114,0.4,30,5VNT.pdb,True
+original 62 (control),P48052,419,1.0,72,1O6X.pdb,True
+original 62 (control),P51161,128,0.45161290322580644,31,1QP2.pdb,True
+original 62 (control),P51608,486,0.4,30,5OAO.pdb,True
+original 62 (control),P54178,193,0.4,35,4HCK.pdb,True
+original 62 (control),P56552,54,0.0,0,,False
+original 62 (control),P60849,97,0.37142857142857144,35,r10_437_TrROS_Hall.pdb,True
+original 62 (control),P61769,119,0.325,40,r10_572_TrROS_Hall.pdb,True
+original 62 (control),P69168,424,0.43636363636363634,55,2D1U.pdb,True
+original 62 (control),P80386,270,0.4375,32,r11_797_TrROS_Hall.pdb,True
+original 62 (control),P81662,176,0.45714285714285713,35,1PGA.pdb_V39S,True
+original 62 (control),P84131,274,0.4117647058823529,34,1AOY.pdb,True
+original 62 (control),P9WKK7,428,0.40625,32,2CJJ.pdb,True
+original 62 (control),Q03689,289,0.45454545454545453,33,r10_437_TrROS_Hall.pdb,True
+original 62 (control),Q06525,465,0.41935483870967744,31,EHEE_rd4_0086.pdb,True
+original 62 (control),Q10ST8,96,0.0,0,,False
+original 62 (control),Q15561,434,0.36666666666666664,30,2K52.pdb_L42A,True
+original 62 (control),Q15562,447,0.42857142857142855,35,2LP5.pdb,True
+original 62 (control),Q16595,210,0.40625,32,2PTL.pdb_I58A,True
+original 62 (control),Q53291,455,1.0,54,2LUM.pdb,True
+original 62 (control),Q5SIY4,345,0.4375,32,EHEE_rd2_0487.pdb,True
+original 62 (control),Q7KIF2,209,0.41935483870967744,31,1GYZ.pdb,True
+original 62 (control),Q8XDZ4,161,0.4375,32,r7_587_TrROS_Hall.pdb,True
+original 62 (control),Q97ZL0,101,0.41935483870967744,31,2RRT.pdb,True
+original 62 (control),Q9EYL5,199,0.43333333333333335,30,HEEH_rd3_0223.pdb,True
+original 62 (control),Q9GZQ8,125,0.4,30,2M7O.pdb_I21A,True
+original 62 (control),Q9QZH4,271,0.375,32,v2_2M5A.pdb,True
+original 62 (control),Q9RA57,96,0.3870967741935484,31,XX|run1_0254_0003.pdb,True

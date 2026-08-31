@@ -82,6 +82,41 @@ the leakage audit as a page (private until shared). Regenerate/update it from
 
 ## Log — newest first
 
+### 2026-08-31 (later) — the homology check was blind to domain-in-protein contamination
+
+**The finding.** results/09's `mmseqs easy-cluster` screen at 80 % coverage reported zero
+S669 proteins homologous to the training corpus. It could not have found otherwise:
+Megascale entries are ~70 aa domains excised from real proteins, S669 proteins are
+hundreds of residues, and a 54 aa domain inside a 455 aa chain never reaches 80 % coverage
+of the longer sequence. Coverage-free local alignment (`domain_leakage_audit.py`) finds
+5 S669 proteins carrying a training domain verbatim (91-100 % identity over 40-72 aa):
+Q53291/`2PTL`, P02417/`2HBB`, P11961/`1W4G`, P40040/`4UZW`, P48052/`1O6X`. Several
+training entries are *mutants* of those domains (`2PTL.pdb_I58A`, `1PGA.pdb_L5A`), so the
+regressor saw that exact site's stability in that exact context.
+
+**Scale: 218 of 629 S669 variants (34.7 %).** Asymmetric, too -- only 1 of the 13 domains
+is in AFToolkit's training set; its BLAST >36 % filter caught what our clustering missed.
+
+**Corrected numbers (leakage-free, 411 variants / 67 proteins):** ours `zdiag` ρ 0.500 /
+r 0.512 vs AFToolkit 0.453 / 0.488. Absolute scores fall hard (0.583 -> 0.500) but the
+**paired Δρ is +0.054 either way** -- identical to three decimals. AFToolkit also scores
+0.714 on the contaminated 5 proteins without having trained on them, so those proteins are
+intrinsically easy, not leakage-inflated for us specifically. **Parity holds.**
+
+**FireProt, same audit:** 915 of 2,899 variants (31.6 %) but on only 3 proteins, and those
+largely overlap proteins AFToolkit had already trained on. The blind subset loses 55
+variants (1,173 -> 1,118) and nothing moves: ours 0.685 -> 0.677, AFToolkit 0.633 -> 0.625,
+Δρ unchanged at +0.046. FireProt's blind comparison was already clean.
+
+**The length extension is the cleanest part of the corpus** -- zero verbatim domains across
+all 9 of its proteins.
+
+**Open, and wider than this folder:** results/05, 09, 12 and 14 all rest on the same
+`easy-cluster` screen. Any transfer number involving a benchmark protein long enough to
+contain a Megascale domain carries the same inflation and should be re-checked with
+`domain_leakage_audit.py`. A first pass says FireProt is fine; S669-based numbers in
+results/09 and results/14 are not.
+
 ### 2026-08-31 — S669 extended to 94 % coverage; three latent defects fixed on the way
 
 - **Length ceiling measured** (job 20745, RTX 2080 8 GB, cc 7.5 so Boltz's kernels are

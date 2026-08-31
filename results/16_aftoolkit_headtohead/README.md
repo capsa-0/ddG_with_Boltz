@@ -16,58 +16,78 @@ AFToolkit's own released training manifest rather than by inference.
 
 ## Headline
 
-### S669 — the same 629 variants / 71 proteins, both methods blind
+### S669 — 411 leakage-free variants, both methods blind
 
-The pipeline's 500-residue cap originally left this at 541 of 669 variants. Measuring the
-real hardware ceiling (below) showed the 505–701 aa band was reachable, so `s669_ext`
-extracted its 88 variants and the corpus is now **629/669 = 94 %** of the published
-benchmark.
+> **Corrected 2026-08-31.** The S669 figures first reported here (and in results/09)
+> were inflated by training-set contamination that the project's homology check could
+> not detect. The leakage-free numbers are primary; see *"The leakage this project's
+> homology check could not see"* below for what happened and why the comparison
+> nevertheless survives.
 
-| method | representation | training set | ρ | r | RMSE |
-|---|---|---|---|---|---|
-| **this project — `zdiag`, 128 d** | Boltz-2 pair-track diagonal, frozen | 12,359 Tsuboyama | **0.583** | **0.574** | **1.295** |
-| this project — `diag`+contact-weighted, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.578 | 0.565 | 1.303 |
-| this project — `dz`, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.568 | 0.559 | 1.366 |
-| **AFToolkit (SVM)** | AF2 pair + LDDT logits + pLDDT, frozen | 223,611 cDNA+PROSTATA | 0.533 | 0.548 | 1.327 |
-| AFToolkit (MLP) | same features | same | 0.381 | 0.400 | 1.558 |
-| this project — `concat`, 256 d *(project default)* | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.373 | 0.385 | 1.507 |
-| AFToolkit (CatBoost) | same features | same | 0.358 | 0.309 | 1.635 |
+| method | representation | training set | ρ | r |
+|---|---|---|---|---|
+| **this project — `zdiag`, 128 d** | Boltz-2 pair-track diagonal, frozen | 12,359 Tsuboyama | **0.500** | **0.512** |
+| this project — `diag`+contact-weighted, 256 d | Boltz-2 pair track, frozen | 12,359 Tsuboyama | 0.484 | 0.493 |
+| **AFToolkit (SVM)** | AF2 pair + LDDT logits + pLDDT, frozen | 223,611 cDNA+PROSTATA | 0.453 | 0.488 |
 
 Paired protein-cluster bootstrap (4,000 resamples), this project − AFToolkit SVM:
 
-| configuration | Δρ | Δr |
-|---|---|---|
-| `zdiag` 128 d | **+0.054 [−0.003, +0.124]**, P(ahead) 0.97 | +0.033 [−0.029, +0.111] |
-| `diag`+cw 256 d | +0.046 [−0.021, +0.120], P 0.91 | +0.023 [−0.053, +0.109] |
-| `dz` 256 d | +0.039 [−0.026, +0.120], P 0.86 | — |
-| `concat` 256 d *(project default)* | **−0.153 [−0.241, −0.054]** | — |
+| corpus | n | ours ρ | AFToolkit ρ | paired Δρ |
+|---|---|---|---|---|
+| **leakage-free (primary)** | **411 / 67 prot.** | **0.500** | **0.453** | **+0.054 [−0.017, +0.151]**, P 0.91 |
+| all 629 (contaminated) | 629 / 71 | 0.583 | 0.533 | +0.054 [−0.003, +0.124], P 0.97 |
+| contaminated subset only | 218 / 5 | 0.779 | 0.714 | — |
+| original 541 view (≤500 aa cap) | 541 / 62 | 0.569 | 0.511 | +0.063 [−0.002, +0.144] |
 
-**The extra 88 variants do not change the verdict — parity, not a win.** `zdiag` is
-nominally ahead on every metric and the Spearman interval still just touches zero. Both
-methods gain slightly on the larger corpus (AFToolkit 0.511 → 0.533, this project
-0.569 → 0.583), so the earlier 541-variant reading was not an artefact of the cap. This
-project reaches that with **128 dimensions against 358** and a training corpus **18×
+**The verdict is parity, and it is robust to the contamination.** The absolute scores fall
+hard once the affected variants are removed (ours 0.583 → 0.500), but **the paired
+difference is identical to three decimals** — +0.054 either way. AFToolkit also scores
+0.714 on the contaminated five proteins *without* having trained on them, so those
+proteins are intrinsically easy rather than leakage-driven, and there is no evidence the
+contamination differentially favoured this project.
+
+Still true, and still the sharpest internal finding: the project's **adopted default**
+(`concat`) loses to AFToolkit by **−0.153 [−0.241, −0.054]** on the full corpus. The
+parity above is bought entirely by the transfer-facing readout results/14 recommended.
+This project reaches it with **128 dimensions against 358** and a training corpus **18×
 smaller**, both backbones frozen.
 
-What *is* significant runs the other way: the project's **adopted default** (`concat`)
-loses to AFToolkit by **−0.153 [−0.241, −0.054]**. The parity above is bought entirely by
-the transfer-facing readout results/14 recommended, and would be missed by anyone taking
-the pipeline's own default configuration.
+### The leakage this project's homology check could not see
 
-<details><summary>The original 541-variant view, for continuity with earlier commits</summary>
+results/09 screened S669 against the training corpus with `mmseqs easy-cluster` at 80 %
+coverage and reported **zero** homologous proteins at 25 % and 30 % identity. That check
+is structurally incapable of finding the contamination this corpus pairing creates.
 
-| method | ρ | r | RMSE |
-|---|---|---|---|
-| this project — `zdiag` 128 d | 0.569 | 0.557 | 1.357 |
-| AFToolkit (SVM) | 0.511 | 0.525 | 1.401 |
-| this project — `concat` 256 d *(project default)* | 0.371 | 0.381 | 1.543 |
-| AFToolkit (MLP) | 0.344 | 0.370 | 1.631 |
-| AFToolkit (CatBoost) | 0.330 | 0.269 | 1.712 |
+Tsuboyama's Megascale entries are small domains **excised from real proteins** (~70 aa);
+S669 proteins run to hundreds of residues. **A 54 aa domain sitting verbatim inside a
+455 aa benchmark protein can never reach 80 % coverage of the longer sequence**, so
+clustering calls the pair unrelated. A coverage-free local alignment finds it at once:
 
-Paired Δρ for `concat` was **−0.130 [−0.226, −0.017]** — the project's *adopted default*
-loses to AFToolkit significantly. The parity above is bought entirely by the
-transfer-facing readout results/14 recommended.
-</details>
+| S669 protein | contains | identity | span | its variants inside |
+|---|---|---|---|---|
+| Q53291 (455 aa) | `2PTL.pdb_I58A` | 98 % / 62 aa | 40–101 | 68 / 68 |
+| P02417 (149 aa) | `2HBB.pdb` | 100 % / 48 aa | 1–48 | 70 / 96 |
+| P11961 (428 aa) | `1W4G.pdb` | 98 % / 44 aa | 126–169 | 31 / 31 |
+| P40040 (218 aa) | `4UZW.pdb` | 100 % / 43 aa | 2–44 | 29 / 29 |
+| P48052 (419 aa) | `1O6X.pdb` | 100 % / 72 aa | 23–94 | 20 / 20 |
+
+**218 of 629 variants (34.7 %) have their mutated site inside a domain this project
+trained on.** Several training entries are themselves *mutants* of those domains
+(`2PTL.pdb_I58A`, `1PGA.pdb_L5A`), so the regressor saw that exact site's stability in
+that exact sequence context.
+
+**The exposure is asymmetric.** Of the 13 training domains involved, **only one (`1PGA`)
+appears in AFToolkit's training set** — its BLAST >36 % identity filter against S669
+caught what this project's clustering missed. So the contamination was ours and not its,
+which is why the leakage-free re-score above is the number that should be quoted.
+
+The 88 variants added by the length extension are the **cleanest** part of the corpus:
+zero verbatim training domains across all 9 of its proteins.
+
+**This affects more than results/16.** results/05, 09, 12 and 14 all rest on the same
+`easy-cluster` screen, so any of their transfer numbers involving a benchmark protein
+long enough to contain a Megascale domain carries the same inflation. The audit is
+`domain_leakage_audit.py`; FireProt is being screened the same way.
 
 ### The length cap: measured, then lifted
 
@@ -145,6 +165,7 @@ Split by whether AFToolkit has already trained on the protein (Spearman ρ):
 |---|---|---|---|---|
 | proteins **AFToolkit trained on** | 1,726 / 88 | **0.755** | 0.716 | **−0.063 [−0.164, −0.004]** |
 | **blind to both methods** | 1,173 / 36 | 0.633 | **0.685** | +0.046 [−0.019, +0.094] |
+| **blind + no shared training domain** | 1,118 / 35 | 0.625 | **0.677** | +0.046 [−0.025, +0.096] |
 | (naive, all scored) | 2,899 / 124 | 0.706 | 0.696 | −0.016 [−0.077, +0.023] |
 
 **The ordering flips.** Where AFToolkit has seen the protein it wins by a statistically
@@ -152,6 +173,13 @@ significant margin. Remove those proteins and it loses **−0.122 ρ**, against 
 project's **−0.031** — and the sign of the difference reverses. The naive whole-corpus
 comparison, which is what anyone reading the two papers would compute, splits the
 difference and is wrong about the direction.
+
+The same coverage-free domain audit that found 34.7 % contamination in S669 flags **915
+of 2,899 FireProt variants (31.6 %), but on only 3 proteins** — and those largely overlap
+proteins AFToolkit had already trained on, so removing them drops just 55 variants from
+the blind subset and moves nothing (ours 0.685 → 0.677, AFToolkit 0.633 → 0.625, Δρ
+unchanged at +0.046). **FireProt's blind comparison was already clean**; the S669
+contamination was the serious one.
 
 The blind-subset difference is not significant, and it sits inside the ~0.015 ρ that our
 re-derivation of AFToolkit's features costs it (below), so the honest reading is
