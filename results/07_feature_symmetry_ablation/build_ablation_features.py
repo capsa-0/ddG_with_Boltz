@@ -40,10 +40,22 @@ def main(proc_dir):
     store = SlimStore(proc / "slim")
     mut = pd.read_csv(proc / "mutations.csv")
     meta, feats, skipped = [], [], 0
+    # The wild-type slice is decompressed out of the npz on every `get`, and every
+    # mutation of a protein asks for the same one. For a full mutational scan that is
+    # the same ~90 MB array thousands of times over. Keep the last few wild types.
+    wt_cache: dict[str, dict] = {}
+
+    def get_wt(key):
+        if key not in wt_cache:
+            if len(wt_cache) > 3:
+                wt_cache.clear()
+            wt_cache[key] = store.get(key)
+        return wt_cache[key]
+
     for r in mut.itertuples(index=False):
         pos = int(r.position) - 1
         try:
-            w = store.get(r.wt_key)
+            w = get_wt(r.wt_key)
             m = store.get(r.sample_key)
             feats.append(features(w, m, pos))
         except Exception:
