@@ -35,6 +35,7 @@ directly comparable to that study's burial tertiles.
 Writes ``data/processed/<exp>/features_bio.parquet``.
 """
 import argparse
+import os
 from pathlib import Path
 
 import numpy as np
@@ -42,7 +43,9 @@ import pandas as pd
 
 from ddg.storage.slim_store import SlimStore
 
-ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
+# Repo root. Derived from this file's location so the script runs on the cluster as
+# well as the workstation it was written on; DDG_ROOT overrides it if ever needed.
+ROOT = Path(os.environ.get("DDG_ROOT", Path(__file__).resolve().parents[2]))
 Z_DIM = 128
 BIN_BOUNDS = np.linspace(2.0, 22.0, 63)   # 63 boundaries -> 64 distogram bins
 SEQ_SEP = 2                               # ignore |i-j| <= 2 (trivial backbone neighbours)

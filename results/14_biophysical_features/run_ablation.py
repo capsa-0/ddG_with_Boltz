@@ -19,6 +19,7 @@ metrics are the primary endpoint -- see notes/plans/00_overview.md.
 """
 import argparse
 import time
+import os
 from pathlib import Path
 
 import numpy as np
@@ -29,7 +30,9 @@ from sklearn.model_selection import GroupKFold
 
 from ddg.evaluation.models import make_model
 
-ROOT = Path("/media/capsa/Programas/ddG_with_Boltz")
+# Repo root. Derived from this file's location so the script runs on the cluster as
+# well as the workstation it was written on; DDG_ROOT overrides it if ever needed.
+ROOT = Path(os.environ.get("DDG_ROOT", Path(__file__).resolve().parents[2]))
 OUT = ROOT / "results/14_biophysical_features"
 Z, K = 128, 5
 STAB = -0.5          # ddG < -0.5 kcal/mol == experimentally stabilizing (results/13)
