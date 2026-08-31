@@ -11,6 +11,26 @@ landscape. GLA is a good target — it is a real 398 aa human enzyme (Fabry dise
 well outside the small designed domains that dominate the Tsuboyama training corpus,
 and an independent FoldX scan already exists for it.
 
+> **Rescored 2026-08-31 with the transfer model, and re-run on 2.4x the coverage.**
+> The original scan used **concat** features (`wtz`+`mtz`) averaged over three training
+> regimes. results/14 and results/16 later showed that readout is among the *worst* on
+> blind transfer — it loses to AFToolkit by 0.15 rho — while the pair-track **diagonal**
+> alone is the best. The scan is now scored with `diag` + MLP under the results/16
+> protocol, over the **5,426 of 7,562** mutations whose embeddings exist (the GPU run is
+> paused mid-way), against **2,239** before. Primary files carry the `_diag` suffix; the
+> original `_mean` ones are kept for comparison.
+>
+> | | previous (concat, 2,238) | **now (diag, 5,419)** |
+> |---|---|---|
+> | Spearman vs FoldX | 0.595 | **0.698** |
+> | Pearson | 0.350 | **0.428** |
+> | Pearson (FoldX clash tail clipped) | 0.521 | **0.613** |
+>
+> **The gain splits cleanly.** On the *same* 2,238 mutations the model change alone is
+> worth **rho 0.595 -> 0.640 (+0.045)**; the rest comes from coverage, and the newly
+> added 3,181 mutations agree with FoldX far better (rho 0.736) because the original
+> subset was *deliberately* the hard part — the 10 flagged positions plus the glycines.
+
 ## Protein
 
 | | |
@@ -106,15 +126,21 @@ sbatch slurm/scan_predict.sbatch experiment_configs/scan_GLA_human.yaml
   checked; the one biophysical study reports urea C₀.₅, not ΔΔG). GLA is also absent from
   every training corpus, so the predictions are leakage-free.
 - **The one external measurement that does overlap** is residual enzyme activity for 157
-  Fabry missense variants (Lukas et al. 2013, HEK293H), of which **45 are scored here**.
-  Predicted ΔΔG ranks against it with the right sign — **ρ = −0.305** (p = 0.042), and
-  **−0.328** (p = 0.036) over the **41** that are not at active-site positions — versus
-  −0.275 / −0.343 for FoldX on the same variants, a difference indistinguishable from
-  zero (paired CI [−0.25, +0.29]). Activity is not stability, so this is a weak ordinal
-  check, not a ΔΔG validation.
-- **Neither the "glycines are worse" nor the "flagged positions are worse" hypothesis
-  separates from noise** at ~15 substitutions per position (p = 0.077 and p = 0.476;
-  bootstrap CI for a single position's ρ spans [+0.09, +0.83]).
+  Fabry missense variants (Lukas et al. 2013, HEK293H), of which **110 are now scored**
+  (45 before). Predicted ΔΔG ranks against it with the right sign and far more strongly
+  than before — **ρ = −0.511** (p < 0.001), and **−0.541** over the **102** that are not
+  at active-site positions — versus −0.442 / −0.503 for FoldX on the same variants. The
+  paired difference is **−0.069 [−0.207, +0.066]** (P(Boltz better) = 0.84): nominally
+  ahead, still not separable. Activity is not stability, so this remains a weak ordinal
+  check, not a ΔΔG validation — but the earlier ρ = −0.305 on 45 variants was mostly a
+  small-sample number.
+- **The glycine effect now separates from noise, and the flagged-position one still does
+  not.** With 553 glycine substitutions instead of ~505 at far better coverage,
+  **80.1 % [76.6, 83.2]** of glycine sites fall below the percentile diagonal (FoldX
+  ranks them higher) against **45.4 % [44.0, 46.8]** for non-glycine — non-overlapping
+  intervals, where the earlier data gave p = 0.077. Restricted to non-glycine, the
+  flagged positions are **47.9 % [39.1, 56.8]**, i.e. indistinguishable from the rest.
+  **The "flagged positions are overestimated" signal is a glycine effect in disguise.**
 
 **The overestimation question is open.** It needs measured ΔΔG — i.e. S669/Ssym
 (results/09 corpora), not FoldX on this protein, and not the activity proxy either.

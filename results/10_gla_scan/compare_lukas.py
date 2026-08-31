@@ -181,6 +181,10 @@ def main() -> int:
     ap.add_argument("--fetch", action="store_true", help="re-download and re-parse Table S1")
     ap.add_argument("--pdb", type=Path, help="1R47.pdb — recompute the active-site shell")
     ap.add_argument("--scan", type=Path, default=HERE / "scan_predictions_mean.csv")
+    # results/10's original scan carried one column per training regime; the results/16
+    # transfer model (`diag`) emits a single prediction, so the column is a parameter.
+    ap.add_argument("--ddg-col", default="ddg_mean",
+                    help="prediction column in --scan (e.g. ddg_diag)")
     ap.add_argument("--foldx", type=Path, default=HERE / "ddg_varmed_by_mutation_foldx.csv")
     ap.add_argument("--activity", type=Path, default=HERE / "lukas2013_activity.csv")
     ap.add_argument("--out", type=Path, default=HERE / "compare_lukas_merged.csv")
@@ -216,13 +220,13 @@ def main() -> int:
         return 1
 
     a = np.array([act[m] for m in shared])
-    b = np.array([float(scan[m]["ddg_mean"]) for m in shared])
+    b = np.array([float(scan[m][args.ddg_col]) for m in shared])
     f = np.array([foldx[m] for m in shared])
     keep = np.array([pos(m) not in ACTIVE_SITE for m in shared])
 
     print("Rank correlation with residual activity (negative = correct direction)")
     print(f"{'':38}{'n':>5}{'rho':>9}{'p':>9}")
-    for name, x, sel in (("Boltz ddg_mean", b, slice(None)),
+    for name, x, sel in ((f"Boltz {args.ddg_col}", b, slice(None)),
                          ("Boltz, no active-site residues", b, keep),
                          ("FoldX, same mutations", f, slice(None)),
                          ("FoldX, no active-site residues", f, keep)):
@@ -260,13 +264,15 @@ def main() -> int:
     with_dgj = {r["mutation"]: r["act_plus_DGJ"] for r in csv.DictReader(args.activity.open())}
     with args.out.open("w", newline="") as fh:
         w = csv.writer(fh)
+        extra = [c for c in ("ddg_A_tsuboyama", "ddg_B_fireprot", "ddg_D_finetuned")
+                 if c in next(iter(scan.values()))]
         w.writerow(["mutation", "position", "activity_pct_wt", "activity_pct_wt_plus_DGJ",
-                    "active_site", "boltz_mean", "boltz_A", "boltz_B", "boltz_D", "foldx"])
+                    "active_site", "boltz"] + extra + ["foldx"])
         for m in shared:
             r = scan[m]
             w.writerow([m, pos(m), act[m], with_dgj.get(m, ""),
-                        int(pos(m) in ACTIVE_SITE), r["ddg_mean"], r["ddg_A_tsuboyama"],
-                        r["ddg_B_fireprot"], r["ddg_D_finetuned"], foldx[m]])
+                        int(pos(m) in ACTIVE_SITE), r[args.ddg_col]]
+                       + [r[c] for c in extra] + [foldx[m]])
     print(f"\nwrote {args.out.name} ({len(shared)} rows)")
 
     plot(a[keep], b[keep], f[keep], args.figure)

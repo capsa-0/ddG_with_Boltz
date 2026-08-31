@@ -11,15 +11,24 @@ import subprocess
 from pathlib import Path
 
 import numpy as np
+import sys
+
 import pandas as pd
 from scipy.stats import mannwhitneyu, spearmanr
 
 R = Path(__file__).parent
-merged = pd.read_csv(R / "compare_foldx_merged_mean.csv")
-perpos = pd.read_csv(R / "compare_foldx_per_position_mean.csv")
+# Which scoring of the scan to report. "mean" is the original multi-regime concat model;
+# "diag" is the results/16 transfer model (pair-track diagonal + MLP), which covers 2.4x
+# more mutations. Pass the suffix as argv[1].
+REGIME = sys.argv[1] if len(sys.argv) > 1 else "diag"
+SUF = f"_{REGIME}"
+merged = pd.read_csv(R / f"compare_foldx_merged{SUF}.csv")
+perpos = pd.read_csv(R / f"compare_foldx_per_position{SUF}.csv")
 disc = pd.read_csv(R / "discrepancy_by_position.csv")
 summary = json.loads((R / "scan_summary.json").read_text())
-preds = pd.read_csv(R / "scan_predictions_mean.csv")
+_pred_file = (R / f"scan_predictions{SUF}_compare.csv")
+preds = pd.read_csv(_pred_file if _pred_file.exists()
+                    else R / f"scan_predictions{SUF}.csv")
 
 # ---- derived numbers -------------------------------------------------------
 n_mut, n_pos = len(merged), merged.position.nunique()
@@ -46,10 +55,10 @@ reg = summary["per_regime"]
 agree = summary["regime_agreement_pearson"]
 
 # ---- external check: measured residual activity (Lukas 2013) ---------------
-lk = pd.read_csv(R / "compare_lukas_merged.csv")
+lk = pd.read_csv(R / f"compare_lukas_merged{SUF}.csv")
 lkc = lk[lk.active_site == 0]                     # active-site variants excluded
 n_lk, n_lkc = len(lk), len(lkc)
-rho_lb, p_lb = spearmanr(lkc.boltz_mean, lkc.activity_pct_wt)
+rho_lb, p_lb = spearmanr(lkc.boltz, lkc.activity_pct_wt)
 rho_lf, p_lf = spearmanr(lkc.foldx, lkc.activity_pct_wt)
 _rng = np.random.default_rng(0)
 _d = []
@@ -58,28 +67,40 @@ for _ in range(10000):
     _a = lkc.activity_pct_wt.values[_i]
     if len(set(_a)) < 3:
         continue
-    _d.append(spearmanr(lkc.boltz_mean.values[_i], _a).statistic
+    _d.append(spearmanr(lkc.boltz.values[_i], _a).statistic
               - spearmanr(lkc.foldx.values[_i], _a).statistic)
 lk_lo, lk_hi = np.percentile(_d, [2.5, 97.5])
 _dead = lkc.activity_pct_wt == 0
 n_dead = int(_dead.sum())
-med_dead, med_live = lkc.boltz_mean[_dead].median(), lkc.boltz_mean[~_dead].median()
-p_dead = mannwhitneyu(lkc.boltz_mean[_dead], lkc.boltz_mean[~_dead], alternative="greater").pvalue
+med_dead, med_live = lkc.boltz[_dead].median(), lkc.boltz[~_dead].median()
+p_dead = mannwhitneyu(lkc.boltz[_dead], lkc.boltz[~_dead], alternative="greater").pvalue
 p_dead_f = mannwhitneyu(lkc.foldx[_dead], lkc.foldx[~_dead], alternative="greater").pvalue
 p_lb_s = f"p = {p_lb:.3f}" if p_lb >= 0.001 else "p < 0.001"
 p_lf_s = f"p = {p_lf:.3f}" if p_lf >= 0.001 else "p < 0.001"
 rho_abs = abs(rho_lb)
 
 # ---- percentile-diagonal shares (figure 2, top right) ----------------------
-_ps = pd.read_csv(R / "percentile_shift_mean.csv").set_index("group").pct_below
+_ps = pd.read_csv(R / f"percentile_shift{SUF}.csv").set_index("group").pct_below
 pct_gly, pct_rest = _ps["glycine"], _ps["rest (non-Gly, non-flagged)"]
 pct_fng, pct_fg = _ps["flagged, non-glycine"], _ps["flagged, glycine"]
 
 img = lambda p: "data:image/png;base64," + base64.b64encode(Path(p).read_bytes()).decode()
-f_heat = img(R / "figures/01_heatmap_mean.png")
-f_cmp = img(R / "figures/01_boltz_vs_foldx_mean.png")
-f_raw = img(R / "figures/03_discrepancy_map_raw.png")
-f_act = img(R / "figures/04_lukas_activity.png")
+# Figures must match the regime the numbers come from -- embedding the "mean" panels
+# under "diag" statistics would put a different model's picture next to the text.
+def fig(stem, ext=".png"):
+    suffixed = R / f"figures/{stem}{SUF}{ext}"
+    plain = R / f"figures/{stem}{ext}"
+    if suffixed.exists():
+        return img(suffixed)
+    if plain.exists():
+        return img(plain)
+    raise SystemExit(f"missing figure for regime {REGIME}: {suffixed} (nor {plain})")
+
+
+f_heat = fig("01_heatmap")
+f_cmp = fig("01_boltz_vs_foldx")
+f_raw = fig("03_discrepancy_map_raw")
+f_act = fig("04_lukas_activity")
 
 CSS = """
 @page { size: A4; margin: 20mm 18mm; }
