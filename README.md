@@ -116,7 +116,7 @@ every single point mutation (L positions × 19 residues):
 
 ```bash
 python -m ddg.scan build   --sequence <SEQ> --name <ID>   # writes the CSV + config
-./slurm/submit_scan.sh experiment_configs/scan_<ID>.yaml 128 2
+python -m ddg run experiment_configs/scan_<ID>.yaml       # extract the embeddings
 python -m ddg.scan predict --config experiment_configs/scan_<ID>.yaml
 ```
 
@@ -199,38 +199,6 @@ experiment before running — set it deliberately.
 - Dataset *cleaning* (building the corpora in `data/raw/`) happens in
   `ddg_datasets/`, which is a local working area and mostly untracked; only
   `build_benchmark_corpus.py` is committed.
-
-## Running on the cluster
-
-The real runs happen on a SLURM cluster. **Never run compute on the login
-node** — `python`, `boltz`, feature extraction and analysis all go through a
-job; `git`, `squeue`, `sacct`, `ls` and friends are fine.
-
-```bash
-./slurm/submit_all.sh <config> <N_shards> [max_parallel]   # the whole chain, afterok-linked
-sbatch slurm/cpu_step.sbatch <config> prepare|slim|features
-sbatch --array=0-$((N-1))%M slurm/predict_array.sbatch <config> N
-sbatch slurm/eval.sbatch <config> [hgb|svr|ridge|mlp]      # note: defaults to hgb, not mlp
-```
-
-`submit_all.sh` chains four jobs — prepare (CPU) → predict (GPU array) →
-slim (CPU) → features (CPU) — each starting only if the previous succeeded.
-Watch for `PENDING (DependencyNeverSatisfied)`: that means an upstream step
-already failed and the job will never run, so `scancel` it, fix the cause, and
-re-submit (predict is resumable, so it only redoes the missing structures).
-
-Two things that were learned the hard way and are baked into the scripts:
-
-- **Many short shards, not few long jobs.** A long job that dies near the end
-  wastes all of it *and* stalls the `afterok` chain. Use a high shard count
-  (64+) with a low GPU concurrency cap.
-- **`predict_array.sbatch` slims each shard immediately** (`delete_raw`), so
-  only ~one shard's raw embeddings exist at a time. Raw `z` for a ≥300 aa
-  protein is ~30 MB; without this a single corpus can peak at ~180 GB.
-
-Job scripts activate conda via `source /home/shared/load-conda`. Some nodes are
-known-bad for `boltz predict` and are excluded by the scripts; if failures
-cluster on one node while others succeed concurrently, it is the node.
 
 ## Tests
 
