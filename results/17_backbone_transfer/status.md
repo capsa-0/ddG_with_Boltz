@@ -408,3 +408,29 @@ measure Boltz's ceiling explicitly with a length ladder (job 20745: 701 aa ✓,
 Ssym.
 
 Predict submission for this corpus: 350 structures over 16 shards ≈ 22 each.
+
+### Length ladder built (prerequisite for Phase 1)
+
+`data/raw/esmfold_length_probe.csv` + `experiment_configs/esmfold_length_probe.yaml`
+— 12 rungs, one variant per protein:
+
+| aa | 149 | 201 | 261 | 297 | 345 | 419 | 448 | 505 | 619 | 701 | 795 | 1207 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+
+The lower rungs matter more than the upper ones here. results/16's existing
+`s669_long_probe` starts at 505 aa, which was the right range for Boltz; ESMFold
+carries ~5 GB of resident weights on an 8 GB card, so its ceiling may fall
+*below* 505 and the existing ladder would not see it. `fireprot_le200` needs
+200 aa and `s669` / `fireprot_201to500` need ~500 — a ceiling under 500 means
+the ESMFold arm cannot cover the selection corpus without `half_trunk`.
+
+`slurm/probe_length.sbatch` needed no change: it runs `ddg run --step predict`,
+which now dispatches on `backbone`, and it already reports GPU model, compute
+capability and peak VRAM per rung with one query per array task.
+
+### Fixed: the CPU wrappers were not excluding the bad nodes
+
+Only `predict_array.sbatch` carried `--exclude=nodo1,nodo3,nodo4,nodo5`; prepare
+22288 was scheduled onto **nodo3** as a result. Added the list to
+`cpu_step.sbatch` and `probe_length.sbatch` (CLAUDE.md notes it is harmless on
+CPU steps). Commit `304a973`.

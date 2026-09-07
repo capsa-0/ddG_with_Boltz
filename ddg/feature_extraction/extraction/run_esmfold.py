@@ -75,32 +75,43 @@ def _load_model(flags):
     model.eval()
 
     device = flags.get("device", "cuda" if torch.cuda.is_available() else "cpu")
-    model = model.to(device)
 
-    # The ESM-2 3B tower dominates VRAM and is inference-only here. fp16 halves it
-    # and is safe on Turing (cc 7.5 has fp16 tensor cores but no bf16). The trunk
-    # itself stays fp32 -- it feeds the features we actually keep.
+    # Cast BEFORE moving to the GPU. The checkpoint is 8.4 GB in fp32, so
+    # `model.to(device)` on the full-precision model OOMs during the copy itself
+    # -- even on an 11 GB card -- and never reaches the cast. Measured: shard 0 of
+    # job 22290 died in torch's `convert` with 10.88 GiB in use on nodo10.
+    #
+    # The language tower dominates and is inference-only here; fp16 halves it and
+    # is safe on Turing (cc 7.5 has fp16 tensor cores but no bf16). The trunk
+    # stays fp32 -- it produces the features we actually keep.
     if flags.get("half_esm", True) and device != "cpu":
         model.esm = model.esm.half()
-    # Escape hatch for the 8 GB cards. The fp32 checkpoint is 8.4 GB; halving the
-    # language tower brings the resident weights to roughly 5 GB, leaving ~3 GB of
-    # headroom for activations. If a chain still OOMs after dropping chunk_size,
-    # halve the trunk too -- but record it, because the trunk is what produces the
-    # features and fp16 there is a change to the measurement, not just to memory.
+    # Escape hatch for the 8 GB cards. half_esm alone brings the resident weights
+    # to roughly 5 GB. If a chain still OOMs after dropping chunk_size, halve the
+    # trunk too -- but record it, because fp16 in the trunk is a change to the
+    # measurement, not just to memory.
     if flags.get("half_trunk", False) and device != "cpu":
         logger.warning("half_trunk: running the folding trunk in fp16 -- the "
                        "embeddings this produces are NOT bit-comparable with an "
                        "fp32-trunk arm; note it in the result log")
         model.trunk = model.trunk.half()
+
+    model = model.to(device)
     chunk = flags.get("chunk_size", 64)
     if chunk:
         model.trunk.set_chunk_size(int(chunk))
     if device != "cpu":
         torch.backends.cuda.matmul.allow_tf32 = True
 
-    logger.info("ESMFold on %s (half_esm=%s, half_trunk=%s, chunk_size=%s)",
-                device, flags.get("half_esm", True),
-                flags.get("half_trunk", False), chunk)
+    resident = sum(p.numel() * p.element_size() for p in model.parameters()) / 2**30
+    logger.info("ESMFold on %s (half_esm=%s, half_trunk=%s, chunk_size=%s) — "
+                "%.2f GiB of weights resident", device,
+                flags.get("half_esm", True), flags.get("half_trunk", False),
+                chunk, resident)
+    if device != "cpu":
+        free, total = torch.cuda.mem_get_info()
+        logger.info("GPU %s: %.2f GiB free of %.2f GiB after load",
+                    torch.cuda.get_device_name(0), free / 2**30, total / 2**30)
     return tokenizer, model, device
 
 
