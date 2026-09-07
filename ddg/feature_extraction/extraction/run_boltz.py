@@ -13,6 +13,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from ddg.feature_extraction.extraction.common import is_done, select_pending
+
 logger = logging.getLogger(__name__)
 
 
@@ -33,40 +35,6 @@ def ensure_boltz_cache(config) -> None:
     logger.info("Warming Boltz cache at %s (weights + CCD)...", cache)
     download_boltz2(cache)
     logger.info("Boltz cache ready at %s", cache)
-
-
-def _shard_files(all_files, shard):
-    """Deterministic round-robin split: shard (i, n) -> files[i::n]."""
-    i, n = shard
-    if n <= 0 or not (0 <= i < n):
-        raise ValueError(f"invalid shard {shard}")
-    return all_files[i::n]
-
-
-def _is_done(dst_predictions: Path, key: str) -> bool:
-    """True if this query already has a canonical embeddings prediction on disk."""
-    d = dst_predictions / key
-    return d.is_dir() and any(d.glob("embeddings_*.npz"))
-
-
-def _slimmed_keys(config) -> set:
-    """Structure keys already compacted into the slim store.
-
-    With incremental slim, a shard deletes its raw NPZs right after slimming them,
-    so raw-NPZ existence alone would make predict regenerate them on a rerun. Skip
-    anything already in a slim shard as well.
-    """
-    import numpy as np
-    slim_dir = Path(config.exp_processed_dir) / "slim"
-    done: set = set()
-    if slim_dir.exists():
-        for f in slim_dir.glob("*.npz"):
-            try:
-                with np.load(f, allow_pickle=False) as d:
-                    done.update(str(k) for k in d["keys"])
-            except Exception:
-                pass
-    return done
 
 
 def _boltz_cmd(input_path, out_dir, boltz_flags):
@@ -113,41 +81,15 @@ def run_boltz_predictions(config, shard=None) -> None:
         config: ProjectConfig instance.
         shard: optional (i, n) to process only files[i::n] (SLURM array task).
     """
-    queries_dir = Path(config.queries_dir)
-    if not queries_dir.exists():
-        raise FileNotFoundError(f"Queries directory not found: {queries_dir}")
-
-    all_files = sorted(queries_dir.glob("*.yaml"))
-    if not all_files:
-        raise FileNotFoundError(f"No query YAML files in {queries_dir}")
-
-    boltz_flags = config.boltz_flags
+    boltz_flags = config.backbone_flags
     dst_predictions = Path(config.raw_features_dir) / "predictions"
 
-    # Select this run's files: the whole directory, or just one shard.
-    if shard is None:
-        files, tag, label = all_files, "all", f"all {len(all_files)} queries"
-    else:
-        i, n = shard
-        files = _shard_files(all_files, shard)
-        tag = f"shard_{i:04d}"
-        label = f"shard {i}/{n} ({len(files)} of {len(all_files)} queries)"
-        if not files:
-            logger.warning("shard %d/%d is empty; nothing to do", i, n)
-            return
-
-    # Resumability: skip queries whose canonical prediction already exists, so a
-    # resubmitted array only redoes leftover work. A node dying mid-shard then
-    # costs at most one structure instead of the whole shard.
-    slimmed = _slimmed_keys(config)
-    pending = [f for f in files
-               if not _is_done(dst_predictions, f.stem) and f.stem not in slimmed]
-    skipped = len(files) - len(pending)
-    if skipped:
-        logger.info("Skipping %d already-predicted queries in %s", skipped, label)
+    pending, label = select_pending(config, dst_predictions, shard=shard)
     if not pending:
         logger.info("Nothing to do for %s; all predictions already present", label)
         return
+    tag = "all" if shard is None else f"shard_{shard[0]:04d}"
+
     logger.info("Running Boltz on %s (%d pending)", label, len(pending))
 
     # Symlink just the pending files into a private input dir (and use a private
@@ -184,7 +126,7 @@ def run_boltz_predictions(config, shard=None) -> None:
     # (compute capability 7.5, so Boltz's own triangle kernels are off): chains up to
     # ~701 aa succeed at ~7.5 GB peak, and >=795 aa are dropped exactly this way.
     # Fail loudly instead -- predict is resumable, so a requeue only redoes the gap.
-    missing = [f.stem for f in pending if not _is_done(dst_predictions, f.stem)]
+    missing = [f.stem for f in pending if not is_done(dst_predictions, f.stem)]
     if missing:
         shown = ", ".join(missing[:10]) + (" ..." if len(missing) > 10 else "")
         raise RuntimeError(

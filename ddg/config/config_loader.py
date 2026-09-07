@@ -47,9 +47,29 @@ class ProjectConfig:
         # without an MSA (`msa: empty`). Default False -> normal MSA pipeline.
         self.no_msa = bool(data_proc.get('no_msa', False))
                 
-        self.process_one_by_one = self.exp_config['feature_extraction']['process_one_by_one']
-        self.boltz_flags = self.exp_config['feature_extraction']['boltz_flags']
+        feat_ex = self.exp_config['feature_extraction']
+        self.process_one_by_one = feat_ex['process_one_by_one']
+        # Which embedding backbone the predict step dispatches to. Defaults to
+        # boltz2, so every pre-results/17 config keeps working unchanged.
+        self.backbone = feat_ex.get('backbone', 'boltz2')
+        # `boltz_flags` stays for the Boltz arms; a non-Boltz config need not
+        # carry it, hence .get rather than [].
+        self.boltz_flags = feat_ex.get('boltz_flags', {})
         self.training_params = self.exp_config.get('training', {})
+
+    @property
+    def backbone_flags(self) -> dict:
+        """Per-run flags for the selected backbone.
+
+        Read from `feature_extraction.<backbone>_flags`; the Boltz arms fall back
+        to the historical `boltz_flags` key so existing experiment YAMLs are
+        untouched. See ddg.feature_extraction.extraction.backbones.
+        """
+        feat_ex = self.exp_config['feature_extraction']
+        flags = feat_ex.get(f'{self.backbone}_flags')
+        if flags is None and self.backbone.startswith('boltz'):
+            flags = feat_ex.get('boltz_flags')
+        return flags or {}
 
     @property
     def feature_blocks(self) -> tuple:

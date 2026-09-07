@@ -9,14 +9,17 @@ Run:  PYTHONPATH=. python tests/test_sharding.py   (or via pytest)
 import tempfile
 from pathlib import Path
 
-from ddg.feature_extraction.extraction.run_boltz import _shard_files, _merge_predictions
+# shard_files moved to extraction.common when the backbone dispatch landed
+# (results/17): every backbone runner shares one split and one resume test.
+from ddg.feature_extraction.extraction.common import shard_files
+from ddg.feature_extraction.extraction.run_boltz import _merge_predictions
 from ddg.cli import _parse_shard
 
 
 def test_shard_split_partitions_all():
     files = [f"q{i}.yaml" for i in range(10)]
     n = 3
-    shards = [_shard_files(files, (i, n)) for i in range(n)]
+    shards = [shard_files(files, (i, n)) for i in range(n)]
     # disjoint
     seen = set()
     for s in shards:

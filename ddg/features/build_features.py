@@ -41,7 +41,12 @@ from ddg.storage.slim_store import SlimStore
 
 logger = logging.getLogger(__name__)
 
-Z_DIM = 128  # Boltz-2 pair-track (z) feature dimension
+# Boltz-2's pair-track width. Every backbone in results/17 (ESMFold, OpenFold/AF2,
+# Protenix, Chai-1, OpenFold-3) inherits AF2's 128-wide pair track too, so this is
+# the value in practice -- but the feature table derives its own width from the
+# array (see `zw` below) rather than trusting the constant, so a backbone with a
+# different Dz cannot silently misalign the columns.
+Z_DIM = 128
 
 # Every z-derived block this builder knows how to emit, in canonical column order.
 Z_BLOCKS = ("zdiag", "zpool", "wtz", "mtz")
@@ -166,8 +171,12 @@ def build_features_frame(config: ProjectConfig) -> pd.DataFrame:
 
     Z = np.vstack(z_feats)
     Z = np.where(np.isfinite(Z), Z, np.nan).astype(np.float32)
-    z_cols = {f"{block}_{j}": Z[:, k * Z_DIM + j]
-              for k, block in enumerate(blocks) for j in range(Z_DIM)}
+    zw, rem = divmod(Z.shape[1], len(blocks))
+    if rem:
+        raise ValueError(f"build_features: {Z.shape[1]} z columns is not divisible "
+                         f"by {len(blocks)} blocks {blocks}")
+    z_cols = {f"{block}_{j}": Z[:, k * zw + j]
+              for k, block in enumerate(blocks) for j in range(zw)}
     df = pd.concat([df, pd.DataFrame(z_cols)], axis=1)
 
     if keep_s:

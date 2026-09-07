@@ -21,3 +21,7 @@ dependencies:
       - seaborn==0.13.2
       - umap-learn==0.5.7
       - pyarrow==17.0.0        # parquet engine for df.to_parquet (features step)
+
+      # ESMFold backbone (results/17). HuggingFace exposes the folding trunk's
+      # s_s / s_z / distogram_logits directly, so no upstream patch is needed.
+      - transformers>=4.44

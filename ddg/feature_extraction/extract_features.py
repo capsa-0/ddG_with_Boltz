@@ -1,13 +1,14 @@
 """
 Module: extract_features
-Description: Main entry point for feature extraction from Boltz predictions.
-Orchestrates Boltz model execution on prepared query files.
+Description: Main entry point for feature extraction from structure-model
+predictions. Dispatches the prepared query files to the backbone selected by
+`feature_extraction.backbone` in the experiment YAML (default: boltz2).
 """
 
 import logging
 import argparse
 from ddg.config.config_loader import ProjectConfig
-from ddg.feature_extraction.extraction.run_boltz import run_boltz_predictions
+from ddg.feature_extraction.extraction.backbones import get_runner
 
 # ----- Setup logging -----
 logging.basicConfig(
@@ -19,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 def main(experiment_config_path: str, names_config_path: str = "ddg/config/internal_config.yaml", shard=None):
     """
-    Execute Boltz predictions on prepared query files.
+    Execute the configured backbone's predictions on prepared query files.
 
     Args:
         experiment_config_path: Path to experiment YAML configuration
@@ -34,14 +35,15 @@ def main(experiment_config_path: str, names_config_path: str = "ddg/config/inter
         internal_yaml_path=names_config_path
     )
 
-    logger.info("Running Boltz predictions...")
-    run_boltz_predictions(config, shard=shard)
+    logger.info("Running %s predictions...", config.backbone)
+    get_runner(config.backbone)(config, shard=shard)
 
     logger.info(f"Feature extraction complete! Results ready at: {config.raw_features_dir}")
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Extract features using Boltz predictions")
+    parser = argparse.ArgumentParser(
+        description="Extract embeddings using the configured backbone")
     parser.add_argument(
         "--config",
         required=True,

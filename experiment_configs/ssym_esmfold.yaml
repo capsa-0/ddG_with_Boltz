@@ -1,0 +1,62 @@
+# results/17 Phase 0 — ESMFold arm, hardware gate + NPZ contract validation.
+#
+# Ssym is the smallest corpus on disk (337 mutations / ~370 structures), so it is
+# the cheapest way to prove the `backbone:` dispatch, the NPZ contract and the
+# 8 GB / cc 7.5 memory settings end to end before any GPU-hours are committed to
+# the screen. It is NOT part of the results/17 endpoint -- selection is FireProt,
+# confirmation is S669 (see results/17_backbone_transfer/status.md).
+#
+# ESMFold is single-sequence: it never reads an MSA. `no_msa: true` therefore skips
+# the MMseqs2 server entirely (msa_generator writes one single-sequence a3m per
+# protein and generate_queries emits `msa: empty`), so prepare costs no server time
+# and cannot be rate-limited. `msa_strategy` / `msa_mutation_strategy` below are
+# inert for this arm and kept only so the query YAMLs match the Boltz arm's shape.
+
+head:
+  mode: "train"
+  experiment_name: "ssym_esmfold"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/ssym.csv"
+  dataset_type: "minimal"
+  # ESMFold ignores MSAs; skip the MMseqs2 search entirely.
+  no_msa: true
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  backbone: "esmfold"
+  esmfold_flags:
+    device: "cuda"
+    # ESM-2 3B in fp16: the tower dominates VRAM and Turing (cc 7.5) has fp16
+    # tensor cores but no bf16. Trunk stays fp32.
+    half_esm: true
+    # Trunk attention chunking -- lower this first if a long chain OOMs.
+    chunk_size: 64
+    # ESMFold's default is 3 (config.num_recycles); null keeps it, matching the
+    # recycling_steps: 3 the Boltz arm uses.
+    recycling_steps: null
+
+slim:
+  # ESMFold's single track is 1024-d, not 384. results/14 found the s-derived
+  # block is not what carries transfer, and TRANSFER_BLOCKS is zdiag-only, so
+  # keeping s would cost ~2.7x the disk for a field this experiment never reads.
+  keep_s: false
+  # Phase 0 ONLY. predict_array.sbatch self-slims each shard and deletes its raw
+  # NPZs immediately -- but validate_contract.py reads the RAW predictions (the
+  # slim store keeps only z[pos, :, :], not the whole diagonal the locality check
+  # needs). Keep the raw for this smoke corpus, and set delete_raw: true again for
+  # every Phase 1+ config, where raw would otherwise pile up.
+  delete_raw: false
+
+feature:
+  source: "auto"
+  blocks: ["zdiag", "zpool", "wtz", "mtz"]
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42

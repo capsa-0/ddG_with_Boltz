@@ -28,11 +28,15 @@ def slim_dir(config: ProjectConfig) -> Path:
 
 def _run_prepare(exp_cfg, names_cfg):
     from ddg.feature_extraction.generate_queries import main as generate_queries
-    from ddg.feature_extraction.extraction.run_boltz import ensure_boltz_cache
+    from ddg.feature_extraction.extraction.backbones import get_warmer
     generate_queries(exp_cfg, names_cfg)
-    # Warm the shared Boltz cache serially so parallel predict shards never race
-    # the first-time weight/CCD download (corrupts mols.tar / mols/).
-    ensure_boltz_cache(ProjectConfig(exp_cfg, names_cfg))
+    # Warm the selected backbone's weight cache serially so parallel predict
+    # shards never race the first-time download (for Boltz that corrupts
+    # mols.tar / mols/; for HuggingFace it leaves a half-written blob).
+    config = ProjectConfig(exp_cfg, names_cfg)
+    warm = get_warmer(config.backbone)
+    if warm is not None:
+        warm(config)
 
 
 def _run_predict(exp_cfg, names_cfg, shard=None):
