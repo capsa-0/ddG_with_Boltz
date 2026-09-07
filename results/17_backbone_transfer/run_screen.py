@@ -32,8 +32,14 @@ ROOT = Path(__file__).resolve().parents[2]
 SCREEN_CSV = ROOT / "data/raw/tsuboyama_screen10.csv"
 
 # arm -> (train feature table, test feature table)
+# NOTE the Boltz-2 train table is `rawz_features.parquet`, NOT
+# `features_summary.parquet`. The latter is a legacy pre-refactor table on this
+# corpus (657 cols, `local_s_dim_*_signed_diff`), and shares no feature columns
+# with the raw-Δz tables -- ddg.evaluation.transfer fails with "no shared feature
+# columns". rawz_features.parquet carries zdiag_*/zpool_*, matching every other
+# corpus and results/03's own provenance table.
 ARMS = {
-    "boltz2": ("data/processed/tsuboyama_bench_fast/features_summary.parquet",
+    "boltz2": ("data/processed/tsuboyama_bench_fast/rawz_features.parquet",
                "data/processed/fireprot_le200/features_summary.parquet"),
     "esmfold": ("data/processed/tsuboyama_screen10_esmfold/features_summary.parquet",
                 "data/processed/fireprot_le200_esmfold/features_summary.parquet"),
