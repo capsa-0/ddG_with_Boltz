@@ -1,0 +1,49 @@
+# results/17 Phase 1 SCREEN — ESMFold arm on the 10% Tsuboyama protein subsample (42 proteins / 1260 mutations / 1302 structures, fixed seed 42; built by results/17_backbone_transfer/build_screen_corpus.py). This is the TRAINING corpus for the screen.
+#
+# ESMFold is single-sequence: no_msa skips MMseqs2 entirely. Pin to nodo10 --
+# it is the ONLY node whose card holds this model (7.86 GiB resident; the 8 GB
+# RTX 2080s OOM on load). Length ceiling measured at 505 aa, so this corpus is
+# comfortably inside it. See results/17_backbone_transfer/compatibility.csv.
+#
+#   sbatch slurm/cpu_step.sbatch experiment_configs/tsuboyama_screen10_esmfold.yaml prepare
+#   sbatch --array=0-7%1 -w nodo10 slurm/predict_array.sbatch experiment_configs/tsuboyama_screen10_esmfold.yaml 8
+#   sbatch slurm/cpu_step.sbatch experiment_configs/tsuboyama_screen10_esmfold.yaml features
+#
+# Few shards on purpose: the 46 s model load is paid PER SHARD, which inverts
+# CLAUDE.md's "many short shards" rule for this arm.
+
+head:
+  mode: "train"
+  experiment_name: "tsuboyama_screen10_esmfold"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/tsuboyama_screen10.csv"
+  dataset_type: "dms"
+  no_msa: true
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  backbone: "esmfold"
+  esmfold_flags:
+    device: "cuda"
+    half_esm: true
+    chunk_size: 64
+    recycling_steps: null
+    half_trunk: false
+
+slim:
+  keep_s: false
+  delete_raw: true
+
+feature:
+  source: "auto"
+  blocks: ["zdiag", "zpool", "wtz", "mtz"]
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42

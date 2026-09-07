@@ -652,3 +652,50 @@ a short spike between samples is missed — treat these peaks as lower bounds.
 Cleared for Phase 1. Remaining before the screen runs: build the Tsuboyama 10 %
 protein subsample, and write `fireprot_le200_esmfold.yaml` — both with
 `delete_raw: true` restored and `-w nodo10`.
+
+---
+
+## 2026-09-07 — hardware probe: two of the six arms are not runnable on this cluster
+
+Static check of the three AF3-class arms against the measured GPU fleet
+(largest card **11264 MiB, cc 6.1**; no card has bf16 except nodo11's RTX 3050,
+which is 6 GB).
+
+| arm | upstream requirement | verdict |
+|---|---|---|
+| **Chai-1** | README: "requires ... a GPU with CUDA and **bfloat16** support"; recommends A100/H100/L40S 48–80 GB, minimum A10/A30 (24 GB) | **OUT** — the only bf16 card here is 6 GB, far under even their minimum |
+| **OpenFold-3** | Installation.md: "requires ... CUDA 12.1 and **32 GB** of memory"; tested on A100 40 GB | **OUT** — fleet maximum is 11 GB |
+| **Protenix** | `dtype: bf16` is a *default*, and `runner/inference.py:218` maps `"fp32": torch.float32`; `triangle_attention` has a pure-`torch` fallback beside `cuequivariance` | **plausible, untested** |
+
+**This changes the pre-registered arm list.** The plan's cleanest scientific
+claim was *four independently-trained AF3-class models sharing a 128-d pair
+track* — if `zdiag` transfer holds across all four, the signal belongs to the
+structure-prediction objective rather than to any one training set. With Chai-1
+and OpenFold-3 unrunnable here, that axis has **at most two** members
+(Boltz-2 and Protenix), which weakens the claim from "a property of the model
+class" to "reproduced in one other model".
+
+Realistic arm list, revised:
+
+| arm | status |
+|---|---|
+| Boltz-2 | incumbent, done |
+| **ESMFold** | **Phase 0 PASSED** |
+| OpenFold / AF2 | proven on this cluster — results/16 ran AFToolkit's AF2 pipeline on nodo6/nodo8 |
+| Protenix | pivotal and untested; now the *only* remaining AF3-class partner |
+| Chai-1 | out (bf16 + VRAM) |
+| OpenFold-3 | out (32 GB) |
+
+**Protenix is the arm to fight for**, because without it there is no
+same-architecture-class comparison at all. It needs an **isolated conda env**:
+it pins `torch==2.7.1` against the cluster env's 2.6.0, and after the `click`
+incident an in-place install into `ddG_with_Boltz` is not acceptable — a torch
+change would put Boltz, the incumbent, at risk. Plan: `ddg_protenix` env with
+`pip install -e .` for `ddg`, then `dtype: fp32` +
+`triangle_attention: torch` on nodo10.
+
+Not attempted yet. Recorded as the next Phase 0 item.
+
+**Neither exclusion is a statement about the models** — both are hardware
+limits of this cluster, and both would run on any 40 GB card. If GPU time
+elsewhere becomes available, they go back on the list unchanged.

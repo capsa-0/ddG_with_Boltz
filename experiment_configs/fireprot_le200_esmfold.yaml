@@ -1,0 +1,49 @@
+# results/17 Phase 1 SCREEN — ESMFold arm on FireProt <=200 aa (1543 mutations / 85 proteins). This is the SELECTION corpus for the screen; the pre-registered endpoint is pooled Spearman rho here, trained on Tsuboyama.
+#
+# ESMFold is single-sequence: no_msa skips MMseqs2 entirely. Pin to nodo10 --
+# it is the ONLY node whose card holds this model (7.86 GiB resident; the 8 GB
+# RTX 2080s OOM on load). Length ceiling measured at 505 aa, so this corpus is
+# comfortably inside it. See results/17_backbone_transfer/compatibility.csv.
+#
+#   sbatch slurm/cpu_step.sbatch experiment_configs/fireprot_le200_esmfold.yaml prepare
+#   sbatch --array=0-7%1 -w nodo10 slurm/predict_array.sbatch experiment_configs/fireprot_le200_esmfold.yaml 8
+#   sbatch slurm/cpu_step.sbatch experiment_configs/fireprot_le200_esmfold.yaml features
+#
+# Few shards on purpose: the 46 s model load is paid PER SHARD, which inverts
+# CLAUDE.md's "many short shards" rule for this arm.
+
+head:
+  mode: "train"
+  experiment_name: "fireprot_le200_esmfold"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/fireprot_le200.csv"
+  dataset_type: "fireprot"
+  no_msa: true
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  backbone: "esmfold"
+  esmfold_flags:
+    device: "cuda"
+    half_esm: true
+    chunk_size: 64
+    recycling_steps: null
+    half_trunk: false
+
+slim:
+  keep_s: false
+  delete_raw: true
+
+feature:
+  source: "auto"
+  blocks: ["zdiag", "zpool", "wtz", "mtz"]
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
