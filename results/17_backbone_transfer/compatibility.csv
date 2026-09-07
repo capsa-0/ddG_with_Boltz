@@ -1,0 +1,14 @@
+arm,node,gpu,vram_mib,compute_cap,resident_weights_gib,chain_aa,result,peak_vram_mib,notes
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,149,ok,8749,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,201,ok,9003,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,261,ok,9319,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,297,ok,9541,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,345,ok,9937,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,419,ok,10745,thin margin
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,448,ok,11017,97.8% of card
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,505,ok,10915,97% of card
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,619,oom,,ceiling is between 505 and 619
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,701,oom,,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,795,oom,,
+esmfold,nodo10,GTX 1080 Ti,11264,6.1,7.86,1207,oom,,
+esmfold,nodo6,RTX 2080,8192,7.5,7.86,164,oom,,weights alone do not fit

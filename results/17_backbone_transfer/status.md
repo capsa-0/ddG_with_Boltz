@@ -565,3 +565,90 @@ the arm must be validated against an fp32 run on overlapping structures before
 its numbers are allowed into the endpoint.
 
 Keep the trunk in fp32 and live with one node.
+
+### PASSED — ESMFold's pair diagonal carries a local mutation response
+
+`validate_contract.py` on the first 145 structures (contract over 40, locality
+over 25 WT/mutant pairs), run under `srun` on the cpu partition:
+
+```
+backbone: esmfold   structures on disk: 145
+contract: checked 40 structures, z widths seen: [128]
+sanity: checked 25 (WT, mutant) pairs
+PASSED — embeddings satisfy the contract and the mutation is local
+```
+
+**Every one of the 25 pairs responds at the mutated position**, with
+`|Δz[i,i]|` at the mutation between **5.5× and 70×** the far-residue median:
+
+| protein | ratio range (n) | far median |
+|---|---|---|
+| 1BNIA | 5.5× – 15.1× (8) | 5.4 – 21.0 |
+| 1L63A | 13.0× – 70.3× (15) | 1.7 – 7.8 |
+| 1IOBA | 29.3× (1) | 5.3 |
+
+This is the answer Phase 0 existed to get. Nothing before this point said an
+ESMFold pair track carries mutation signal at all — the synthetic control in the
+offline self-test only proved the validator could tell the difference. It does,
+it is local, and `Dz = 128` holds across every structure checked, so `zdiag` is
+dimension-matched to the Boltz-2 arm and the feature builder needs no change.
+
+Note the locality ratio is **protein-dependent** (1L63A's far field moves ~3×
+less than 1BNIA's for a comparable response at the mutation). Not a problem for
+the contract, but worth remembering if cross-arm disagreement (Phase 3c) is ever
+normalised per protein.
+
+**Remaining Phase 0 gate: the length ceiling** (22313, queued behind 22310 on
+nodo10). 2.68 GiB free after weights, pair track scaling as L².
+
+### Length ceiling measured: 505 aa ✓ / 619 aa ✗ — the arm covers the whole plan
+
+`slurm/probe_length.sbatch`, one rung per array task, `-w nodo10`
+(GTX 1080 Ti, 11264 MiB, cc 6.1). Full table in `compatibility.csv`:
+
+| aa | 149 | 201 | 261 | 297 | 345 | 419 | 448 | **505** | 619 | 701 | 795 | 1207 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| result | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | **✓** | ✗ | ✗ | ✗ | ✗ |
+| peak MiB | 8749 | 9003 | 9319 | 9541 | 9937 | 10745 | 11017 | 10915 | — | — | — | — |
+
+Failures are genuine OOM, not node faults:
+`CUDA out of memory ... total capacity of 10.90 GiB of which 136.12 MiB is free`.
+
+**This clears the arm for the full plan.** 505 aa covers `s669` (longest chain
+493 aa), `fireprot_201to500` (≤500), `fireprot_le200` and Tsuboyama (~70 aa).
+The worry recorded earlier — that a sub-500 ceiling would force the selection
+corpus down to `fireprot_le200` and cost the design its statistical power over
+S669 — **does not materialise**. Phase 1 stands as pre-registered.
+
+For reference, Boltz's ceiling on the 8 GB RTX 2080 was 701 ✓ / 795 ✗
+(results/16). ESMFold's is lower *and* on a bigger card, which is the 7.86 GiB
+of resident weights showing up.
+
+**But the margin above ~400 aa is thin and must be respected.** 448 aa peaked at
+**11017 MiB of 11264 — 97.8 % of the card**, ~250 MiB spare; 505 aa at 10915.
+Two consequences:
+
+1. Long-chain shards are **fragile, not safe**. Anything else touching that GPU
+   tips them over. Keep ESMFold's long-chain work to `--gres=gpu:1` on an
+   otherwise idle nodo10, and expect occasional OOM on requeue rather than
+   treating it as a new bug.
+2. If `fireprot_201to500` throws scattered OOMs, the fix is **`chunk_size` 64 →
+   32 or 16** (activation memory, and it does not touch the numerics), *not*
+   `half_trunk` (which does).
+
+Caveat on the numbers: `probe_length.sbatch` samples `nvidia-smi` every 2 s, so
+a short spike between samples is missed — treat these peaks as lower bounds.
+
+### Phase 0 verdict for the ESMFold arm: **PASS**
+
+| gate | result |
+|---|---|
+| runs on this cluster | yes — **nodo10 only** (7.86 GiB weights; 8 GB cards OOM on load) |
+| NPZ contract | yes — `s` (L×1024), `z` (L×L×**128**), `pdistogram`; slim + features unchanged |
+| `Δz[i,i]` responds to the mutation | yes — **5.5×–70×** the far-residue median over 25 pairs |
+| length ceiling | **505 aa ✓ / 619 aa ✗** — covers every corpus in the plan |
+| throughput | **5.8 s/structure** at ≤164 aa, ~2× faster than Boltz at that length |
+
+Cleared for Phase 1. Remaining before the screen runs: build the Tsuboyama 10 %
+protein subsample, and write `fireprot_le200_esmfold.yaml` — both with
+`delete_raw: true` restored and `-w nodo10`.
