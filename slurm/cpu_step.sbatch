@@ -12,6 +12,10 @@
 #SBATCH --partition=cpu
 #SBATCH --cpus-per-task=4
 #SBATCH --mem=16G
+# Known-bad nodes (CLAUDE.md): nodo1 CUDA init, nodo3 ld.so, nodo4 broken
+# /grupos mount, nodo5 bad GPU. Harmless on cpu steps; job 22288 was
+# scheduled onto nodo3 for want of this line.
+#SBATCH --exclude=nodo1,nodo3,nodo4,nodo5
 #SBATCH -e logs/slurm-%j.err
 #SBATCH -o logs/slurm-%j.out
 

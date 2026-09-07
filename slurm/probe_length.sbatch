@@ -13,6 +13,10 @@
 #SBATCH --job-name=ddg-probe
 #SBATCH --cpus-per-task=8
 #SBATCH --mem=32G
+# Known-bad nodes (CLAUDE.md): nodo1 CUDA init, nodo3 ld.so, nodo4 broken
+# /grupos mount, nodo5 bad GPU. Harmless on cpu steps; job 22288 was
+# scheduled onto nodo3 for want of this line.
+#SBATCH --exclude=nodo1,nodo3,nodo4,nodo5
 #SBATCH --time=08:00:00
 #SBATCH -e logs/slurm-%A_%a.err
 #SBATCH -o logs/slurm-%A_%a.out

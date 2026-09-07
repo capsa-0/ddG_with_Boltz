@@ -333,3 +333,78 @@ Record the peak VRAM, the s/structure and the locality ratio in
 `compatibility.csv`; those three numbers are what the Phase 0 gate decides on.
 Read the node out of the log (`srun: error: <node>: task 0`) before blaming the
 model — a failure that clusters on one node is the node, not ESMFold.
+
+---
+
+## 2026-09-07 — Phase 0 execution started on the cluster
+
+Pushed `25b1589` + `9c3d29f`, pulled on the cluster
+(`/grupos/Marce/estructural/ddG_with_Boltz/ddG_with_Boltz`).
+
+### Environment: `transformers` installed, and it moved `click`
+
+`pip install "transformers>=4.44"` in the cluster env resolved to **transformers
+5.16.1**, which pulls `typer`; `huggingface-hub 1.30.0` then wants
+`click>=8.4.2` and pip upgraded click 8.1.7 → 8.5.0. **`boltz` pins
+`click==8.1.7`** — so installing the new arm silently put the *incumbent* arm at
+risk.
+
+Resolved by holding boltz's pin and verifying both arms on the cluster:
+
+| check | result |
+|---|---|
+| `click` version | 8.1.7 (restored) |
+| `boltz --help` | OK |
+| `from transformers import EsmForProteinFolding` | OK (transformers 5.16.1) |
+
+click is CLI-only for typer/huggingface-hub; neither Python API touches it, so
+pip's warning is cosmetic here. `environment.yml` now pins `click==8.1.7`
+explicitly with that reasoning, so the next person to rebuild the env does not
+"fix" the warning by upgrading click and breaking Boltz.
+
+**ESMFold still exists in transformers 5.x** — checked, since v5 dropped a number
+of models. `EsmForProteinFolding` and its `s_s`/`s_z`/`distogram_logits` outputs
+are intact.
+
+Note: cluster torch is **2.6.0+cu124** (the workstation has 2.11.0+cu130); the
+install did not touch it.
+
+### Two corrections to the runner before submitting
+
+1. **`ensure_esmfold_cache` was going to build the model to warm the cache.** The
+   checkpoint is **8.44 GB fp32** (one `pytorch_model.bin`), so `from_pretrained`
+   would allocate all of it inside `cpu_step.sbatch`'s 16 GB budget for no reason.
+   Now `snapshot_download` — downloads, allocates nothing.
+2. **`half_trunk` escape hatch added.** Memory arithmetic for the 8 GB cards:
+   8.44 GB fp32 resident, ~5 GB with the language tower in fp16 (`half_esm`),
+   leaving ~3 GB for activations. That should hold for Ssym's short chains with
+   `chunk_size: 64`. If longer chains OOM, drop `chunk_size` first; `half_trunk`
+   is the last resort and **changes the measurement, not just the memory** — the
+   runner logs a warning and it must be recorded here if ever enabled.
+
+### Running
+
+- `22288` — `prepare` (cpu). Landed on **nodo3**, one of the known-bad nodes:
+  `cpu_step.sbatch` carries no `--exclude` (CLAUDE.md notes the flag is only
+  needed for ad-hoc submissions). It survived startup, so nodo3's documented
+  `ld.so` failure did not bite this time — but **add
+  `--exclude=nodo1,nodo3,nodo4,nodo5` to the CPU submissions too**; there is no
+  reason to gamble.
+- `no_msa: true` means prepare writes single-sequence a3m files and never
+  contacts the MMseqs2 server, then warms the ESMFold cache (8.4 GB download).
+
+### Ssym smoke corpus, as prepared
+
+`prepare` (22288) wrote **350 queries / 350 single-sequence a3m / 337 mutations
+over 13 proteins**, then began the ESMFold download (~120 MB/min → ~70 min for
+8.44 GB; the weights are cached once and every later arm run reuses them).
+
+**Caveat this corpus cannot address:** Ssym's longest chain is **164 aa**
+(`2LZMA`), so a clean pass here validates the contract and the basic memory
+settings but says **nothing about the 8 GB length ceiling**. results/16 had to
+measure Boltz's ceiling explicitly with a length ladder (job 20745: 701 aa ✓,
+795 aa ✗). ESMFold needs the same probe before Phase 1, because
+`fireprot_le200` goes to 200 aa and `s669` to 500. Do not infer a ceiling from
+Ssym.
+
+Predict submission for this corpus: 350 structures over 16 shards ≈ 22 each.

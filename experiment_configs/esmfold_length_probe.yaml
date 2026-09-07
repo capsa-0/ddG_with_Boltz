@@ -1,0 +1,53 @@
+# results/17 Phase 0 — ESMFold length-ceiling probe.
+#
+# Ssym's longest chain is 164 aa, so the smoke run establishes NO length ceiling.
+# This is the ESMFold counterpart of the Boltz ladder results/16 measured on an
+# 8 GB RTX 2080 (cc 7.5): 505/619/648/701 aa succeeded, >=795 aa were dropped.
+#
+# The rungs run 149 -> 1207 aa, one variant per protein (24 structures: each rung's
+# WT and mutant). Run it with slurm/probe_length.sbatch, which puts ONE query in
+# each array task -- so an OOM costs that rung only, and the wrapper reports the
+# GPU model, compute capability and peak VRAM per rung.
+#
+#   sbatch --array=0-23%2 -p gpu --gres=gpu:1 \
+#          slurm/probe_length.sbatch experiment_configs/esmfold_length_probe.yaml 24
+#
+# What the answer gates: fireprot_le200 needs <=200 aa, s669 and
+# fireprot_201to500 need up to ~500 aa. A ceiling below 500 means the ESMFold arm
+# cannot cover the selection corpus on these cards without half_trunk.
+
+head:
+  mode: "train"
+  experiment_name: "esmfold_length_probe"
+
+data_processing:
+  overwrite: false
+  raw_data_path: "data/raw/esmfold_length_probe.csv"
+  dataset_type: "minimal"
+  no_msa: true
+  msa_strategy: "mutate_wt_msa"
+  msa_mutation_strategy: "mutate_first_row"
+  max_msa_sequences: 1000
+
+feature_extraction:
+  process_one_by_one: false
+  backbone: "esmfold"
+  esmfold_flags:
+    device: "cuda"
+    half_esm: true
+    chunk_size: 64
+    recycling_steps: null
+    half_trunk: false
+
+slim:
+  keep_s: false
+  # keep raw so validate_contract.py can check whichever rungs survived
+  delete_raw: false
+
+feature:
+  source: "auto"
+
+training:
+  target: "ddg"
+  test_size: 0.2
+  random_state: 42
