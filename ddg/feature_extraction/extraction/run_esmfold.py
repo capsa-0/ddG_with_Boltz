@@ -81,15 +81,21 @@ def _load_model(flags):
     # -- even on an 11 GB card -- and never reaches the cast. Measured: shard 0 of
     # job 22290 died in torch's `convert` with 10.88 GiB in use on nodo10.
     #
-    # The language tower dominates and is inference-only here; fp16 halves it and
-    # is safe on Turing (cc 7.5 has fp16 tensor cores but no bf16). The trunk
-    # stays fp32 -- it produces the features we actually keep.
+    # MEASURED NO-OP for esmfold_v1 (results/17, 2026-09-07): the checkpoint
+    # already stores the esm2_3B tower in fp16. 2.8 B params would be 11.2 GB in
+    # fp32, larger than the whole 8.44 GB file, and resident weights come out at
+    # 7.86 GiB with this enabled -- exactly the on-disk size, so it changes
+    # nothing. Kept because it costs nothing and would matter for a checkpoint
+    # that did ship an fp32 tower; do NOT expect it to buy VRAM here.
     if flags.get("half_esm", True) and device != "cpu":
         model.esm = model.esm.half()
-    # Escape hatch for the 8 GB cards. half_esm alone brings the resident weights
-    # to roughly 5 GB. If a chain still OOMs after dropping chunk_size, halve the
-    # trunk too -- but record it, because fp16 in the trunk is a change to the
-    # measurement, not just to memory.
+    # The ONLY real memory lever: ~2.6 GiB of fp32 trunk -> ~1.3 GiB, i.e. 7.86
+    # GiB resident -> ~6.5 GiB, which is what it would take to fit the 8 GB
+    # RTX 2080 nodes. Not enabled by default, and not a free win: `zdiag` is a
+    # DIFFERENCE of two similar pair tensors, and fp16's ~3 significant digits is
+    # where catastrophic cancellation eats exactly that kind of signal. If this is
+    # ever turned on, validate against an fp32 run on overlapping structures
+    # before letting the numbers into an endpoint.
     if flags.get("half_trunk", False) and device != "cpu":
         logger.warning("half_trunk: running the folding trunk in fp16 -- the "
                        "embeddings this produces are NOT bit-comparable with an "

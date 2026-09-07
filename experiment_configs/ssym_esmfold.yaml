@@ -31,15 +31,15 @@ feature_extraction:
   backbone: "esmfold"
   esmfold_flags:
     device: "cuda"
-    # ESM-2 3B in fp16: the tower dominates VRAM and Turing (cc 7.5) has fp16
-    # tensor cores but no bf16. Trunk stays fp32.
+    # No-op for esmfold_v1 -- the checkpoint already ships the esm2_3B tower in
+    # fp16 (measured: 7.86 GiB resident either way). Left on because it is free.
     half_esm: true
     # Trunk attention chunking -- lower this first if a long chain OOMs.
     chunk_size: 64
-    # Last resort only. The fp32 checkpoint is 8.4 GB; half_esm brings resident
-    # weights to ~5 GB on an 8 GB card. If chains still OOM after dropping
-    # chunk_size, set this true -- but it changes the measurement, not just the
-    # memory, so it must be recorded in status.md if it is ever turned on.
+    # The only real memory lever (7.86 -> ~6.5 GiB resident), and the only way
+    # this arm would fit the 8 GB RTX 2080 nodes. Off: zdiag is a DIFFERENCE, and
+    # fp16 is where catastrophic cancellation eats that. Record it in status.md
+    # and validate against fp32 if ever turned on.
     half_trunk: false
     # ESMFold's default is 3 (config.num_recycles); null keeps it, matching the
     # recycling_steps: 3 the Boltz arm uses.
