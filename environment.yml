@@ -24,4 +24,11 @@ dependencies:
 
       # ESMFold backbone (results/17). HuggingFace exposes the folding trunk's
       # s_s / s_z / distogram_logits directly, so no upstream patch is needed.
+      #
+      # transformers pulls typer, and huggingface-hub wants click>=8.4.2, but
+      # boltz pins click==8.1.7. Measured on the cluster: with click held at
+      # 8.1.7 both `boltz --help` and `from transformers import
+      # EsmForProteinFolding` work -- click is CLI-only for those packages, and
+      # neither Python API touches it. Keep boltz's pin; pip will warn.
       - transformers>=4.44
+      - click==8.1.7

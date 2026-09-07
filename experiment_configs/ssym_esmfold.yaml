@@ -36,6 +36,11 @@ feature_extraction:
     half_esm: true
     # Trunk attention chunking -- lower this first if a long chain OOMs.
     chunk_size: 64
+    # Last resort only. The fp32 checkpoint is 8.4 GB; half_esm brings resident
+    # weights to ~5 GB on an 8 GB card. If chains still OOM after dropping
+    # chunk_size, set this true -- but it changes the measurement, not just the
+    # memory, so it must be recorded in status.md if it is ever turned on.
+    half_trunk: false
     # ESMFold's default is 3 (config.num_recycles); null keeps it, matching the
     # recycling_steps: 3 the Boltz arm uses.
     recycling_steps: null

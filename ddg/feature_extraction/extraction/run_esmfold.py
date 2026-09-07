@@ -53,13 +53,16 @@ def ensure_esmfold_cache(config) -> None:
     Same rationale as `ensure_boltz_cache`: parallel shards starting against a cold
     HuggingFace cache race the first download and can leave a half-written blob.
     Called from the (serial) prepare step.
-    """
-    from transformers import AutoTokenizer, EsmForProteinFolding
 
-    logger.info("Warming ESMFold cache (%s)...", MODEL_ID)
-    AutoTokenizer.from_pretrained(MODEL_ID)
-    EsmForProteinFolding.from_pretrained(MODEL_ID, low_cpu_mem_usage=True)
-    logger.info("ESMFold cache ready")
+    `snapshot_download` fetches the 8.4 GB checkpoint without building the model,
+    so this runs inside the CPU step's modest memory budget -- instantiating it
+    here would allocate the whole fp32 model (~8.4 GB of tensors) for nothing.
+    """
+    from huggingface_hub import snapshot_download
+
+    logger.info("Warming ESMFold cache (%s, ~8.4 GB)...", MODEL_ID)
+    path = snapshot_download(MODEL_ID)
+    logger.info("ESMFold cache ready at %s", path)
 
 
 def _load_model(flags):
@@ -79,14 +82,25 @@ def _load_model(flags):
     # itself stays fp32 -- it feeds the features we actually keep.
     if flags.get("half_esm", True) and device != "cpu":
         model.esm = model.esm.half()
+    # Escape hatch for the 8 GB cards. The fp32 checkpoint is 8.4 GB; halving the
+    # language tower brings the resident weights to roughly 5 GB, leaving ~3 GB of
+    # headroom for activations. If a chain still OOMs after dropping chunk_size,
+    # halve the trunk too -- but record it, because the trunk is what produces the
+    # features and fp16 there is a change to the measurement, not just to memory.
+    if flags.get("half_trunk", False) and device != "cpu":
+        logger.warning("half_trunk: running the folding trunk in fp16 -- the "
+                       "embeddings this produces are NOT bit-comparable with an "
+                       "fp32-trunk arm; note it in the result log")
+        model.trunk = model.trunk.half()
     chunk = flags.get("chunk_size", 64)
     if chunk:
         model.trunk.set_chunk_size(int(chunk))
     if device != "cpu":
         torch.backends.cuda.matmul.allow_tf32 = True
 
-    logger.info("ESMFold on %s (half_esm=%s, chunk_size=%s)",
-                device, flags.get("half_esm", True), chunk)
+    logger.info("ESMFold on %s (half_esm=%s, half_trunk=%s, chunk_size=%s)",
+                device, flags.get("half_esm", True),
+                flags.get("half_trunk", False), chunk)
     return tokenizer, model, device
 
 
