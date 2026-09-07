@@ -699,3 +699,57 @@ Not attempted yet. Recorded as the next Phase 0 item.
 **Neither exclusion is a statement about the models** — both are hardware
 limits of this cluster, and both would run on any 40 GB card. If GPU time
 elsewhere becomes available, they go back on the list unchanged.
+
+---
+
+## 2026-09-07 — Phase 1 launched; the screen instrument is validated
+
+### The screen works: 42 proteins still transfer
+
+Before spending GPU on new arms, the incumbent was run through the screen to ask
+whether a 10 % training subsample transfers at all. It does:
+
+| Boltz-2, trained on | test | pooled ρ | pooled r | per-protein median r |
+|---|---|---|---|---|
+| **42 proteins** (screen) | FireProt ≤200, n=1543 / 85 prot | **0.595** | 0.555 | 0.573 |
+| 412 proteins (results/05, ≤500) | FireProt ≤500 | ~0.66 | 0.65 | 0.65 |
+
+A ~0.065 drop for a 10× smaller training set — **exactly what results/03's
+learning curve predicts** (33 proteins → r 0.744 vs 330 → 0.793). Training on a
+tenth of the corpus does not destroy transfer, so the screen is a usable ranking
+instrument, and the Phase 1 design holds.
+
+This also costs no GPU: the Boltz-2 arm is a pure subset of its existing
+412-protein table, so the baseline every other arm is measured against is free.
+
+### Corpora prepared and predicting
+
+| job | corpus | structures | role |
+|---|---|---|---|
+| 22417 | tsuboyama_screen10_esmfold | 1,302 | prepare ✓ |
+| 22418 | fireprot_le200_esmfold | 1,628 | prepare ✓ |
+| 22419 | tsuboyama_screen10_esmfold | | predict, 6 shards, `-w nodo10` |
+| 22420 | fireprot_le200_esmfold | | predict, chained `afterany:22419` |
+
+Chained rather than concurrent: both need the single 11 GB card, and
+interleaving would make every task re-pay the 46 s model load.
+
+### Two bugs in the screen runner, both found by running it
+
+1. **The Boltz-2 train table was the wrong file.**
+   `tsuboyama_bench_fast/features_summary.parquet` is a **legacy pre-refactor
+   table** (657 cols, `local_s_dim_*_signed_diff`) that shares *no* feature
+   columns with the raw-Δz tables — `ddg.evaluation.transfer` died with "no
+   shared feature columns between train and test tables". The raw-Δz table for
+   that corpus is **`rawz_features.parquet`** (`zdiag_*`/`zpool_*`), which is
+   also what results/03's provenance table names. Worth knowing generally: on
+   `tsuboyama_bench_fast` those two parquets are different generations, not
+   different views.
+2. `transfer_summary.json` prefixes its pooled metrics (`pooled_spearman`, …),
+   so the screen table was silently collecting `None` for every metric while
+   still writing a file. Fixed to read the real keys.
+
+`run_screen.py` enforces the two fairness conditions a bare `transfer` call
+cannot: identical training proteins across arms, and a test set **intersected on
+(wt_id, mutation)** across arms before scoring, so no arm is flattered by a
+variant another arm dropped.
