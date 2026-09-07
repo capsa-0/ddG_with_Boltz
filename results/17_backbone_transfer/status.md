@@ -434,3 +434,134 @@ Only `predict_array.sbatch` carried `--exclude=nodo1,nodo3,nodo4,nodo5`; prepare
 22288 was scheduled onto **nodo3** as a result. Added the list to
 `cpu_step.sbatch` and `probe_length.sbatch` (CLAUDE.md notes it is harmless on
 CPU steps). Commit `304a973`.
+
+### 22290 — predict failed on an OOM in my own load order (fixed, `20d0257`)
+
+The dispatch worked: the shard logged `Running esmfold predictions...` then
+`Running ESMFold on shard 0/16 (22 of 350 queries)`, i.e. the registry resolved
+and the ESMFold runner took over from Boltz. It then died in `_load_model`:
+
+```
+torch.OutOfMemoryError: CUDA out of memory. Tried to allocate 16.00 MiB.
+GPU 0 has a total capacity of 10.90 GiB of which 10.12 MiB is free.
+... torch/nn/modules/module.py line 1329, in convert -> return t.to(
+```
+
+**Cause was mine, not the hardware.** `_load_model` did `model.to(device)` and
+*then* `model.esm.half()`, so the whole **fp32 checkpoint had to fit on the card
+during the copy** and `half_esm` never ran. It OOM'd on nodo10's **11 GB** card,
+which is larger than the 8 GB the memory plan was written around — so this says
+nothing yet about whether ESMFold fits once the cast happens first.
+
+Fixed by casting before the move. The runner now also logs the resident weight
+size and free VRAM after load, so the memory question is answered by the log
+rather than inferred from a crash.
+
+**Note the GPU inventory is not uniform.** `sinfo -p gpu` shows nodo10 with a
+~11 GB card; results/16 measured its length ladder on an 8 GB RTX 2080, and
+results/09 hit a ~1.94 GiB card on nodo12. Any VRAM number from Phase 0 must be
+recorded **with the node and card it came from**, or the ceiling is meaningless.
+
+Resubmitted as **22294** (16 shards, `%2`).
+
+### 22294 — it runs, and the memory picture is worse than planned
+
+First real numbers, from shard 1 on **nodo10**:
+
+```
+ESMFold on cuda (half_esm=True, half_trunk=False, chunk_size=64)
+    — 7.86 GiB of weights resident
+GPU NVIDIA GeForce GTX 1080 Ti: 2.68 GiB free of 10.90 GiB after load
+```
+
+**`half_esm` is a no-op.** Two independent confirmations:
+
+1. Resident weights (7.86 GiB) **equal the on-disk checkpoint** (8.44 GB =
+   7.86 GiB). If the tower had been fp32 on disk, halving it would have cut
+   resident well below the file size. It did not, so it was already fp16.
+2. The arithmetic only closes that way. `config.json` says
+   `esm_type: esm2_3B` — 2.8 B params, which is **11.2 GB in fp32, larger than
+   the entire 8.44 GB checkpoint**. At fp16 the tower is ~5.2 GiB, and the trunk
+   (48 blocks, seq 1024, pair 128, ~0.7 B params fp32) is ~2.6 GiB: 7.8 GiB
+   total, matching the measurement.
+
+So the checkpoint ships the language tower in fp16 regardless of the config's
+`fp16_esm: False`, and the flag I added to control it does nothing. **The only
+remaining memory lever is `half_trunk`** (~2.6 GiB → ~1.3 GiB, so ~6.5 GiB
+resident) — and that one changes the measurement, not just the memory.
+
+**Consequence for scheduling: this arm cannot run on the 8 GB cards at all.**
+7.86 GiB of weights plus the CUDA context does not fit in 8 GB before a single
+activation is allocated. results/16 measured Boltz's ladder on an 8 GB RTX 2080;
+ESMFold needs the ≥11 GB nodes, or `half_trunk`. The GPU fleet is **not
+uniform** — GTX 1080 Ti (10.9 GiB, Pascal cc 6.1) here, RTX 2080 (8 GB, Turing
+cc 7.5) in results/16, ~1.94 GiB on nodo12 in results/09 — so **every VRAM
+number in this experiment must be recorded with its node and card**.
+
+**2.68 GiB free after load is the activation budget**, and it is what will set
+the length ceiling. Ssym's 164 aa chains fit. The pair track scales as L², so
+500 aa (needed for `s669` and `fireprot_201to500`) is ~9× the activation
+footprint — the ladder is now the decisive Phase 0 measurement, not a formality.
+
+Also noted: `esm_type: esm2_3B`, trunk `num_blocks: 48`, `sequence_state_dim:
+1024`, `pairwise_state_dim: 128` — confirming the 128-wide pair track the whole
+comparison depends on, read from the model's own config rather than assumed.
+
+### The GPU fleet, measured (this belongs in CLAUDE.md eventually)
+
+`srun --gres=gpu:1 -w <node> nvidia-smi --query-gpu=name,memory.total,compute_cap`:
+
+| node | GPU | VRAM | compute cap | holds ESMFold (7.86 GiB)? |
+|---|---|---|---|---|
+| nodo6 | RTX 2080 | 8192 MiB | 7.5 | **no — OOM** |
+| nodo7 | RTX 2080 | 8192 MiB | 7.5 | **no** |
+| nodo8 | RTX 2080 | 8192 MiB | 7.5 | **no** |
+| nodo10 | GTX 1080 Ti | 11264 MiB | 6.1 | **yes** (2.68 GiB free after load) |
+| nodo11 | RTX 3050 | 6144 MiB | 8.6 | **no** |
+
+Confirmed by the array rather than inferred: **22294_1 on nodo10 COMPLETED
+22/22; 22294_0 and 22294_2 on nodo6 FAILED** with
+`CUDA out of memory ... total capacity of 7.60 GiB`.
+
+**So the ESMFold arm currently has one usable GPU node.** That is a scheduling
+constraint, not a blocker — see the throughput below — but every ESMFold
+submission must carry `-w nodo10` (or an exclude list that leaves only the
+≥11 GB nodes), or most shards will fail.
+
+### Throughput: the budget claim holds
+
+Shard 1, 22 structures at ≤164 aa on nodo10:
+
+```
+12:46:45  shard starts
+12:47:31  model loaded          ->  46 s one-time load
+12:49:39  22/22 predictions     ->  128 s  =  5.8 s/structure
+```
+
+(The 16:52 `sacct` elapsed is the whole array task — predict *plus* the
+per-shard slim — not the predict cost. Do not read throughput off `Elapsed`.)
+
+Against the Boltz fit `t ≈ 2.3 + 4e-4·L²`, Boltz at 164 aa would be ~13 s, so
+**ESMFold is ~2× faster than Boltz at the same length** and the Phase 1 budget's
+"ESMFold well under the Boltz unit" survives. On one node, Phase 1's ESMFold
+share (~2,900 structures) is ~4.7 GPU-h ≈ 5 h wall, and a full Tsuboyama pass
+(12,772) is ~20 h. Workable serialized.
+
+**Shard count should go DOWN for this arm, not up.** The 46 s model load is paid
+per shard, so CLAUDE.md's "many short shards" rule — written for Boltz, where
+startup is ~3 min against 65 s/structure — inverts here: 16 shards on one node
+costs ~12 min of pure loading for 34 min of work. Use ~4.
+
+### `half_trunk` is riskier than "changes the measurement"
+
+It would drop resident weights to ~6.5 GiB, fitting the three RTX 2080s — which
+are also *Turing*, with fast fp16, unlike nodo10's Pascal card. Tempting.
+
+But the feature this project reads is a **difference**, `zdiag = mut_z[i,i] −
+wt_z[i,i]`, and fp16 carries ~3 decimal digits. A small difference between two
+larger numbers is exactly the case where fp16 loses the signal to catastrophic
+cancellation. So `half_trunk` is not a free scheduling win; if it is ever used,
+the arm must be validated against an fp32 run on overlapping structures before
+its numbers are allowed into the endpoint.
+
+Keep the trunk in fp32 and live with one node.
