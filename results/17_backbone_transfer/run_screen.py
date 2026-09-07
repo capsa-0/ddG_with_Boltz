@@ -102,14 +102,19 @@ def main():
 
         s = json.loads((tmp / "transfer" / "transfer_summary.json").read_text())
         pp = pd.read_csv(tmp / "transfer" / "per_protein.csv")
+        # transfer_summary.json prefixes the pooled metrics: pooled_spearman,
+        # pooled_pearson, ... (there are in_/out_ variants for the in-range split).
         rows.append({
             "arm": arm,
-            "n_test": s.get("n"),
-            "spearman": s.get("spearman"),
-            "pearson": s.get("pearson"),
-            "rmse": s.get("rmse"),
-            "per_protein_median_r": pp["pearson"].median() if "pearson" in pp else None,
-            "sign_flipped": s.get("sign_flipped"),
+            "n_test": s["n_test"],
+            "n_test_proteins": s["n_test_proteins"],
+            "spearman": s["pooled_spearman"],          # PRIMARY endpoint
+            "pearson": s["pooled_pearson"],
+            "rmse": s["pooled_rmse"],
+            "per_protein_median_r": pp["pearson"].median(),
+            "in_range_spearman": s["in_spearman"],
+            "sign_flipped": s["sign_flipped"],
+            "n_features": s["n_features"],
             "n_train": len(train),
             "n_train_proteins": train.wt_id.nunique(),
         })
