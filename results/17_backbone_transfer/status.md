@@ -753,3 +753,85 @@ interleaving would make every task re-pay the 46 s model load.
 cannot: identical training proteins across arms, and a test set **intersected on
 (wt_id, mutation)** across arms before scoring, so no arm is flattered by a
 variant another arm dropped.
+
+---
+
+## 2026-09-07 — Protenix arm: isolated env built; ESMFold Phase 1 blocked on the queue
+
+### `ddg_protenix` env (isolated, verified)
+
+| | |
+|---|---|
+| python | 3.11.16 |
+| protenix | **2.0.0** (pinned; the build asserts the version) |
+| torch | 2.7.1+cu126 |
+| size | ~6 GB |
+| `ddG_with_Boltz` after | torch 2.6.0+cu124, click 8.1.7, `boltz --help` OK — **untouched** |
+
+Isolation was the point: protenix pins `torch==2.7.1` against the incumbent's
+2.6.0, and after the `click` episode an in-place install was not acceptable.
+
+### Three failed attempts, and what each one taught
+
+1. **Env build tied to an ssh session** — killed when the *workstation* ran out
+   of memory. Long installs must be `sbatch`-detached, not `srun` under ssh.
+2. **`--wrap` pointed at `/tmp/build_protenix_env.sh`** — written on the login
+   node, but the job runs on a compute node with its own local `/tmp`. Exit 127
+   in 0 s. Anything a batch job executes must live on shared storage.
+3. **The build "succeeded" while having failed.** `conda create` died on
+   `CondaError: Prefix record 'ca-certificates' already exists` (corrupt package
+   cache), but the script had `set -x` and **no `set -e`**, so it ran to
+   `echo DONE` and exited 0. Worse, the watch grepped for `protenix import OK`
+   and matched the `set -x` *trace* of the command rather than its output — a
+   fabricated success signal. Fixed with `set -euo pipefail`, an explicit
+   `test -x` on the new interpreter, and `RESULT`/`BUILD_OK` markers that only
+   real output can produce. **Nothing was contaminated** — `protenix` and
+   `torch` were absent from `base`, and the incumbent env verified clean.
+
+### The version trap worth remembering
+
+The first *successful* build installed **protenix 0.5.5**, not the current
+model. Cause: the env was created with `python=3.10` (copying the project's
+convention), but **protenix >= 1.0.4 declares `requires_python >= 3.11`**. pip
+did not error — it silently backtracked to 0.5.5, the last 3.10-compatible
+release. An old model would have stood in as "the Protenix arm" without ever
+announcing itself. The build now pins the version and asserts it post-install.
+
+### Pair width: the default model is dimension-matched, v2 is not
+
+`configs/configs_model_type.py` defines several model types, and **they do not
+share a pair width**:
+
+| model type | `c_z` | dimension-matched to Boltz-2 / ESMFold? |
+|---|---|---|
+| `protenix_base_default_v1.0.0` (**the inference default**) | **128** | **yes** |
+| `protenix-v2` | **256** | no |
+
+Take the **default v1** for the primary arm. The experiment's whole design is
+"hold everything fixed except the backbone", and `protenix-v2`'s 256-wide pair
+track would hand that arm twice the readout features — confounding backbone
+quality with feature dimensionality. results/14 already showed more dimensions
+is not automatically better on transfer (256-d constructions did not beat 128-d
+`zdiag`), but it would still be an uncontrolled difference. `protenix-v2` is
+worth keeping as an optional *capacity* arm, clearly labelled as not matched.
+
+Confirmed present in the installed package: `get_pairformer_output` returning
+`s_inputs, s, z`, with `c_s 384` / `c_z 128` — the patch point the survey
+identified, intact in the shipped release.
+
+### Still unanswered for this arm (all need a GPU)
+
+- Does `dtype: fp32` actually run on Pascal (nodo10, cc 6.1) / Turing
+  (nodo6-8, cc 7.5)? `torch.cuda.get_arch_list()` returned `[]` on the login
+  node because no GPU is visible there — it must be re-checked on a GPU node,
+  and torch 2.7 may have dropped Pascal.
+- Does `triangle_attention` fall back from `cuequivariance` to `torch`?
+- Protenix takes **JSON** input, not the Boltz-style query YAML the pipeline
+  emits, so `run_protenix.py` needs a converter — real integration work beyond
+  the ~10-line dump the survey estimated.
+
+### ESMFold Phase 1
+
+Still `PENDING`. nodo10 is held by another user's array (`jortigosa`, 6 h+),
+with two more users queued for GPUs. Nothing to fix — this is the cost of the
+single-node pin, and taking more of a shared cluster is not an option.
