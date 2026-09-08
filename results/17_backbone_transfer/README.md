@@ -1,9 +1,18 @@
-# 17 — Does the transfer gap depend on the backbone? Six frozen trunks, one readout
+# 17 — Does the transfer gap depend on the backbone? Frozen trunks, one readout
 
-**Status: planned.** No results yet. The phased plan, the pre-registered endpoint and
-the running log are in [`status.md`](status.md).
+**Status: Phase 0 complete, Phase 1 running.** The phased plan, the pre-registered
+endpoint and the running log are in [`status.md`](status.md).
 
-**What:** run the same frozen-trunk ΔΔG pipeline on **six** structure-prediction
+- **ESMFold cleared Phase 0** — contract holds (`Dz = 128`), `Δz[i,i]` responds to
+  the mutation at **5.5×–70×** the far-residue median, ceiling **505 aa ✓ /
+  619 aa ✗**, **5.8 s/structure**. Runs on **nodo10 only** (7.86 GiB resident;
+  the 8 GB cards OOM on load).
+- **The screen instrument is validated** — Boltz-2 trained on the 42-protein
+  subsample still transfers at **ρ 0.595** on FireProt ≤200, ~0.065 under the full
+  412-protein corpus, the drop results/03's learning curve predicts.
+- **Two arms are out on hardware** — see the arm table.
+
+**What:** run the same frozen-trunk ΔΔG pipeline on several structure-prediction
 backbones instead of one, holding the corpus, the features (`zdiag`, 128 d), the
 readout (MLP) and the splits fixed. Train on Tsuboyama, select on FireProt, confirm
 on S669.
@@ -39,6 +48,27 @@ candidate backbones inherit AF2's **128-wide pair track**, so `zdiag` stays 128-
 and the feature builder, `TRANSFER_BLOCKS` and the readouts run unmodified.
 
 ## The arms
+
+**Revised 2026-09-07, after measuring the GPU fleet** (largest card 11264 MiB,
+cc 6.1; the only bf16-capable card is 6 GB):
+
+| arm | status |
+|---|---|
+| Boltz-2 | incumbent; its screen baseline is free (a subset of its existing table) |
+| **ESMFold** | **Phase 0 PASSED**; Phase 1 predicting |
+| OpenFold / AF2 | proven on this cluster — results/16 ran AFToolkit's AF2 pipeline on nodo6/nodo8 |
+| Protenix | **pivotal, untested** — the only remaining AF3-class partner; needs an isolated env (pins `torch==2.7.1`) |
+| ~~Chai-1~~ | out — README requires bf16, recommends 48–80 GB, minimum 24 GB |
+| ~~OpenFold-3~~ | out — Installation.md requires 32 GB VRAM |
+
+Both exclusions are limits of **this cluster**, not of the models; on a 40 GB
+card they would run unchanged. The cost is the design's strongest claim: *four*
+independently-trained AF3-class models sharing a 128-d pair track would have
+shown the signal belongs to the structure-prediction objective rather than to any
+one training set. With two it weakens to "reproduced in one other model" — which
+is why Protenix is now the arm worth fighting for.
+
+### The original survey, for the record
 
 | arm | license (code / weights) | `s` × `z` | upstream patch needed | MSA |
 |---|---|---|---|---|
@@ -77,3 +107,9 @@ Upstream patch points, verified 2026-09-07:
   the running log.
 - `validate_contract.py` — the Phase 0 gate: checks a backbone's raw embeddings
   against the NPZ contract and that `Δz[i,i]` actually responds to the mutation.
+- `compatibility.csv` — measured per-node, per-length VRAM and pass/fail.
+- `build_screen_corpus.py` — the fixed, seeded 10 % protein subsample (42
+  proteins / 1,260 mutations) that every arm screens on.
+- `run_screen.py` — runs the screen, enforcing identical training proteins and a
+  test set intersected across arms.
+- `screen_results.csv` — the screen table (primary endpoint: pooled Spearman ρ).
